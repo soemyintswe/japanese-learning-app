@@ -1,0 +1,18 @@
+# Node modules
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native builds
+android/
+ios/
+
+# Environment variables
+.env
+
+# MacOS / Windows system files
+.DS_Store
+Thumbs.db
