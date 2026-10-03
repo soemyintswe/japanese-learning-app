@@ -10,9 +10,18 @@ web-build/
 android/
 ios/
 
-# Environment variables
+# Environment variables & Secrets
 .env
+.env.local
+*.pem
+
+# Backups / Local App Code Backups (GitHub တွင် မတင်ရန်)
+backups/
+backup_code/
+*.zip
+*.tar.gz
 
 # MacOS / Windows system files
 .DS_Store
 Thumbs.db
+firebase-debug.log
