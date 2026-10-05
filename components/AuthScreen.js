@@ -69,7 +69,6 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
   const t = translations[lang] || translations.my;
 
   const [step, setStep] = useState('login');
-  const [role, setRole] = useState('student');
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -407,15 +406,8 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
             {step === 'login' && (
               <>
                 <Text style={styles.subtitle}>{t.login}</Text>
-                
-                <View style={styles.roleRow}>
-                  <TouchableOpacity style={[styles.roleBtn, role === 'student' && styles.roleBtnActive]} onPress={() => setRole('student')}>
-                    <Text style={[styles.roleText, role === 'student' && styles.roleTextActive]}>{t.student}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.roleBtn, role === 'teacher' && styles.roleBtnActive]} onPress={() => setRole('teacher')}>
-                    <Text style={[styles.roleText, role === 'teacher' && styles.roleTextActive]}>{t.teacher}</Text>
-                  </TouchableOpacity>
-                </View>
+                {/* Role မရွေးခိုင်းတော့ — login ဝင်တဲ့ user ရဲ့ Firestore profile (role/status) ကနေ
+                    Admin/Teacher/Student အလိုအလျောက် ခွဲမယ် (resolveUserProfile) */}
 
                 <Text style={styles.label}>{t.username}</Text>
                 <TextInput

@@ -1,14 +1,41 @@
 import './src/webAlertPolyfill';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, RefreshControl, ImageBackground, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useFocusEffect } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './src/firebase';
 import { resolveUserProfile } from './src/session';
 import { LanguageProvider, useLanguage } from './src/LanguageContext';
 import { usePresence, markActiveNow } from './src/presence';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Planner storage key (PlannerScreen နဲ့ အတူတူ) + subject slots (မနက် 5 + ည 5)
+const PLANNER_KEY = '@japanese_planner_v1';
+const PLANNER_SLOTS = 10;
+
+// တကယ့် data ကနေ ယနေ့ တိုးတက်မှု တွက် — data မရှိရင် 0% (အတုမပြ)
+async function computeTodayProgress() {
+  try {
+    const now = new Date();
+    const key = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+    const raw = await AsyncStorage.getItem(PLANNER_KEY);
+    if (!raw) return { pct: 0, done: 0, total: PLANNER_SLOTS };
+    const all = JSON.parse(raw);
+    const day = all[key];
+    if (!day) return { pct: 0, done: 0, total: PLANNER_SLOTS };
+    let done = 0;
+    ['morning', 'evening'].forEach((s) => {
+      const sess = day[s] || {};
+      Object.keys(sess).forEach((k) => { if (sess[k]) done += 1; });
+    });
+    done = Math.min(done, PLANNER_SLOTS);
+    return { pct: Math.round((done / PLANNER_SLOTS) * 100), done, total: PLANNER_SLOTS };
+  } catch (e) {
+    return { pct: 0, done: 0, total: PLANNER_SLOTS };
+  }
+}
 import { NotificationProvider, navRef } from './src/notifications';
 import NotificationPanel from './components/NotificationPanel';
 import AppHeader from './components/AppHeader';
@@ -66,16 +93,23 @@ const tabT = {
 function HomeScreen({ navigation, user, onLogout }) {
   const goProfile = () => { try { navigation.navigate('Community', { seg: 'profile' }); } catch (e) {} };
   const [refreshing, setRefreshing] = useState(false);
-  const [progress, setProgress] = useState('၈၀%');
+  const [progress, setProgress] = useState({ pct: 0, done: 0, total: PLANNER_SLOTS });
   const { lang } = useLanguage();
   const t = homeT[lang] || homeT.my;
 
-  const onRefresh = () => {
+  const reloadProgress = useCallback(async () => {
+    const p = await computeTodayProgress();
+    setProgress(p);
+  }, []);
+
+  useEffect(() => { reloadProgress(); }, [reloadProgress]);
+  // တခြား tab က ပြန်လာတိုင်း ပြန်တွက် (planner မှာ အမှတ်ခြစ်လာရင် Home မှာ ပေါ်)
+  useFocusEffect(useCallback(() => { reloadProgress(); }, [reloadProgress]));
+
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setProgress('၈၅%');
-      setRefreshing(false);
-    }, 800);
+    await reloadProgress();
+    setRefreshing(false);
   };
 
   return (
@@ -93,13 +127,13 @@ function HomeScreen({ navigation, user, onLogout }) {
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           >
-            {/* Progress Card */}
+            {/* Progress Card — တကယ့် planner data (အတုမဟုတ်) */}
             <View style={styles.glassCard}>
               <Text style={styles.cardTitle}>{t.progress}</Text>
               <View style={styles.progressRow}>
                 <View>
-                  <Text style={styles.progressNumber}>{progress}</Text>
-                  <Text style={styles.progressSubText}>{t.done}</Text>
+                  <Text style={styles.progressNumber}>{progress.pct}%</Text>
+                  <Text style={styles.progressSubText}>{t.done} ({progress.done}/{progress.total})</Text>
                 </View>
                 <Text style={{fontSize: 30}}>📊</Text>
               </View>

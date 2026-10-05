@@ -6,6 +6,8 @@ import { StyleSheet, Text, View, Image, TouchableOpacity, Platform } from 'react
 import { useLanguage, LANGS } from '../src/LanguageContext';
 import { useNotifications } from '../src/notifications';
 
+const LOGOUT_LABEL = { my: 'ထွက်မည်', en: 'Logout', jp: 'ログアウト' };
+
 export default function AppHeader({ title, user, onLogout, onProfilePress, action, showLang = true }) {
   const { lang, setLang } = useLanguage();
   const notif = useNotifications();
@@ -79,10 +81,11 @@ export default function AppHeader({ title, user, onLogout, onProfilePress, actio
         <TouchableOpacity
           onPress={onLogout}
           style={styles.logoutBtn}
-          accessibilityLabel="Logout"
+          accessibilityLabel={LOGOUT_LABEL[lang] || 'Logout'}
           accessibilityRole="button"
         >
-          <Text style={{ fontSize: 16 }}>🚪</Text>
+          <Text style={{ fontSize: 14, color: '#C62828', marginRight: 4 }}>⏻</Text>
+          <Text style={styles.logoutText}>{LOGOUT_LABEL[lang] || 'Logout'}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -174,9 +177,19 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   logoutBtn: {
-    padding: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     backgroundColor: '#FFEBEE',
-    borderRadius: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EF9A9A',
+  },
+  logoutText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#C62828',
   },
   bellBtn: {
     padding: 6,

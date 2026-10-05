@@ -224,7 +224,7 @@ export default function BotPanel({ lang = 'my', onStartQuiz, onStartPlacement, o
       >
         {messages.map((m, i) => (
           <View key={i} style={[styles.bubble, m.from === 'user' ? styles.userBubble : styles.botBubble]}>
-            <Text style={[styles.msgText, m.from === 'user' && styles.userText]}>{m.text}</Text>
+            <Text selectable style={[styles.msgText, m.from === 'user' && styles.userText]}>{m.text}</Text>
           </View>
         ))}
         {typing && (

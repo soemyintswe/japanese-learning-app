@@ -21,6 +21,12 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
     }
 
+    // Group creator (moderation) — ကိုယ့်အဖွဲ့ထဲက message/media အကုန် ရှင်းလို့ရ
+    function isChatOwner(chatId) {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/chats/$(chatId)).data.createdBy == request.auth.uid;
+    }
+
     match /users/{userId} {
       // ဖတ်ခွင့်: login ဝင်ထားသူတိုင်း (directory/chat/reports အတွက် list လို)
       // Private profile ကို client ဘက်က ဖျောက်ပြမယ် (field-level rule မဟုတ် — sec HANDOVER)
@@ -82,18 +88,27 @@ service cloud.firestore {
 
       match /messages/{msgId} {
         allow get, list: if isChatMember(chatId);
-        // ပို့: member + byUid က ကိုယ်တိုင် ဖြစ်ရမယ် (edit/delete မရ — scope ပြင်ပ)
+        // ပို့: member + byUid က ကိုယ်တိုင် ဖြစ်ရမယ် (edit မရ)
         allow create: if isChatMember(chatId)
           && request.resource.data.byUid == request.auth.uid;
-        allow update, delete: if false;
+        allow update: if false;
+        // ဖျက်: ကိုယ်ပို့ / staff / group creator (moderation)
+        allow delete: if isSignedIn() && (
+          isStaff() || isChatOwner(chatId)
+          || resource.data.byUid == request.auth.uid
+        );
       }
 
-      // 🎤 voice clips (audio base64 — list query လေးအောင် messages နဲ့ ခွဲထား)
+      // 🎤 voice + 📎 attachments (audio/file base64 — list query လေးအောင် messages နဲ့ ခွဲထား)
       match /media/{mediaId} {
         allow get, list: if isChatMember(chatId);
         allow create: if isChatMember(chatId)
           && request.resource.data.byUid == request.auth.uid;
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if isSignedIn() && (
+          isStaff() || isChatOwner(chatId)
+          || resource.data.byUid == request.auth.uid
+        );
       }
     }
   }

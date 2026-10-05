@@ -3,7 +3,9 @@
 // Firestore `materials`: {title, desc, level, type, url, createdBy, createdByName, createdAt, updatedAt}
 // Rules: read signed-in, write staff(teacher/admin). No Drive API needed.
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, FlatList, TouchableOpacity, Modal, Alert, Linking, Platform } from 'react-native';
+import { StyleSheet, Text, View, TextInput, FlatList, TouchableOpacity, Modal, Alert, Linking, Platform, ScrollView } from 'react-native';
+import { WebView } from 'react-native-webview';
+import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
 import { db } from '../src/firebase';
@@ -92,7 +94,8 @@ const mT = {
     newTitle: 'သင်ခန်းစာအသစ်', editTitle: 'သင်ခန်းစာ ပြင်ရန်',
     errFill: 'ခေါင်းစဉ် + Drive link ဖြည့်ပါ။', errUrl: 'Link ပုံစံမှားနေပါတယ် (https://...)။',
     delQ: 'ဖျက်ရန် သေချာလား?', no: 'မလုပ်ပါ', yes: 'ဖျက်မည်', done: 'ပြီးပါပြီ ✅',
-    seedBtn: '🌱 အဆင်သင့် (12)', seedDone: 'Starter ထည့်ပြီးပါပြီ ✅', seedNone: 'အကုန်ရှိနေပြီးသား ✅',
+    openExternal: 'Browser နဲ့ဖွင့်မည် ↗', closeViewer: 'ပိတ်မည် ✕',
+    seedBtn: '🌱 အဆင်သင့် (24)', seedDone: 'Starter ထည့်ပြီးပါပြီ ✅', seedNone: 'အကုန်ရှိနေပြီးသား ✅',
     upTitle: '📤 100GB Drive တိုက်ရိုက်တင် (ဆရာ)',
     upHelp: '100GB Gmail ချိတ် → file ရွေး → Upload → "MKS Materials" folder + Anyone-link auto → link auto-ဖြည့်',
     upConnect: '🔗 100GB Gmail ချိတ်မယ်', upPick: '📁 File ရွေးမယ်', upDo: '⬆️ Upload + link ဖြည့်မည်',
@@ -114,7 +117,8 @@ const mT = {
     newTitle: 'New Material', editTitle: 'Edit Material',
     errFill: 'Fill title + Drive link.', errUrl: 'Bad link format (https://...).',
     delQ: 'Delete?', no: 'No', yes: 'Delete', done: 'Done ✅',
-    seedBtn: '🌱 Starter (12)', seedDone: 'Starter added ✅', seedNone: 'Already all there ✅',
+    openExternal: 'Open in browser ↗', closeViewer: 'Close ✕',
+    seedBtn: '🌱 Starter (24)', seedDone: 'Starter added ✅', seedNone: 'Already all there ✅',
     upTitle: '📤 Direct upload to 100GB Drive (teacher)',
     upHelp: 'Connect 100GB Gmail → pick file → Upload → "MKS Materials" folder + Anyone-link auto → link auto-filled',
     upConnect: '🔗 Connect 100GB Gmail', upPick: '📁 Pick file', upDo: '⬆️ Upload + fill link',
@@ -136,6 +140,7 @@ const mT = {
     newTitle: '新規資料', editTitle: '資料編集',
     errFill: 'タイトル＋リンクを入力。', errUrl: 'リンク形式エラー。',
     delQ: '削除しますか？', no: 'いいえ', yes: '削除', done: '完了 ✅',
+    openExternal: 'ブラウザで開く ↗', closeViewer: '閉じる ✕',
     seedBtn: '🌱 スターター', seedDone: '追加 ✅', seedNone: '追加済み ✅',
     upTitle: '📤 100GBドライブ直接upload',
     upHelp: 'Gmail接続 → 選択 → Upload → フォルダ＋公開リンク自動',
@@ -150,6 +155,39 @@ const mT = {
 const LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'];
 const TYPES = ['doc', 'video', 'audio', 'link'];
 
+// URL → in-app viewer: {kind:'youtube'|'drive'|'av', embed|url} or {kind:'external'}
+function extractYouTubeId(url) {
+  if (!url) return null;
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : null;
+}
+function extractDriveId(url) {
+  if (!url) return null;
+  let m = url.match(/drive\.google\.com\/file\/d\/([A-Za-z0-9_-]+)/);
+  if (m) return m[1];
+  m = url.match(/[?&]id=([A-Za-z0-9_-]+)/);
+  if (m && /drive\.google\.com|docs\.google\.com/.test(url)) return m[1];
+  return null;
+}
+function resolveViewer(url) {
+  const u = (url || '').trim();
+  if (!u) return { kind: 'external', url: u };
+  // YouTube playlist → videoseries embed (plays in-app, continuous)
+  const pl = u.match(/[?&]list=([A-Za-z0-9_-]+)/);
+  if (pl && /youtube\.com|youtu\.be/.test(u)) {
+    return { kind: 'youtube', embed: `https://www.youtube.com/embed/videoseries?list=${pl[1]}` };
+  }
+  const yt = extractYouTubeId(u);
+  if (yt) return { kind: 'youtube', embed: `https://www.youtube.com/embed/${yt}?rel=0` };
+  // NOTE: channel URLs (/@handle, /channel/, /user/, /c/) have NO embed player —
+  // they fall through to external (YouTube app/site), which is correct behavior.
+  const did = extractDriveId(u);
+  if (did) return { kind: 'drive', embed: `https://drive.google.com/file/d/${did}/preview`, direct: `https://drive.google.com/uc?export=download&id=${did}` };
+  if (/\.(mp3|wav|m4a|ogg|mpga)(\?|$)/i.test(u)) return { kind: 'av', url: u, audioOnly: true };
+  if (/\.(mp4|mov|webm|mkv)(\?|$)/i.test(u)) return { kind: 'av', url: u, audioOnly: false };
+  return { kind: 'external', url: u };
+}
+
 export default function MaterialsScreen({ user, onLogout, navigation }) {
   const goProfile = () => { try { navigation.navigate('Community', { seg: 'profile' }); } catch (e) {} };
   const { lang } = useLanguage();
@@ -162,6 +200,8 @@ export default function MaterialsScreen({ user, onLogout, navigation }) {
   const [lv, setLv] = useState('All');
   const [modal, setModal] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [viewer, setViewer] = useState(null); // {title, resolved}
+  const videoRef = React.useRef(null);
   const [fTitle, setFTitle] = useState('');
   const [fDesc, setFDesc] = useState('');
   const [fLevel, setFLevel] = useState('N5');
@@ -316,7 +356,11 @@ export default function MaterialsScreen({ user, onLogout, navigation }) {
               <View style={{ flexDirection: 'row', marginTop: 10 }}>
                 <TouchableOpacity
                   style={[styles.openBtn, { flex: 1 }]}
-                  onPress={() => Linking.openURL(m.url).catch(() => {})}
+                  onPress={() => {
+                    const r = resolveViewer(m.url);
+                    if (r.kind === 'external') Linking.openURL(m.url).catch(() => {});
+                    else setViewer({ title: m.title, resolved: r, url: m.url });
+                  }}
                 >
                   <Text style={styles.openBtnText}>{t.open}</Text>
                 </TouchableOpacity>
@@ -380,17 +424,57 @@ export default function MaterialsScreen({ user, onLogout, navigation }) {
             ) : (
               <Text style={[styles.help, { color: '#C62828' }]}>{t.upSetup}</Text>
             ))}
-            <View style={styles.modalActionRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModal(false)}>
-                <Text style={styles.cancelBtnText}>{t.cancel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={save}>
-                <Text style={styles.saveBtnText}>{t.save}</Text>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.modalActionRow}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setModal(false)}>
+                  <Text style={styles.cancelBtnText}>{t.cancel}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.saveBtn} onPress={save}>
+                  <Text style={styles.saveBtnText}>{t.save}</Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
           </View>
         </View>
+      </Modal>
+
+      {/* In-app viewer: YouTube / Drive preview / audio-video — app အထဲမှာတင် */}
+      <Modal visible={!!viewer} animationType="slide" transparent={false}>
+        <SafeAreaView style={[styles.container, { backgroundColor: '#000' }]}>
+          <View style={styles.viewerBar}>
+            <Text style={styles.viewerTitle} numberOfLines={1}>{viewer?.title || ''}</Text>
+            <TouchableOpacity onPress={() => setViewer(null)} style={styles.viewerClose}>
+              <Text style={styles.viewerCloseText}>{t.closeViewer}</Text>
+            </TouchableOpacity>
+          </View>
+          {!!viewer && (viewer.resolved.kind === 'youtube' || viewer.resolved.kind === 'drive') && (
+            <WebView
+              source={{ uri: viewer.resolved.embed }}
+              style={{ flex: 1, backgroundColor: '#000' }}
+              allowsFullscreenVideo={true}
+              mediaPlaybackRequiresUserAction={false}
+            />
+          )}
+          {!!viewer && viewer.resolved.kind === 'av' && (
+            <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center' }}>
+              <Video
+                ref={videoRef}
+                source={{ uri: viewer.resolved.url }}
+                style={{ width: '100%', height: viewer.resolved.audioOnly ? 80 : 260 }}
+                resizeMode={ResizeMode.CONTAIN}
+                useNativeControls
+                shouldPlay
+              />
+            </View>
+          )}
+          {!!viewer && (
+            <TouchableOpacity
+              style={styles.extBtn}
+              onPress={() => Linking.openURL(viewer.url).catch(() => {})}
+            >
+              <Text style={styles.extBtnText}>{t.openExternal}</Text>
+            </TouchableOpacity>
+          )}
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -430,4 +514,10 @@ const styles = StyleSheet.create({
   cancelBtnText: { color: '#333', fontWeight: 'bold', fontSize: 12 },
   saveBtn: { flex: 1, paddingVertical: 9, backgroundColor: '#2E7D32', borderRadius: 8, alignItems: 'center', marginLeft: 6 },
   saveBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
+  viewerBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', paddingHorizontal: 12, paddingVertical: 10 },
+  viewerTitle: { flex: 1, color: '#FFF', fontSize: 13, fontWeight: 'bold' },
+  viewerClose: { backgroundColor: '#D32F2F', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, marginLeft: 8 },
+  viewerCloseText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
+  extBtn: { backgroundColor: '#1976D2', paddingVertical: 10, alignItems: 'center' },
+  extBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
 });
