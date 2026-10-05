@@ -16,9 +16,14 @@ service cloud.firestore {
       return isSignedIn() && (callerRole() == 'admin' || callerRole() == 'teacher');
     }
 
+    function isChatMember(chatId) {
+      return isSignedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+    }
+
     match /users/{userId} {
-      // ဖတ်ခွင့်: login ဝင်ထားသူတိုင်း (ကျောင်းသား ကိုယ့် placeholder adopt လုပ်ဖို့
-      // email နဲ့ ရှာရလို့ list လိုတယ် — Auth မဝင်ထားရင် လုံးဝ ဖတ်မရပါ)
+      // ဖတ်ခွင့်: login ဝင်ထားသူတိုင်း (directory/chat/reports အတွက် list လို)
+      // Private profile ကို client ဘက်က ဖျောက်ပြမယ် (field-level rule မဟုတ် — sec HANDOVER)
       allow get, list: if isSignedIn();
 
       // ဖန်တီးခွင့်: ကိုယ့် uid doc သက်သက် + email က ကိုယ့် Auth email ဖြစ်ရမယ်
@@ -26,7 +31,9 @@ service cloud.firestore {
         && request.auth.uid == userId
         && request.resource.data.email == request.auth.token.email;
 
-      // ပြင်ခွင့်: staff က အကုန်; ကိုယ်တိုင် က name သက်သက် (role/status ထိမရ)
+      // ပြင်ခွင့်: staff က အကုန် (role/status အပါ);
+      // ကိုယ်တိုင် က profile fields (name/phone/birthdate/gender/education/jlpt/bio/photoURL/
+      // isPublic/testedLevel/lastSeenAt/lastActiveAt) — role/status ထိမရ
       allow update: if isSignedIn() && (
         isStaff()
         || (request.auth.uid == userId
@@ -39,6 +46,29 @@ service cloud.firestore {
         isStaff()
         || resource.data.email == request.auth.token.email
       );
+    }
+
+    match /chats/{chatId} {
+      // member ဝင်ထားသူသာ ဖတ်/စာရင်း (query: where members array-contains own uid)
+      allow get, list: if isSignedIn() && request.auth.uid in resource.data.members;
+      // ဖန်တီး: ကိုယ် member ပါရမယ် + အနည်းဆုံး 2 ယောက်
+      allow create: if isSignedIn()
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.members.size() >= 2;
+      // lastMessage/updatedAt update: member
+      allow update: if isSignedIn() && request.auth.uid in resource.data.members;
+      // ဖျက်: creator သို့မဟုတ် staff
+      allow delete: if isSignedIn() && (
+        isStaff() || request.auth.uid == resource.data.createdBy
+      );
+
+      match /messages/{msgId} {
+        allow get, list: if isChatMember(chatId);
+        // ပို့: member + byUid က ကိုယ်တိုင် ဖြစ်ရမယ် (edit/delete မရ — scope ပြင်ပ)
+        allow create: if isChatMember(chatId)
+          && request.resource.data.byUid == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
   }
 }

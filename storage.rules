@@ -1,0 +1,15 @@
+// Firebase Storage rules — profile avatars
+// Console → Storage → Rules မှာ ကူးထည့် → Publish. (Storage ကို Get started အရင်နှိပ်)
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // avatars/{uid}/... — ဖတ်: login ဝင်ထားသူ | ရေး: ကိုယ့် folder သက်သက်, image only, 2MB cap
+    match /avatars/{uid}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < 2 * 1024 * 1024;
+    }
+  }
+}
