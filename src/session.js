@@ -13,6 +13,14 @@ import { db } from './firebase';
 
 export const ADMIN_EMAIL = 'soemyintswe@gmail.com';
 
+// Profile form fields (Community → My Profile) — adopt/create မှာ သယ်သွားမယ်
+export const PROFILE_FIELDS = ['phone', 'birthdate', 'gender', 'education', 'jlpt', 'bio', 'photoURL', 'isPublic', 'testedLevel'];
+
+export const PROFILE_DEFAULTS = {
+  phone: '', birthdate: '', gender: '', education: '', jlpt: '',
+  bio: '', photoURL: null, isPublic: true, testedLevel: '',
+};
+
 async function findProfilesByEmail(email) {
   const out = [];
   if (!email) return out;
@@ -58,13 +66,20 @@ export async function resolveUserProfile(fbUser, defaultName) {
         console.log('Placeholder lookup failed:', qErr.message);
         throw qErr;
       }
+      const extras = { ...PROFILE_DEFAULTS };
       if (placeholder) {
         profile = {
           name: placeholder.name || profile.name,
           role: String(placeholder.role || profile.role).toLowerCase(),
           status: String(placeholder.status || profile.status).toLowerCase(),
         };
+        PROFILE_FIELDS.forEach((f) => {
+          if (placeholder[f] !== undefined && placeholder[f] !== null && placeholder[f] !== '') {
+            extras[f] = placeholder[f];
+          }
+        });
       }
+      if (fbUser.photoURL && !extras.photoURL) extras.photoURL = fbUser.photoURL;
       await setDoc(ref, {
         uid: fbUser.uid,
         name: profile.name,
@@ -72,6 +87,7 @@ export async function resolveUserProfile(fbUser, defaultName) {
         role: profile.role,
         status: profile.status,
         createdAt: new Date().toISOString(),
+        ...extras,
         ...(placeholder ? { migratedFrom: placeholder.id } : {}),
       }, { merge: true });
       // နာမည်တူ placeholder အဟောင်း (user_*) တွေ ရှင်းမယ် — admin list ထပ်မပေါ်အောင်

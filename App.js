@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './src/firebase';
 import { resolveUserProfile } from './src/session';
 import { LanguageProvider, useLanguage } from './src/LanguageContext';
+import { usePresence, markActiveNow } from './src/presence';
 import AppHeader from './components/AppHeader';
 
 // Web back/refresh မှာ tab မပျောက်အောင် URL နဲ့ ချိတ်မယ်
@@ -20,6 +21,8 @@ const linking = {
       Planner: 'planner',
       Notes: 'notes',
       QA: 'qa',
+      Community: 'community',
+      Materials: 'materials',
       Teacher: 'teacher',
     },
   },
@@ -32,6 +35,8 @@ import PlannerScreen from './components/PlannerScreen';
 import NotesScreen from './components/NotesScreen';
 import TeacherScreen from './components/TeacherScreen';
 import QAScreen from './components/QAScreen';
+import CommunityScreen from './components/CommunityScreen';
+import MaterialsScreen from './components/MaterialsScreen';
 
 const homeT = {
   my: {
@@ -139,6 +144,9 @@ function Main() {
   const [authLoading, setAuthLoading] = useState(true);
   const [notice, setNotice] = useState('');
 
+  // Presence heartbeat (Active/idle/offline) — login ဝင်ထားမှ အလုပ်လုပ်မယ်
+  usePresence(user);
+
   // Refresh နှိပ်လည်း Firebase session ကျန်နေရင် အလိုအလျောက် ပြန်ဝင်မယ် —
   // အရင် user ကို state မှာပဲ သိမ်းထားလို့ refresh လုပ်တိုင်း logout ထွက်သွားတာ ဒါကြောင့်
   useEffect(() => {
@@ -201,6 +209,8 @@ function Main() {
 
   return (
     <SafeAreaProvider>
+      {/* root touch → presence lastActiveAt (native); web က document listeners က ဖမ်းမယ် */}
+      <View style={{ flex: 1 }} onTouchStart={markActiveNow}>
       <NavigationContainer linking={linking}>
         <Tab.Navigator
           screenOptions={({ route }) => ({
@@ -212,6 +222,8 @@ function Main() {
               else if (route.name === 'Planner') iconSymbol = '📅';
               else if (route.name === 'Notes') iconSymbol = '📝';
               else if (route.name === 'QA') iconSymbol = '❓';
+              else if (route.name === 'Community') iconSymbol = '👥';
+              else if (route.name === 'Materials') iconSymbol = '📚';
               else if (route.name === 'Teacher') iconSymbol = '🎓';
               return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.6 }}>{iconSymbol}</Text>;
             },
@@ -234,6 +246,12 @@ function Main() {
           <Tab.Screen name="QA" options={{ title: 'မေးခွန်း' }}>
             {(props) => <QAScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
+          <Tab.Screen name="Community" options={{ title: 'အဖွဲ့' }}>
+            {(props) => <CommunityScreen {...props} user={user} onLogout={handleLogout} />}
+          </Tab.Screen>
+          <Tab.Screen name="Materials" options={{ title: 'စာကြည့်' }}>
+            {(props) => <MaterialsScreen {...props} user={user} onLogout={handleLogout} />}
+          </Tab.Screen>
           
           {/* Teacher Tab ကို Teacher Role ရှိမှသာပြသမည် */}
           {user?.role === 'teacher' && (
@@ -243,6 +261,7 @@ function Main() {
           )}
         </Tab.Navigator>
       </NavigationContainer>
+      </View>
     </SafeAreaProvider>
   );
 }
