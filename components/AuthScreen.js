@@ -281,7 +281,7 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
       }
       showInfo('Register + Login အောင်မြင်ပါပြီ ✅ (' + p.name + ')');
       if (onLoginSuccess) {
-        onLoginSuccess({ name: p.name, role: p.role, email: fbUser.email, uid: fbUser.uid, photoURL: p.photoURL || fbUser.photoURL || null, lang });
+      onLoginSuccess({ name: p.name, role: p.role, email: fbUser.email, uid: fbUser.uid, photoURL: p.photoURL || fbUser.photoURL || null, mustChangePassword: !!p.mustChangePassword, hasPassword: !!p.hasPassword, lang });
       }
     } catch (err) {
       console.error('Email register error:', err.code, err.message);
@@ -327,6 +327,8 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
         email: user.email,
         uid: user.uid,
         photoURL: p.photoURL || user.photoURL || null,
+        mustChangePassword: !!p.mustChangePassword,
+        hasPassword: (user.providerData || []).some((x) => x && x.providerId === 'password'),
         lang
       });
     }

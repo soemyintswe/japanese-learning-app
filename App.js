@@ -38,6 +38,7 @@ async function computeTodayProgress() {
 }
 import { NotificationProvider, navRef } from './src/notifications';
 import NotificationPanel from './components/NotificationPanel';
+import ForceChangePassword from './components/ForceChangePassword';
 import AppHeader from './components/AppHeader';
 
 // Web back/refresh မှာ tab မပျောက်အောင် URL နဲ့ ချိတ်မယ်
@@ -214,7 +215,7 @@ function Main() {
           );
           return;
         }
-        setUser({ name: p.name, role: p.role, email: fbUser.email, uid: fbUser.uid, photoURL: p.photoURL || null });
+        setUser({ name: p.name, role: p.role, email: fbUser.email, uid: fbUser.uid, photoURL: p.photoURL || null, mustChangePassword: !!p.mustChangePassword, hasPassword: !!p.hasPassword });
       } finally {
         setAuthLoading(false);
       }
@@ -249,6 +250,19 @@ function Main() {
         <AuthScreen
           notice={notice}
           onLoginSuccess={(userData) => { setNotice(''); setUser(userData); }}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  // 🔑 Force password change gate — ကနဦး password နဲ့ ဝင်လာသူ (password provider ရှိမှ)
+  if (user.mustChangePassword && user.hasPassword !== false) {
+    return (
+      <SafeAreaProvider>
+        <ForceChangePassword
+          user={user}
+          onChanged={() => setUser({ ...user, mustChangePassword: false })}
+          onLogout={handleLogout}
         />
       </SafeAreaProvider>
     );

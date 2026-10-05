@@ -13,7 +13,8 @@ import { Platform } from 'react-native';
 
 // Firebase config: EXPO_PUBLIC_* env ကို အရင်သုံးမယ်၊ မရှိရင် fallback သုံးမယ်
 // Production မှာ .env file ထဲထည့်ပါ (ဥပမာ .env.example ကြည့်)
-const firebaseConfig = {
+// Exported: admin secondary-app user creation (TeacherScreen) အတွက် လိုတယ် — client config only, secret မဟုတ်
+export const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyBqCZYc1octHkFdym33TYeFmq-7nyGiqLU",
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "japanese-mksedu.firebaseapp.com",
   projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "japanese-mksedu",

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, Pressable, Alert, Share, RefreshControl, ActivityIndicator, Modal, Platform } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, Pressable, Alert, Share, RefreshControl, ActivityIndicator, Modal, Platform, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Admin table ထဲက icon ခလုတ်များ —
@@ -34,9 +34,15 @@ function firestoreErrorMsg(error, actionName) {
 }
 
 // Firebase ချိတ်ဆက်မှု
-import { db, auth } from '../src/firebase';
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { updatePassword } from 'firebase/auth';
+import { db, auth, firebaseConfig } from '../src/firebase';
+import { collection, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { initializeApp, deleteApp } from 'firebase/app';
+import {
+  updatePassword, getAuth, createUserWithEmailAndPassword,
+  signOut, sendPasswordResetEmail,
+} from 'firebase/auth';
+import * as Crypto from 'expo-crypto';
+import * as Clipboard from 'expo-clipboard';
 import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
 import ConfirmModal from './ConfirmModal';
@@ -62,7 +68,7 @@ const teacherT = {
     pwTitle: '🔑 စကားဝှက် ပြင်ဆင်ရန် (Change Password)', oldPw: 'စကားဝှက်ဟောင်း (Old Password):', newPw: 'စကားဝှက်အသစ် (New Password):',
     changeBtn: 'စကားဝှက် ပြောင်းလဲမည်',
     createTitle: '👤 User အသစ် ထည့်သွင်းခြင်း', nameLabel: 'အမည် (Full Name):', emailLabel: 'Email:',
-    createNote: 'Password ကို ဒီမှာ မထည့်ပါ — ကျောင်းသားက Google/Email နဲ့ ပထမဆုံး Login ဝင်မှ Firebase Auth မှာ တကယ် မှတ်မယ်။',
+    createNote: 'Auth အကောင့် + ကနဦး password တကယ် ဖန်တီးပေးမယ် — user က ပထမ login မှာ ကိုယ့်ဘာသာ ပြောင်းရမယ်။ ဖန်တီးပြီးရင် login အချက်အလက် ကတ် ပေါ်မယ် (Copy/Email/SMS နဲ့ ပို့ပါ)။',
     roleLabel: 'Role သတ်မှတ်ရန်:', cancel: 'ပယ်ဖျက်မည်', create: 'ဖန်တီးမည်',
     roleModalTitle: '🔄 Role ရွေးချယ်ရန်', roleFor: 'အတွက် Role ရွေးပါ — လက်ရှိ:', current: '(လက်ရှိ)', saveRole: 'သိမ်းဆည်းမည်',
     rStudent: 'STUDENT', rTeacher: 'TEACHER', rAdmin: 'ADMIN',
@@ -78,7 +84,21 @@ const teacherT = {
     delQ: 'သတိပေးချက် ⚠️️', delConfirm: 'အကောင့်ကို စနစ်ထဲမှ လုံးဝ ဖျက်ပစ်ရန် သေချာပါသလား?', noDel: 'မဖျက်ပါ', yesDel: 'ဖျက်မည်', deleted: 'User အကောင့်ကို ဖျက်ပစ်ပြီးပါပြီ။',
     pwShort: 'Password အသစ်ကို အနည်းဆုံး ၆ လုံး ဖြည့်ပါ။', pwLoginFirst: 'Google/Email နဲ့ Login ဝင်ထားမှ Password ပြောင်းလို့ရပါတယ်။',
     pwDone: 'သင်၏ Password ကို Firebase မှာ တကယ်ပြောင်းပြီးပါပြီ။', pwRecent: 'လုံခြုံရေးအရ Logout လုပ်ပြီး Login ပြန်ဝင်ပြီးမှ ပြောင်းပါ။', pwFail: 'မအောင်မြင်ပါ',
-    okBtn: 'အိုကေ', bioEdit: '✏️ ပြင်ဆင်ရန်',
+    okBtn: 'အိုကေ',
+    phoneLabel: 'ဖုန်း (SMS ပို့ရန်, optional):', tempPwLabel: 'ကနဦး Password (6+ လုံး, 🎲 နှိပ် auto):',
+    credTitle: '📨 Login အချက်အလက် ပို့ရန်', credLink: 'Link', credFirst: 'ပထမ login မှာ password ပြောင်းရမယ်',
+    credResetNote: 'Password reset link ပို့ပြီးပြီ — user က link ကနေ password သတ်မှတ်ပြီး ဝင်ရင် ထပ်ပြောင်းရမယ်',
+    credHint: 'Copy / Email app / SMS နဲ့ user ထံ ပို့ပါ (temp password ကို ဒီမှာပဲ မြင်ရမယ် — နောက်မပြတော့ဘူး)',
+    credCopy: 'ကူးမယ်', credCopied: 'ကူးပြီးပါပြီ ✅',
+    resetTitle: '🔑 Password Reset', resetConfirm: 'အတွက် password reset လုပ်မလား? (reset email ပို့ + နောက် login မှာ password ပြောင်းခိုင်းမယ်)',
+    resetGo: 'Reset လုပ်မည်', resetNoAuth: 'မှာ Auth အကောင့် မရှိသေးဘူး — temp password နဲ့ login အသစ် ဖန်တီးပေးမလား?',
+    resetCreateGo: 'ဖန်တီးပေးမည်',
+    tipReset: 'Password reset — reset email ပို့ + နောက် login မှာ ပြောင်းခိုင်း',
+    errPwShort: 'Password အနည်းဆုံး ၆ လုံး ဖြစ်ရမယ်။',
+    errEmailInvalid: 'Email ပုံစံမှားနေပါတယ်။',
+    errExists: 'ဤ Email နဲ့ Auth အကောင့်ရှိပြီးသား — Login ဝင်ခိုင်း သို့မဟုတ် 🔑 Reset သုံးပါ။',
+    errOpNotAllowed: 'Firebase Console → Authentication → Email/Password → Enable လုပ်ပေးပါ။',
+    bioEdit: '✏️ ပြင်ဆင်ရန်',
     bioModalTitle: 'ဆရာ့ ကိုယ်ရေးအကျဉ်း ပြင်ဆင်ရန်',
     bioFName: 'အမည်:', bioFDeg: 'ဘွဲ့/ပညာအရည်အချင်း:', bioFExpertise: 'ကျွမ်းကျင်မှု:', bioFExp: 'အတွေ့အကြုံ:', bioFContact: 'ဆက်သွယ်ရန်:',
     bioSaved: 'ကိုယ်ရေးအကျဉ်း သိမ်းပြီးပါပြီ ✅',
@@ -103,7 +123,7 @@ const teacherT = {
     pwTitle: '🔑 Change Password', oldPw: 'Old Password:', newPw: 'New Password:',
     changeBtn: 'Change Password',
     createTitle: '👤 Add New User', nameLabel: 'Full Name:', emailLabel: 'Email:',
-    createNote: 'No password here — set on first Google/Email login in Firebase Auth.',
+    createNote: 'Creates a real Auth account + initial password — user must change it on first login. A delivery card appears after creation.',
     roleLabel: 'Set role:', cancel: 'Cancel', create: 'Create',
     roleModalTitle: '🔄 Pick a Role', roleFor: 'Pick a role for', current: '(current)', saveRole: 'Save',
     rStudent: 'STUDENT', rTeacher: 'TEACHER', rAdmin: 'ADMIN',
@@ -119,7 +139,21 @@ const teacherT = {
     delQ: 'Warning ⚠️️', delConfirm: 'Permanently delete this account from the system?', noDel: 'No', yesDel: 'Delete', deleted: 'User account deleted.',
     pwShort: 'New password must be at least 6 characters.', pwLoginFirst: 'Please log in with Google/Email first.',
     pwDone: 'Your password has been changed in Firebase.', pwRecent: 'For security, log out and log in again first.', pwFail: 'Failed',
-    okBtn: 'OK', bioEdit: '✏️ Edit',
+    okBtn: 'OK',
+    phoneLabel: 'Phone (for SMS, optional):', tempPwLabel: 'Initial password (6+, 🎲 auto):',
+    credTitle: '📨 Send Login Info', credLink: 'Link', credFirst: 'must change password on first login',
+    credResetNote: 'Reset email sent — user sets password via link, then must change again on entry',
+    credHint: 'Send via Copy / Email app / SMS (temp password shown only here)',
+    credCopy: 'Copy', credCopied: 'Copied ✅',
+    resetTitle: '🔑 Password Reset', resetConfirm: 'Reset password? (sends reset email + forces change on next login)',
+    resetGo: 'Reset', resetNoAuth: 'has no Auth account yet — create login with temp password now?',
+    resetCreateGo: 'Create it',
+    tipReset: 'Password reset — send reset email + force change',
+    errPwShort: 'Password must be at least 6 characters.',
+    errEmailInvalid: 'Invalid email format.',
+    errExists: 'Auth account already exists — ask them to log in, or use 🔑 Reset.',
+    errOpNotAllowed: 'Firebase Console → Authentication → enable Email/Password.',
+    bioEdit: '✏️ Edit',
     bioModalTitle: 'Edit Teacher Profile',
     bioFName: 'Name:', bioFDeg: 'Degrees:', bioFExpertise: 'Expertise:', bioFExp: 'Experience:', bioFContact: 'Contact:',
     bioSaved: 'Profile saved ✅',
@@ -144,7 +178,7 @@ const teacherT = {
     pwTitle: '🔑 パスワード変更', oldPw: '古いパスワード:', newPw: '新しいパスワード:',
     changeBtn: 'パスワードを変更',
     createTitle: '👤 新規ユーザー追加', nameLabel: '氏名:', emailLabel: 'Email:',
-    createNote: 'パスワードはここでは設定しません。初回ログイン時に登録されます。',
+    createNote: 'Auth＋初期パスワードを作成 — 初回に変更必須。',
     roleLabel: 'ロール設定:', cancel: 'キャンセル', create: '作成',
     roleModalTitle: '🔄 ロール選択', roleFor: 'のロールを選択 — 現在:', current: '（現在）', saveRole: '保存',
     rStudent: 'STUDENT', rTeacher: 'TEACHER', rAdmin: 'ADMIN',
@@ -160,7 +194,21 @@ const teacherT = {
     delQ: '警告 ⚠️️', delConfirm: 'このアカウントをシステムから完全に削除しますか？', noDel: 'やめる', yesDel: '削除', deleted: 'ユーザーアカウントを削除しました。',
     pwShort: '新しいパスワードは6文字以上にしてください。', pwLoginFirst: 'Google/Emailでログインしてから変更してください。',
     pwDone: 'Firebaseでパスワードを変更しました。', pwRecent: 'セキュリティのため再ログインしてください。', pwFail: '失敗',
-    okBtn: 'OK', bioEdit: '✏️ 編集',
+    okBtn: 'OK',
+    phoneLabel: '電話（SMS用、任意）:', tempPwLabel: '初期パスワード（6文字以上、🎲自動）:',
+    credTitle: '📨 ログイン情報送信', credLink: 'リンク', credFirst: '初回ログイン時に変更必須',
+    credResetNote: 'リセットメール送信済み — リンクで設定後、入場時に再変更',
+    credHint: 'コピー/メール/SMSで送信（仮パスはここでのみ表示）',
+    credCopy: 'コピー', credCopied: 'コピー ✅',
+    resetTitle: '🔑 リセット', resetConfirm: 'リセットしますか？',
+    resetGo: '実行', resetNoAuth: 'Authなし — 仮パスで新規作成しますか？',
+    resetCreateGo: '作成',
+    tipReset: 'パスワードリセット',
+    errPwShort: '6文字以上。',
+    errEmailInvalid: '形式エラー。',
+    errExists: '既存あり — ログインか🔑リセットを。',
+    errOpNotAllowed: 'ConsoleでEmail/Passwordを有効に。',
+    bioEdit: '✏️ 編集',
     bioModalTitle: '先生プロフィール編集',
     bioFName: '名前:', bioFDeg: '学位・学歴:', bioFExpertise: '専門:', bioFExp: '経験:', bioFContact: '連絡先:',
     bioSaved: '保存しました ✅',
@@ -179,11 +227,60 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
   const ADMIN_EMAIL = 'soemyintswe@gmail.com'; 
   const isAdmin = currentUser?.email === ADMIN_EMAIL || currentUser?.role === 'admin';
 
-  // User အသစ်ဖန်တီးရန် State များ
+  // User အသစ် (Auth + temp password) ဖန်တီးရန် State များ
   const [modalVisible, setModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [newPhone, setNewPhone] = useState('');
   const [newRole, setNewRole] = useState('student');
+  const [newTempPw, setNewTempPw] = useState('');
+  const [showTempPw, setShowTempPw] = useState(false);
+  // ပို့ရန် credentials card: {name, email, phone, tempPw?, resetLinkSent?}
+  const [creds, setCreds] = useState(null);
+
+  const APP_LOGIN_URL = 'https://japanese-mksedu.web.app';
+
+  // ဖတ်ရလွယ် temp password: MKS-XXXXXXXX (ambiguous chars ဖယ်)
+  const genTempPassword = async () => {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    try {
+      const bytes = await Crypto.getRandomBytesAsync(8);
+      let s = '';
+      for (let i = 0; i < 8; i++) s += chars[bytes[i] % chars.length];
+      return 'MKS-' + s;
+    } catch (e) {
+      let s = '';
+      for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return 'MKS-' + s;
+    }
+  };
+
+  const credText = (c) => (
+    `Japanese Study Planner — Login\n${t.credLink || 'Link'}: ${APP_LOGIN_URL}\nEmail: ${c.email}\n` +
+    (c.tempPw ? `Password: ${c.tempPw}\n(${t.credFirst || ''})` : `${t.credResetNote || ''}`)
+  );
+
+  const copyCreds = async () => {
+    if (!creds) return;
+    try {
+      await Clipboard.setStringAsync(credText(creds));
+      showInfo(t.ok, t.credCopied || 'Copied ✅');
+    } catch (e) {
+      showInfo(t.err, String(e.message || e));
+    }
+  };
+
+  const sendCredsMail = () => {
+    if (!creds) return;
+    const url = `mailto:${encodeURIComponent(creds.email)}?subject=${encodeURIComponent('Japanese Study Planner — Login')}&body=${encodeURIComponent(credText(creds))}`;
+    Linking.openURL(url).catch(() => {});
+  };
+
+  const sendCredsSms = () => {
+    if (!creds || !creds.phone) return;
+    const url = `sms:${encodeURIComponent(creds.phone)}?body=${encodeURIComponent(credText(creds))}`;
+    Linking.openURL(url).catch(() => {});
+  };
 
   const [oldPassword, setOldPassword] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -307,17 +404,21 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
     }
   };
 
-  // User အသစ် တိုက်ရိုက်ဖန်တီးပေးခြင်း
-  // NOTE: Password ကို Firestore မှာ လုံးဝ မသိမ်းပါ (လုံခြုံရေးအရ)။
-  // ဒီကနေ profile (name/email/role/status) သက်သက် ဖန်တီးပေးပြီး
-  // ကျောင်းသားက Google/Email နဲ့ ပထမဆုံး Login ဝင်မှ Auth ချိတ်မယ်။
+  // User အသစ် + ကနဦး password — secondary app နဲ့ Auth ဖန်တီး (admin session မထိခိုက်စေဘူး)
+  // Password ကို Firestore မှာ လုံးဝ မသိမ်း — temp pw ကို admin က user ထံ တိုက်ရိုက်ပို့မယ်
   const handleCreateUser = async () => {
     if (!isAdmin) return;
-    if (!newName.trim() || !newEmail.trim()) {
+    const emailLower = newEmail.trim().toLowerCase();
+    if (!newName.trim() || !emailLower || !emailLower.includes('@')) {
       showInfo(t.err, t.errCreateFill);
       return;
     }
+    if (!newTempPw.trim() || newTempPw.trim().length < 6) {
+      showInfo(t.err, t.errPwShort);
+      return;
+    }
 
+    let secApp = null;
     try {
       setLoading(true);
 
@@ -325,30 +426,145 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
         throw new Error('Firestore (db) is not initialized properly.');
       }
 
-      const userId = 'user_' + Date.now();
-      const userRef = doc(db, 'users', userId);
+      // 1) Firebase Auth account ဖန်တီး (secondary app — admin login မပျက်)
+      secApp = initializeApp(firebaseConfig, 'admin-sec-' + Date.now());
+      const secAuth = getAuth(secApp);
+      const cred = await createUserWithEmailAndPassword(secAuth, emailLower, newTempPw.trim());
+      const uid = cred.user.uid;
+      try { await signOut(secAuth); } catch (e) {}
+      try { await deleteApp(secApp); secApp = null; } catch (e) {}
 
-      await setDoc(userRef, {
-        uid: userId,
+      // 2) Firestore profile (active + force-change flag)
+      await setDoc(doc(db, 'users', uid), {
+        uid,
         name: newName.trim(),
-        email: newEmail.trim().toLowerCase(),
+        email: emailLower,
+        phone: newPhone.trim(),
         role: newRole,
         status: 'active',
+        mustChangePassword: true,
+        tempIssuedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-        note: 'Admin က ကြိုဖန်တီးပေးထားသည် — ကျောင်းသား Login ဝင်မှ uid ချိတ်မယ်'
+        createdBy: currentUser?.email || '',
       });
 
-      showInfo(t.ok, t.userWord + ' "' + newName + '"' + t.createdTail);
+      // 3) ပို့ရန် credentials card
+      setCreds({
+        name: newName.trim(), email: emailLower, phone: newPhone.trim(),
+        tempPw: newTempPw.trim(), resetLinkSent: false,
+      });
       setNewName('');
       setNewEmail('');
+      setNewPhone('');
+      setNewTempPw('');
       setNewRole('student');
       setModalVisible(false);
-      fetchUsersFromFirestore();
+      fetchUsersFromFirestore(true);
     } catch (error) {
-      console.error('Create User Error:', error);
-      showInfo(t.err, error.message);
+      console.error('Create User Error:', error.code, error.message);
+      if (secApp) {
+        try { await deleteApp(secApp); } catch (e) {}
+      }
+      if (error.code === 'auth/email-already-in-use') {
+        showInfo(t.err, t.errExists);
+      } else if (error.code === 'auth/invalid-email') {
+        showInfo(t.err, t.errEmailInvalid);
+      } else if (error.code === 'auth/weak-password') {
+        showInfo(t.err, t.errPwShort);
+      } else if (error.code === 'auth/operation-not-allowed') {
+        showInfo(t.err, t.errOpNotAllowed);
+      } else {
+        showInfo(t.err, error.message);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Admin password reset — client SDK နဲ့ သူများ password တိုက်ရိုက် SET မရ
+  // → Firebase reset email + mustChange flag. Auth မရှိတဲ့ placeholder ဆို Auth အသစ် ဖန်တီးပေး.
+  const handleAdminReset = (usr) => {
+    if (!isAdmin || !usr) return;
+    setConfirm({
+      title: t.resetTitle,
+      message: `"${usr.name || usr.email || ''}" — ${t.resetConfirm}`,
+      confirmText: t.resetGo,
+      cancelText: t.noDo,
+      onConfirm: async () => {
+        setBusyId(usr.id);
+        try {
+          await sendPasswordResetEmail(auth, usr.email);
+          await updateDoc(doc(db, 'users', usr.id), { mustChangePassword: true });
+          setCreds({
+            name: usr.name || '', email: usr.email || '', phone: usr.phone || '',
+            tempPw: '', resetLinkSent: true,
+          });
+          fetchUsersFromFirestore(true);
+        } catch (error) {
+          if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
+            // Auth မရှိသေးတဲ့ placeholder → Auth အသစ် + migrate
+            setConfirm({
+              title: t.resetTitle,
+              message: `"${usr.name || usr.email || ''}" — ${t.resetNoAuth}`,
+              confirmText: t.resetCreateGo,
+              cancelText: t.noDo,
+              onConfirm: async () => { await convertPlaceholder(usr); },
+            });
+          } else {
+            setConfirm({ title: t.err, message: String(error.message || error), info: true });
+          }
+        } finally {
+          setBusyId(null);
+        }
+      },
+    });
+  };
+
+  // Placeholder (Auth မရှိ) → temp password နဲ့ Auth ဖန်တီး + profile migrate + credentials
+  const convertPlaceholder = async (usr) => {
+    const tempPw = await genTempPassword();
+    let secApp = null;
+    setBusyId(usr.id);
+    try {
+      secApp = initializeApp(firebaseConfig, 'admin-sec-' + Date.now());
+      const secAuth = getAuth(secApp);
+      const cred = await createUserWithEmailAndPassword(secAuth, (usr.email || '').trim().toLowerCase(), tempPw);
+      const uid = cred.user.uid;
+      try { await signOut(secAuth); } catch (e) {}
+      try { await deleteApp(secApp); secApp = null; } catch (e) {}
+
+      const oldSnap = await getDoc(doc(db, 'users', usr.id));
+      const old = oldSnap.exists() ? oldSnap.data() : {};
+      await setDoc(doc(db, 'users', uid), {
+        uid,
+        name: old.name || usr.name || '',
+        email: (usr.email || '').trim().toLowerCase(),
+        phone: old.phone || '',
+        role: (old.role || 'student').toLowerCase(),
+        status: 'active',
+        mustChangePassword: true,
+        tempIssuedAt: new Date().toISOString(),
+        createdAt: old.createdAt || new Date().toISOString(),
+        migratedFrom: usr.id,
+        createdBy: currentUser?.email || '',
+      });
+      try { await deleteDoc(doc(db, 'users', usr.id)); } catch (e) {}
+      setCreds({
+        name: old.name || usr.name || '', email: (usr.email || '').trim().toLowerCase(),
+        phone: old.phone || '', tempPw, resetLinkSent: false,
+      });
+      fetchUsersFromFirestore(true);
+    } catch (error) {
+      if (secApp) {
+        try { await deleteApp(secApp); } catch (e) {}
+      }
+      if (error.code === 'auth/email-already-in-use') {
+        setConfirm({ title: t.err, message: t.errExists, info: true });
+      } else {
+        setConfirm({ title: t.err, message: String(error.message || error), info: true });
+      }
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -530,7 +746,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                   <View key={usr.id} style={[styles.tableRowItem, isMe && { backgroundColor: '#FFF8E1', borderRadius: 6 }]}>
                     <View style={{ flex: 2, marginRight: 4 }}>
                       <Text style={styles.studentName}>
-                        {usr.name || usr.username || 'No Name'}{isMe ? t.me : ''}
+                        {usr.name || usr.username || 'No Name'}{isMe ? t.me : ''}{usr.mustChangePassword ? ' 🔑' : ''}
                       </Text>
                       <Text style={styles.studentDate}>{usr.email || 'N/A'}</Text>
                     </View>
@@ -562,6 +778,14 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                         tip={t.tipRole + ' — ' + role.toUpperCase()}
                         disabled={busy}
                         onPress={() => handleChangeRole(usr.id, role, usr.name || usr.username)}
+                      />
+
+                      <ActionBtn
+                        emoji="🔑"
+                        bg="#6A1B9A"
+                        tip={t.tipReset}
+                        disabled={busy}
+                        onPress={() => handleAdminReset(usr)}
                       />
 
                       <ActionBtn
@@ -673,7 +897,29 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
               <TextInput style={styles.modalInput} placeholder="Mg Mg" placeholderTextColor="#999" value={newName} onChangeText={setNewName} />
 
               <Text style={styles.label}>{t.emailLabel}</Text>
-              <TextInput style={styles.modalInput} placeholder="user@gmail.com" placeholderTextColor="#999" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none" />
+              <TextInput style={styles.modalInput} placeholder="user@gmail.com" placeholderTextColor="#999" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none" keyboardType="email-address" />
+
+              <Text style={styles.label}>{t.phoneLabel}</Text>
+              <TextInput style={styles.modalInput} placeholder="09xxxxxxxxx" placeholderTextColor="#999" value={newPhone} onChangeText={setNewPhone} keyboardType="phone-pad" />
+
+              <Text style={styles.label}>{t.tempPwLabel}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.modalInput, { flex: 1, marginBottom: 0 }]}
+                  placeholder="MKS-XXXXXXXX" placeholderTextColor="#999"
+                  value={newTempPw} onChangeText={setNewTempPw}
+                  secureTextEntry={!showTempPw} autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  style={[styles.saveModalBtn, { marginLeft: 8, backgroundColor: '#6A1B9A' }]}
+                  onPress={async () => setNewTempPw(await genTempPassword())}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>🎲</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowTempPw(!showTempPw)} style={{ padding: 8 }}>
+                  <Text style={{ fontSize: 18 }}>{showTempPw ? '🙈' : '👁️'}</Text>
+                </TouchableOpacity>
+              </View>
 
               <Text style={{ fontSize: 11, color: '#666', marginTop: 6 }}>
                 {t.createNote}
@@ -806,6 +1052,47 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
         onConfirm={async () => { if (confirm?.onConfirm) await confirm.onConfirm(); }}
         onCancel={() => { if (!busyId) setConfirm(null); }}
       />
+
+      {/* 📨 Login credentials delivery card (copy / Email app / SMS) */}
+      <Modal visible={!!creds} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t.credTitle}</Text>
+            {!!creds && (
+              <>
+                <View style={styles.credBox}>
+                  <Text style={styles.credLine}>👤 {creds.name}</Text>
+                  <Text style={styles.credLine}>🔗 {APP_LOGIN_URL}</Text>
+                  <Text style={styles.credLine}>📧 {creds.email}</Text>
+                  {!!creds.tempPw && (
+                    <Text style={[styles.credLine, styles.credPw]}>🔑 {creds.tempPw}</Text>
+                  )}
+                  {!!creds.resetLinkSent && (
+                    <Text style={styles.credNote}>{t.credResetNote}</Text>
+                  )}
+                </View>
+                <Text style={styles.credHint}>{t.credHint}</Text>
+                <View style={{ flexDirection: 'row', marginTop: 10 }}>
+                  <TouchableOpacity style={[styles.saveModalBtn, { flex: 1, backgroundColor: '#455A64' }]} onPress={copyCreds}>
+                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>📋 {t.credCopy}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.saveModalBtn, { flex: 1, marginLeft: 8, backgroundColor: '#1976D2' }]} onPress={sendCredsMail}>
+                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>✉️ Email</Text>
+                  </TouchableOpacity>
+                  {!!creds.phone && (
+                    <TouchableOpacity style={[styles.saveModalBtn, { flex: 1, marginLeft: 8, backgroundColor: '#2E7D32' }]} onPress={sendCredsSms}>
+                      <Text style={{ color: '#FFF', fontWeight: 'bold' }}>💬 SMS</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <TouchableOpacity style={[styles.saveModalBtn, { marginTop: 10, alignItems: 'center' }]} onPress={() => setCreds(null)}>
+                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{t.okBtn}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -858,6 +1145,11 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#FFF', borderRadius: 12, padding: 20, elevation: 5 },
   modalTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10, textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   modalInput: { borderWidth: 1, borderColor: '#DDD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, backgroundColor: '#FAFAFA', marginBottom: 5, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  credBox: { backgroundColor: '#F5F5F5', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#DDD' },
+  credLine: { fontSize: 13, color: '#333', marginBottom: 4 },
+  credPw: { fontSize: 16, fontWeight: 'bold', color: '#C62828' },
+  credNote: { fontSize: 11, color: '#666', marginTop: 6, lineHeight: 16 },
+  credHint: { fontSize: 11, color: '#666', marginTop: 10, lineHeight: 16 },
   roleSelectRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5, marginBottom: 15 },
   roleOptionBtn: { flex: 1, paddingVertical: 8, borderWidth: 1, borderColor: '#DDD', borderRadius: 6, alignItems: 'center', marginHorizontal: 3 },
   roleOptionActive: { backgroundColor: '#1976D2', borderColor: '#1976D2' },

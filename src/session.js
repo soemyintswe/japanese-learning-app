@@ -43,7 +43,10 @@ export async function resolveUserProfile(fbUser, defaultName) {
     name: defaultName || fbUser.displayName || (email.includes('@') ? email.split('@')[0] : 'User'),
     role: isAdmin ? 'teacher' : 'student',
     status: isAdmin ? 'active' : 'pending',
+    mustChangePassword: false,
   };
+  // Email/Password provider ရှိမှ password-change gate အကျိုးသက် (Google-only → skip)
+  const hasPassword = ((fbUser.providerData || []).some((p) => p && p.providerId === 'password'));
   let firestoreOk = true;
 
   try {
@@ -55,6 +58,7 @@ export async function resolveUserProfile(fbUser, defaultName) {
         name: d.name || profile.name,
         role: String(d.role || profile.role).toLowerCase(),
         status: String(d.status || profile.status).toLowerCase(),
+        mustChangePassword: d.mustChangePassword === true,
       };
     } else {
       // uid doc မရှိရင် — Admin ကြိုဖန်တီးပေးထားတဲ့ placeholder ကို email နဲ့ ရှာမယ်
@@ -119,5 +123,5 @@ export async function resolveUserProfile(fbUser, defaultName) {
     firestoreOk = false;
   }
 
-  return { ...profile, isAdmin, firestoreOk, photoURL: fbUser.photoURL || null };
+  return { ...profile, isAdmin, firestoreOk, photoURL: fbUser.photoURL || null, hasPassword };
 }
