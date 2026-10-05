@@ -1,10 +1,12 @@
 // CommunityScreen — 👥 People | 💬 Chats | 🙍 My Profile | 📊 Reports(admin)
 // Presence: src/presence.js heartbeat. Rules: firestore.rules (chats/*), storage.rules (avatars).
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, FlatList, TouchableOpacity, Modal, Alert, Image, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, deleteField, doc, onSnapshot, orderBy } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
+import { Audio } from 'expo-av';
+import { File, Paths } from 'expo-file-system';
 import { db } from '../src/firebase';
 import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
@@ -126,6 +128,9 @@ const cT = {
     errGroupName: 'Group နာမည် + အဖွဲ့ဝင် ၁ ယောက်အနည်းဆုံး ရွေးပါ။',
     noChats: 'Chat မရှိသေးပါ — လူစာရင်းက 💬 နှိပ်ပြီး စပြောပါ။',
     typeMsg: 'စာရိုက်ပါ...', send: '➤', deleteChat: 'Group ဖျက်မယ်',
+    voiceTooBig: 'အသံကြီးလွန်းတယ် — 30 စက္ကန့်အတွင်း တိုတိုပြောပါ။',
+    micNeed: '🎤 Microphone ခွင့်ပြုချက် လိုပါတယ်。',
+    typingNow: 'စာရိုက်နေတယ်…', holdRec: 'မှတ်တမ်းတင်နေတယ်…',
     delChatQ: 'ဒီ chat ကို ဖျက်ရန် သေချာလား?', no: 'မလုပ်ပါ', yes: 'ဖျက်မည်',
     privateTag: '🔒 Private', privateNote: 'ဒီ profile ကို ပိုင်ရှင်က ပိတ်ထားပါတယ် (private)။',
     meTag: '(ကိုယ်)',
@@ -162,6 +167,9 @@ const cT = {
     errGroupName: 'Group name + at least 1 member required.',
     noChats: 'No chats yet — tap 💬 on someone to start.',
     typeMsg: 'Type a message...', send: '➤', deleteChat: 'Delete group',
+    voiceTooBig: 'Voice too big — keep under 30 seconds.',
+    micNeed: '🎤 Microphone permission needed.',
+    typingNow: 'is typing…', holdRec: 'Recording…',
     delChatQ: 'Delete this chat?', no: 'No', yes: 'Delete',
     privateTag: '🔒 Private', privateNote: 'This profile is private.',
     meTag: '(you)',
@@ -198,6 +206,9 @@ const cT = {
     errGroupName: 'グループ名＋1人以上が必要。',
     noChats: 'チャットなし — 💬で開始。',
     typeMsg: 'メッセージ...', send: '➤', deleteChat: 'グループ削除',
+    voiceTooBig: '大きすぎ — 30秒以内で。',
+    micNeed: '🎤 マイク許可が必要です。',
+    typingNow: '入力中…', holdRec: '録音中…',
     delChatQ: '削除しますか？', no: 'いいえ', yes: '削除',
     privateTag: '🔒 非公開', privateNote: '非公開プロフィールです。',
     meTag: '（あなた）',
@@ -254,11 +265,29 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
 
   const [seg, setSeg] = useState((route && route.params && route.params.seg) || 'people');
 
-  // Avatar tap (header) → profile seg (route params)
+  // Avatar tap (header) → profile seg + bell → thread (route params)
   useEffect(() => {
     const s = route && route.params && route.params.seg;
     if (s && ['people', 'chats', 'profile', 'reports'].includes(s)) setSeg(s);
   }, [route && route.params && route.params.seg]);
+
+  // 🔔 panel → thread တိုက်ရိုက်ဖွင့်
+  useEffect(() => {
+    const openId = route && route.params && route.params.openChatId;
+    if (!openId || !user?.uid) return;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'chats', openId));
+        if (snap.exists()) {
+          const d = snap.data();
+          if ((d.members || []).includes(user.uid)) {
+            setSeg('chats');
+            setActiveChat({ id: openId });
+          }
+        }
+      } catch (e) {}
+    })();
+  }, [route && route.params && route.params.openChatId]);
   const [users, setUsers] = useState([]);
   const [q, setQ] = useState('');
   const [now, setNow] = useState(Date.now());
@@ -268,6 +297,16 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
   const [activeChat, setActiveChat] = useState(null);
   const [msgs, setMsgs] = useState([]);
   const [msgInput, setMsgInput] = useState('');
+  const [chatLive, setChatLive] = useState(null);
+
+  // 🎤 voice message states
+  const [recording, setRecording] = useState(null);
+  const [recSec, setRecSec] = useState(0);
+  const [playingId, setPlayingId] = useState(null);
+  const soundRef = useRef(null);
+  const recTimerRef = useRef(null);
+  const typingThrottleRef = useRef(0);
+  const MAX_VOICE_SEC = 30;
   const [groupModal, setGroupModal] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [groupPick, setGroupPick] = useState([]);
@@ -311,10 +350,15 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
     return unsub;
   }, [user?.uid]);
 
-  // thread messages realtime
+  // thread messages realtime + mark read (🔔 badge ရှင်း) + chat doc live (typing)
   useEffect(() => {
-    if (!activeChat) { setMsgs([]); return; }
-    const unsub = onSnapshot(
+    if (!activeChat) { setMsgs([]); setChatLive(null); return; }
+    if (user?.uid) {
+      updateDoc(doc(db, 'chats', activeChat.id), {
+        [`lastReadAt.${user.uid}`]: new Date().toISOString(),
+      }).catch(() => {});
+    }
+    const unsubMsg = onSnapshot(
       query(collection(db, 'chats', activeChat.id, 'messages'), orderBy('at', 'asc')),
       (snap) => {
         const arr = [];
@@ -322,8 +366,169 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
         setMsgs(arr.slice(-100));
       }, () => {}
     );
-    return unsub;
+    const unsubChat = onSnapshot(doc(db, 'chats', activeChat.id), (snap) => {
+      if (snap.exists()) setChatLive({ id: snap.id, ...snap.data() });
+    }, () => {});
+    return () => {
+      unsubMsg();
+      unsubChat();
+      // ထွက်သွားရင် ကိုယ့် typing ရှင်း + အသံရပ်
+      if (user?.uid) {
+        updateDoc(doc(db, 'chats', activeChat.id), {
+          [`typing.${user.uid}`]: deleteField(),
+        }).catch(() => {});
+      }
+      stopPlayback();
+    };
   }, [activeChat && activeChat.id]);
+
+  const typingNames = (() => {
+    const tp = (chatLive && chatLive.typing) || {};
+    const now = Date.now();
+    return Object.entries(tp)
+      .filter(([uid, v]) => uid !== user?.uid && v && v.at && now - Date.parse(v.at) < 8000)
+      .map(([, v]) => v.name || '');
+  })();
+
+  const touchTyping = () => {
+    if (!activeChat || !user?.uid) return;
+    const now = Date.now();
+    if (now - (typingThrottleRef.current || 0) < 3000) return;
+    typingThrottleRef.current = now;
+    updateDoc(doc(db, 'chats', activeChat.id), {
+      [`typing.${user.uid}`]: { at: new Date().toISOString(), name: user.name || '' },
+    }).catch(() => {});
+  };
+
+  const clearTyping = () => {
+    if (!activeChat || !user?.uid) return;
+    updateDoc(doc(db, 'chats', activeChat.id), {
+      [`typing.${user.uid}`]: deleteField(),
+    }).catch(() => {});
+  };
+
+  // ---------- 🎤 voice message (async back-and-forth) ----------
+  const startVoice = async () => {
+    if (recording) {
+      await stopVoice(true);
+      return;
+    }
+    try {
+      const perm = await Audio.requestPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('⚠️', t.micNeed || '🎤');
+        return;
+      }
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const rec = new Audio.Recording();
+      await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.LOW_QUALITY);
+      await rec.startAsync();
+      setRecording(rec);
+      setRecSec(0);
+      recTimerRef.current = setInterval(() => {
+        setRecSec((s) => {
+          if (s + 1 >= MAX_VOICE_SEC) {
+            stopVoice(true);
+            return s;
+          }
+          return s + 1;
+        });
+      }, 1000);
+    } catch (e) {
+      Alert.alert('⚠️', t.micNeed || '🎤');
+    }
+  };
+
+  const dataUrlToFileUri = async (dataUrl, name) => {
+    const base64 = (dataUrl.split('base64,')[1] || '');
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const file = new File(Paths.cache, name);
+    const writable = file.writableStream();
+    const writer = writable.getWriter();
+    await writer.write(bytes);
+    await writer.close();
+    return file.uri;
+  };
+
+  const stopVoice = async (send) => {
+    if (recTimerRef.current) {
+      clearInterval(recTimerRef.current);
+      recTimerRef.current = null;
+    }
+    const rec = recording;
+    setRecording(null);
+    setRecSec(0);
+    if (!rec) return;
+    try {
+      await rec.stopAndUnloadAsync();
+      const uri = rec.getURI();
+      if (send && uri && activeChat) {
+        // base64 → media subdoc (list query လေးအောင် messages ထဲ တိုက်ရိုက်မထည့်)
+        const resp = await fetch(uri);
+        const blob = await resp.blob();
+        const dataUrl = await new Promise((resolve, reject) => {
+          try {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(new Error('read-fail'));
+            reader.readAsDataURL(blob);
+          } catch (e) { reject(e); }
+        });
+        if (dataUrl.length > 700000) {
+          Alert.alert('⚠️', t.voiceTooBig || 'too big — try shorter');
+          return;
+        }
+        const dur = Math.max(1, Math.round((rec._finalDurationMillis || 1000) / 1000));
+        const mediaRef = await addDoc(collection(db, 'chats', activeChat.id, 'media'), {
+          audio: dataUrl, dur, byUid: user.uid, at: new Date().toISOString(),
+        });
+        const label = `🎤 (${dur}s)`;
+        await addDoc(collection(db, 'chats', activeChat.id, 'messages'), {
+          text: label, audioId: mediaRef.id, dur, byUid: user.uid, byName: user.name || '',
+          at: new Date().toISOString(),
+        });
+        await updateDoc(doc(db, 'chats', activeChat.id), {
+          lastMessage: { text: label, by: user.name || '', byUid: user.uid, at: new Date().toISOString() },
+          updatedAt: new Date().toISOString(),
+          [`lastReadAt.${user.uid}`]: new Date().toISOString(),
+        });
+      }
+    } catch (e) {}
+  };
+
+  const stopPlayback = async () => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+    } catch (e) {}
+    setPlayingId(null);
+  };
+
+  const playVoice = async (m) => {
+    if (playingId === m.id) {
+      await stopPlayback();
+      return;
+    }
+    await stopPlayback();
+    try {
+      const snap = await getDoc(doc(db, 'chats', activeChat.id, 'media', m.audioId));
+      if (!snap.exists()) return;
+      const dataUrl = snap.data().audio;
+      if (!dataUrl) return;
+      const fileUri = await dataUrlToFile(dataUrl, `voice_${m.id}.m4a`);
+      const { sound } = await Audio.Sound.createAsync({ uri: fileUri });
+      soundRef.current = sound;
+      setPlayingId(m.id);
+      sound.setOnPlaybackStatusUpdate((st) => {
+        if (st.didJustFinish) stopPlayback();
+      });
+      await sound.playAsync();
+    } catch (e) {}
+  };
 
   // my profile form init
   useEffect(() => {
@@ -402,13 +607,15 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
     const text = msgInput.trim();
     if (!text || !activeChat) return;
     setMsgInput('');
+    clearTyping();
     try {
       await addDoc(collection(db, 'chats', activeChat.id, 'messages'), {
         text, byUid: user.uid, byName: user.name || '', at: new Date().toISOString(),
       });
       await updateDoc(doc(db, 'chats', activeChat.id), {
-        lastMessage: { text: text.slice(0, 80), by: user.name || '', at: new Date().toISOString() },
+        lastMessage: { text: text.slice(0, 80), by: user.name || '', byUid: user.uid, at: new Date().toISOString() },
         updatedAt: new Date().toISOString(),
+        [`lastReadAt.${user.uid}`]: new Date().toISOString(),
       });
     } catch (e) {
       Alert.alert('⚠️', e.message);
@@ -653,9 +860,16 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
             <TouchableOpacity onPress={() => setActiveChat(null)} style={styles.backBtn}>
               <Text style={styles.backBtnText}>←</Text>
             </TouchableOpacity>
-            <Text style={[styles.userName, { flex: 1 }]} numberOfLines={1}>
-              {chatTitleOf(chats.find((c) => c.id === activeChat.id) || activeChat)}
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {chatTitleOf(chats.find((c) => c.id === activeChat.id) || activeChat)}
+              </Text>
+              {typingNames.length > 0 && (
+                <Text style={{ fontSize: 10, color: '#2E7D32' }}>
+                  {typingNames.slice(0, 2).join(', ')} {t.typingNow}
+                </Text>
+              )}
+            </View>
             <TouchableOpacity onPress={deleteChat} style={{ padding: 6 }}>
               <Text style={{ fontSize: 16 }}>🗑️</Text>
             </TouchableOpacity>
@@ -670,20 +884,40 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
                 <View style={[styles.msg, mine ? styles.msgMine : styles.msgTheir]}>
                   {!mine && <Text style={styles.msgName}>{m.byName}</Text>}
                   <Text style={[styles.msgText, mine && { color: '#FFF' }]}>{m.text}</Text>
+                  {!!m.audioId && (
+                    <TouchableOpacity
+                      style={[styles.voicePlay, mine && styles.voicePlayMine]}
+                      onPress={() => playVoice(m)}
+                    >
+                      <Text style={{ fontSize: 16 }}>{playingId === m.id ? '⏹️' : '▶️'}</Text>
+                      <Text style={[styles.voiceDur, mine && { color: '#BBDEFB' }]}>
+                        {m.dur ? `${m.dur}s` : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   <Text style={[styles.msgTime, mine && { color: '#BBDEFB' }]}>{fmtTime(m.at)}</Text>
                 </View>
               );
             }}
           />
           <View style={styles.inputRow}>
+            <TouchableOpacity
+              style={[styles.micBtn, recording && styles.micBtnRec]}
+              onPress={startVoice}
+            >
+              <Text style={{ fontSize: 18, color: '#FFF' }}>
+                {recording ? `🔴 ${recSec}s` : '🎤'}
+              </Text>
+            </TouchableOpacity>
             <TextInput
               style={styles.msgInput}
               value={msgInput}
-              onChangeText={setMsgInput}
-              placeholder={t.typeMsg}
+              onChangeText={(v) => { setMsgInput(v); touchTyping(); }}
+              placeholder={recording ? t.holdRec : t.typeMsg}
               placeholderTextColor="#999"
               returnKeyType="send"
               onSubmitEditing={sendMsg}
+              editable={!recording}
             />
             <TouchableOpacity style={styles.sendBtn} onPress={sendMsg}>
               <Text style={{ fontSize: 18, color: '#FFF' }}>{t.send}</Text>
@@ -898,6 +1132,11 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: 'row', padding: 10, alignItems: 'center', backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#EEE' },
   msgInput: { flex: 1, borderWidth: 1, borderColor: '#DDD', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, fontSize: 13, marginRight: 8, backgroundColor: '#FAFAFA' },
   sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#D32F2F', justifyContent: 'center', alignItems: 'center' },
+  micBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#7B1FA2', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+  micBtnRec: { backgroundColor: '#C62828' },
+  voicePlay: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EEE', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginTop: 6, alignSelf: 'flex-start' },
+  voicePlayMine: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  voiceDur: { fontSize: 11, color: '#666', marginLeft: 6 },
   label: { fontSize: 12, fontWeight: '600', color: '#555', marginBottom: 4, marginTop: 10 },
   input: { borderWidth: 1, borderColor: '#DDD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, backgroundColor: '#FFF' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 2 },

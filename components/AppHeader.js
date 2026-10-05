@@ -4,9 +4,12 @@
 import React from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, Platform } from 'react-native';
 import { useLanguage, LANGS } from '../src/LanguageContext';
+import { useNotifications } from '../src/notifications';
 
 export default function AppHeader({ title, user, onLogout, onProfilePress, action, showLang = true }) {
   const { lang, setLang } = useLanguage();
+  const notif = useNotifications();
+  const bellCount = (notif && user && notif.count) || 0;
 
   const initial = ((user && user.name) || 'U').trim().charAt(0).toUpperCase();
 
@@ -33,6 +36,22 @@ export default function AppHeader({ title, user, onLogout, onProfilePress, actio
       )}
 
       {action && <View style={styles.actionWrap}>{action}</View>}
+
+      {user && notif && (
+        <TouchableOpacity
+          onPress={() => notif.setPanelOpen(true)}
+          style={styles.bellBtn}
+          accessibilityLabel="Notifications"
+          accessibilityRole="button"
+        >
+          <Text style={{ fontSize: 16 }}>🔔</Text>
+          {bellCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{bellCount > 9 ? '9+' : bellCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      )}
 
       {user && (
         <TouchableOpacity
@@ -158,5 +177,29 @@ const styles = StyleSheet.create({
     padding: 6,
     backgroundColor: '#FFEBEE',
     borderRadius: 20,
+  },
+  bellBtn: {
+    padding: 6,
+    backgroundColor: '#FFF8E1',
+    borderRadius: 20,
+    marginRight: 6,
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#D32F2F',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
 });

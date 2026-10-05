@@ -9,6 +9,8 @@ import { auth } from './src/firebase';
 import { resolveUserProfile } from './src/session';
 import { LanguageProvider, useLanguage } from './src/LanguageContext';
 import { usePresence, markActiveNow } from './src/presence';
+import { NotificationProvider, navRef } from './src/notifications';
+import NotificationPanel from './components/NotificationPanel';
 import AppHeader from './components/AppHeader';
 
 // Web back/refresh မှာ tab မပျောက်အောင် URL နဲ့ ချိတ်မယ်
@@ -222,7 +224,8 @@ function Main() {
     <SafeAreaProvider>
       {/* root touch → presence lastActiveAt (native); web က document listeners က ဖမ်းမယ် */}
       <View style={{ flex: 1 }} onTouchStart={markActiveNow}>
-      <NavigationContainer linking={linking}>
+      <NotificationProvider user={user}>
+      <NavigationContainer ref={navRef} linking={linking}>
         <Tab.Navigator
           screenOptions={({ route }) => ({
             headerShown: false,
@@ -272,6 +275,8 @@ function Main() {
           )}
         </Tab.Navigator>
       </NavigationContainer>
+      <NotificationPanel />
+      </NotificationProvider>
       </View>
     </SafeAreaProvider>
   );
