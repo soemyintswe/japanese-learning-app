@@ -183,7 +183,7 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
       console.error('Login Error:', err.code, err.message);
       let msg = err.message;
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-password') {
-        msg = 'Email သို့မဟုတ် Password မှားနေပါတယ်။\n\n• Google နဲ့ပဲ ဖွင့်ထားတဲ့ အကောင့် (password မသတ်မှတ်ရသေးဘူး) ဆို — အောက် "Password သတ်မှတ်ရန် email ပို့မယ်" ကို နှိပ်�ြီး password အရင်သတ်မှတ်ပါ။\n• အရင် code အဟောင်းထဲက password (***REMOVED***) က Firebase password အစစ်မဟုတ်လို့ သုံးမရတော့ပါ။';
+        msg = 'Email သို့မဟုတ် Password မှားနေပါတယ်။\n\n• Google နဲ့ပဲ ဖွင့်ထားတဲ့ အကောင့် (password မသတ်မှတ်ရသေးဘူး) ဆို — အောက် "Password သတ်မှတ်ရန် email ပို့မယ်" ကို နှိပ်�ြီး password အရင်သတ်မှတ်ပါ။\n• အရင် code အဟောင်းထဲက password အတုက Firebase password အစစ်မဟုတ်လို့ သုံးမရတော့ပါ။';
       } else if (err.code === 'auth/user-not-found') {
         msg = 'ဤ Email နဲ့ အကောင့်မရှိသေးပါ။ အောက် "အသစ်စာရင်းသွင်းရန်" ကို နှိပ်ပြီး Email နဲ့ Register အရင်လုပ်ပါ (သို့မဟုတ် Google နဲ့ Register လုပ်ပါ)။';
       } else if (err.code === 'auth/invalid-email') {

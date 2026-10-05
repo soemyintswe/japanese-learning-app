@@ -84,7 +84,7 @@ firebase deploy --only hosting
 ## 6. ဒီ Maintenance Session မှာ ပြင်ခဲ့သမျှ (Changelog)
 
 ### 6.1 လုံခြုံရေး (critical)
-- `AuthScreen` hardcoded admin password (`***REMOVED***`) **ဖျက်ပစ်** → Firebase Email Auth အစစ်သုံး. ⚠️ password က git history + `AuthScreen - Copy.js` ထဲ ကျန်နေ → **compromised သဘောထား, Admin Auth password ကို Console မှာ rotate လုပ်ရန်** (sec 8).
+- `AuthScreen` hardcoded admin password **ဖျက်ပစ်** (literal string history purge လုပ်) → Firebase Email Auth အစစ်သုံး. ⚠️ password က git history + `AuthScreen - Copy.js` ထဲ ကျန်နေ → **compromised သဘောထား, Admin Auth password ကို Console မှာ rotate လုပ်ရန်** (sec 8).
 - Firestore မှာ plaintext `password` သိမ်းတာ ရပ် (`TeacherScreen.handleCreateUser` — profile သက်သက်).
 - Fake login (username မှန်သမျှ ဝင်) → `signInWithEmailAndPassword` + status check.
 - Fake change-password (Alert သက်သက်) → `updatePassword` အစစ်.
@@ -129,7 +129,7 @@ firebase deploy --only hosting
 
 ## 8. Roadmap (ရှေ့ဆက်)
 
-- [x] **P0 — Secret cleanup (local, 2026-10-05):** local Copy files ဖျက်ပြီးပြီ. ကျန်: password အဟောင်း `***REMOVED***` က **git history (commit `7e4c0b6`, pushed)** ထဲ ကျန်နေ — တကယ့် credential မဟုတ် (client-side အတုသက်သက်) ပေမယ့် တခြားနေရာ (Gmail etc.) မှာ **ထပ်သုံးနေရင် အခု ချက်ချင်း ပြောင်း** + history purge စဉ်းစား (`git filter-repo` + force-push). Firestore `users` ထဲ password field ကျန်ရင် ရှင်း.
+- [x] **P0 — Secret cleanup (local, 2026-10-05):** local Copy files ဖျက်ပြီးပြီ. history purge လုပ်ရန် (2026-10-05 တောင်းဆို — အောက် verify အပြီး update) — တကယ့် credential မဟုတ် (client-side အတုသက်သက်) ပေမယ့် တခြားနေရာ (Gmail etc.) မှာ **ထပ်သုံးနေရင် အခု ချက်ချင်း ပြောင်း** + history purge စဉ်းစား (`git filter-repo` + force-push). Firestore `users` ထဲ password field ကျန်ရင် ရှင်း.
 - [ ] **P0 — Rules publish verify:** Console Rules = `firestore.rules` ဟုတ်/မဟုတ် တိုက်စစ်.
 - [ ] P1 — README `Google Drive Backup` ကြေညာချက်: code မရှိ → ဖြုတ် သို့မဟုတ် implement (Drive API + export/import JSON).
 - [ ] P1 — N4 dictionary content (N4 file မရှိ), words အရေအတွက် တိုး.
