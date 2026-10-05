@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { n5Nouns } from './n5_nouns';
 import { n5Verbs } from './n5_verbs';
 import { n3Advanced } from './n3_advanced';

@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ImageBackground, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ImageBackground, TextInput, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../src/LanguageContext';
+import AppHeader from './AppHeader';
+
+const PLANNER_KEY = '@japanese_planner_v1';
 
 // ဘာသာစကားအလိုက် စာသားများ (မြန်မာ၊ အင်္ဂလိပ်၊ ဂျပန်)
 const translations = {
@@ -40,9 +44,9 @@ const translations = {
   }
 };
 
-export default function PlannerScreen() {
-  const [lang, setLang] = useState('my'); // 'my' | 'en' | 'jp'
-  const t = translations[lang];
+export default function PlannerScreen({ user, onLogout }) {
+  const { lang } = useLanguage();
+  const t = translations[lang] || translations.my;
 
   const currentDate = new Date();
   const [currentYear, setCurrentYear] = useState(currentDate.getFullYear());
@@ -50,9 +54,22 @@ export default function PlannerScreen() {
   const [selectedDay, setSelectedDay] = useState(currentDate.getDate());
 
   // ရက်စွဲတစ်ခုချင်းစီအလိုက် Checklists နဲ့ Notes များကို သိမ်းဆည်းရန် State
-  // Format key: "YYYY-MM-DD"
+  // Format key: "YYYY-MM-DD" — ဖုန်းထဲမှာ သိမ်းထားလို့ App ပိတ်လည်း မပျောက်ပါ
   const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDay}`;
   const [plannerData, setPlannerData] = useState({});
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem(PLANNER_KEY);
+        if (saved) setPlannerData(JSON.parse(saved));
+      } catch (e) { console.log('Load planner error', e.message); }
+    })();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(PLANNER_KEY, JSON.stringify(plannerData)).catch(() => {});
+  }, [plannerData]);
 
   // လက်ရှိရွေးထားတဲ့ရက်အတွက် Data ရယူရန် (မရှိသေးရင် Default အလွတ်ပြန်မည်)
   const currentDayData = plannerData[dateKey] || {
@@ -114,21 +131,7 @@ export default function PlannerScreen() {
       <View style={styles.overlayContainer}>
         <SafeAreaView style={styles.container}>
           
-          {/* Header & Language Switcher */}
-          <View style={styles.headerRow}>
-            <Text style={styles.headerTitle}>{t.title}</Text>
-            <View style={styles.langContainer}>
-              <TouchableOpacity style={[styles.langBtn, lang === 'my' && styles.langBtnActive]} onPress={() => setLang('my')}>
-                <Text style={[styles.langText, lang === 'my' && styles.langTextActive]}>မြန်မာ</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.langBtn, lang === 'en' && styles.langBtnActive]} onPress={() => setLang('en')}>
-                <Text style={[styles.langText, lang === 'en' && styles.langTextActive]}>ENG</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.langBtn, lang === 'jp' && styles.langBtnActive]} onPress={() => setLang('jp')}>
-                <Text style={[styles.langText, lang === 'jp' && styles.langTextActive]}>日本語</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <AppHeader title={t.title} user={user} onLogout={onLogout} />
 
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             
@@ -138,10 +141,10 @@ export default function PlannerScreen() {
                 <Text style={styles.monthYearText}>{t.months[currentMonth]} {currentYear}</Text>
                 <View style={styles.navButtons}>
                   <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.navBtn}>
-                    <Ionicons name="chevron-back" size={18} color="#333" />
+                    <Text style={{ fontSize: 16 }}>◀</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => changeMonth(1)} style={styles.navBtn}>
-                    <Ionicons name="chevron-forward" size={18} color="#333" />
+                    <Text style={{ fontSize: 16 }}>▶</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -173,7 +176,7 @@ export default function PlannerScreen() {
 
             {/* 2. Selected Date Info Header */}
             <View style={styles.infoCard}>
-              <Ionicons name="calendar" size={18} color="#D32F2F" />
+              <Text style={{ fontSize: 18 }}>📅</Text>
               <Text style={styles.infoText}>
                 {t.selectedDateText} <Text style={{fontWeight: 'bold', color: '#D32F2F'}}>{selectedDay} {t.months[currentMonth]} {currentYear}</Text>
               </Text>
@@ -187,7 +190,7 @@ export default function PlannerScreen() {
                 return (
                   <TouchableOpacity key={idx} style={styles.checkRow} onPress={() => toggleCheck('morning', idx)}>
                     <Text style={[styles.checkLabel, isChecked && styles.checkedText]}>{sub}</Text>
-                    <Ionicons name={isChecked ? "checkbox" : "square-outline"} size={22} color={isChecked ? "#D32F2F" : "#666"} />
+                    <Text style={{ fontSize: 22 }}>{isChecked ? '☑️' : '⬜'}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -201,7 +204,7 @@ export default function PlannerScreen() {
                 return (
                   <TouchableOpacity key={idx} style={styles.checkRow} onPress={() => toggleCheck('evening', idx)}>
                     <Text style={[styles.checkLabel, isChecked && styles.checkedText]}>{sub}</Text>
-                    <Ionicons name={isChecked ? "checkbox" : "square-outline"} size={22} color={isChecked ? "#1976D2" : "#666"} />
+                    <Text style={{ fontSize: 22 }}>{isChecked ? '☑️' : '⬜'}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -241,12 +244,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#EEE'
   },
-  headerTitle: { fontSize: 14, fontWeight: 'bold', color: '#333' },
+  headerTitle: { fontSize: 14, fontWeight: 'bold', color: '#333', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   
   langContainer: { flexDirection: 'row', backgroundColor: '#EEE', borderRadius: 6, padding: 2 },
   langBtn: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 4 },
   langBtnActive: { backgroundColor: '#D32F2F' },
-  langText: { fontSize: 10, fontWeight: '600', color: '#666' },
+  langText: { fontSize: 10, fontWeight: '600', color: '#666', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   langTextActive: { color: '#FFF' },
 
   scrollContent: { padding: 10 },
@@ -265,7 +268,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  monthYearText: { fontSize: 15, fontWeight: 'bold', color: '#222' },
+  monthYearText: { fontSize: 15, fontWeight: 'bold', color: '#222', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   navButtons: { flexDirection: 'row' },
   navBtn: { padding: 5, backgroundColor: '#F0F0F0', borderRadius: 15, marginLeft: 5 },
   
@@ -277,7 +280,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F0F0F0',
     paddingBottom: 4,
   },
-  weekDayText: { width: '14.28%', textAlign: 'center', fontSize: 11, fontWeight: 'bold', color: '#666' },
+  weekDayText: { width: '14.28%', textAlign: 'center', fontSize: 11, fontWeight: 'bold', color: '#666', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
 
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap' },
   dayCell: {
@@ -292,7 +295,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D32F2F',
     borderRadius: 18,
   },
-  dayText: { fontSize: 13, color: '#333', fontWeight: '500' },
+  dayText: { fontSize: 13, color: '#333', fontWeight: '500', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   selectedDayText: { color: '#FFF', fontWeight: 'bold' },
 
   infoCard: {
@@ -305,7 +308,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EEE',
   },
-  infoText: { marginLeft: 6, fontSize: 12, color: '#333' },
+  infoText: { marginLeft: 6, fontSize: 12, color: '#333', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
 
   sectionCard: {
     backgroundColor: 'rgba(255,255,255,0.95)',
@@ -324,6 +327,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
     paddingBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif'
   },
   checkRow: {
     flexDirection: 'row',
@@ -333,7 +337,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: '#F9F9F9',
   },
-  checkLabel: { fontSize: 12, color: '#444' },
+  checkLabel: { fontSize: 12, color: '#444', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   checkedText: { textDecorationLine: 'line-through', color: '#888' },
 
   notesInput: {
@@ -346,5 +350,6 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     fontSize: 12,
     color: '#333',
+    fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif'
   }
 });

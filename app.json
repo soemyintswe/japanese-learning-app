@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "JapaneseLearningApp",
-    "slug": "japanese-learning-app",
+    "name": "JapaneseStudyPlanner",
+    "slug": "japanese-mksedu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -18,13 +18,13 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.mksedu.japanesestudyplanner"
     },
     "web": {
+      "bundler": "metro",
+      "output": "single",
       "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-status-bar"
-    ]
+    }
   }
 }

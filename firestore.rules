@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ကိုယ့် profile doc ရှိမှ role ကြည့်မယ် — မရှိရင် '' (rule error မဖြစ်အောင်)
+    function callerRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : '';
+    }
+    function isStaff() {
+      return isSignedIn() && (callerRole() == 'admin' || callerRole() == 'teacher');
+    }
+
+    match /users/{userId} {
+      // ဖတ်ခွင့်: login ဝင်ထားသူတိုင်း (ကျောင်းသား ကိုယ့် placeholder adopt လုပ်ဖို့
+      // email နဲ့ ရှာရလို့ list လိုတယ် — Auth မဝင်ထားရင် လုံးဝ ဖတ်မရပါ)
+      allow get, list: if isSignedIn();
+
+      // ဖန်တီးခွင့်: ကိုယ့် uid doc သက်သက် + email က ကိုယ့် Auth email ဖြစ်ရမယ်
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.email == request.auth.token.email;
+
+      // ပြင်ခွင့်: staff က အကုန်; ကိုယ်တိုင် က name သက်သက် (role/status ထိမရ)
+      allow update: if isSignedIn() && (
+        isStaff()
+        || (request.auth.uid == userId
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.status == resource.data.status)
+      );
+
+      // ဖျက်ခွင့်: staff, သို့မဟုတ် ကိုယ့် email နဲ့ doc (placeholder အဟောင်း ရှင်းဖို့)
+      allow delete: if isSignedIn() && (
+        isStaff()
+        || resource.data.email == request.auth.token.email
+      );
+    }
+  }
+}
