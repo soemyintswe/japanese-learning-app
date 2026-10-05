@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, FlatList, TouchableOpacity, Modal, Alert, Image, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { iconNameToEmoji } from './AppIcon';
@@ -34,6 +34,8 @@ const dictT = {
     expDo: 'Export လုပ်မည်', expDone: 'Export ပြီးပါပြီ ✅', expCopied: 'Clipboard မှာ ကူးပြီးပါပြီ ✅ (Share မရလို့)',
     tapHint: '💡 စကားလုံးကတ်ကို နှိပ်ရင် အဓိပ္ပာယ်အပြည့်အစုံ ဖြန့်ကြည့်လို့ရပါတယ်',
     viewOnly: '🔒 ကြည့်ရှု့ခွင့်သာ (ပြင်ဆင်ခွင့်မရှိ)',
+    playAll: '▶️ အားလုံး', fromHere: '▶️ ဒီကနေစဖွင့်', repeatLbl: '🔁 ထပ်ခါထပ်ခါ:',
+    langsLbl: 'အသံ:', noVoice: '(အသံမရှိပါ)',
     levelInfoTitle: '🎚️ JLPT Level အဓိပ္ပာယ်',
     levelInfoAll: 'စုစုပေါင်း စကားလုံး',
     levelInfo: {
@@ -68,6 +70,8 @@ const dictT = {
     expDo: 'Export', expDone: 'Export done ✅', expCopied: 'Copied to clipboard ✅ (Share unavailable)',
     tapHint: '💡 Tap a word card to expand full details',
     viewOnly: '🔒 View only',
+    playAll: '▶️ All', fromHere: '▶️ From here', repeatLbl: '🔁 Repeat:',
+    langsLbl: 'Voice:', noVoice: '(no voice)',
     levelInfoTitle: '🎚️ JLPT Level Guide',
     levelInfoAll: 'Total words',
     levelInfo: {
@@ -102,6 +106,8 @@ const dictT = {
     expDo: 'エクスポート', expDone: 'エクスポート完了 ✅', expCopied: 'クリップボードにコピー ✅',
     tapHint: '💡 カードをタップで詳細表示',
     viewOnly: '🔒 閲覧のみ',
+    playAll: '▶️ 全部', fromHere: '▶️ ここから', repeatLbl: '🔁 繰り返し:',
+    langsLbl: '音声:', noVoice: '(音声なし)',
     levelInfoTitle: '🎚️ JLPTレベル案内',
     levelInfoAll: '総単語数',
     levelInfo: {
@@ -189,14 +195,125 @@ export default function DictionaryScreen({ user, onLogout, navigation }) {
 
   // 🔊 TTS အသံထွက် — card ပြောင်းတိုင်း/ထွက်တိုင်း ရပ်မယ်
   useEffect(() => {
-    return () => { try { Speech.stop(); } catch (e) {} };
+    return () => { stopPlaylist(); };
   }, []);
 
   const speakWord = (item) => {
+    stopPlaylist();
     try {
-      Speech.stop();
       Speech.speak(item.japanese, { language: 'ja', rate: 0.85 });
     } catch (e) {}
+  };
+
+  // ---------- ▶️ Auto-playlist: All / From here + repeat + JP/MM/EN ----------
+  const [voicesOk, setVoicesOk] = useState({ ja: true, mm: true, en: true });
+  const [speakJA, setSpeakJA] = useState(true);
+  const [speakMM, setSpeakMM] = useState(true);
+  const [speakEN, setSpeakEN] = useState(false);
+  const [repeatN, setRepeatN] = useState(1);
+  const [playerUi, setPlayerUi] = useState({ active: false, paused: false, current: null, idx: 0, total: 0 });
+  const player = useRef({ active: false, paused: false, list: [], idx: 0, timer: null });
+
+  // device TTS voices စစ် — မရှိတဲ့ ဘာသာကို auto-off (မရှိရင် list ശൂന്യ → default ON ထား)
+  useEffect(() => {
+    (async () => {
+      try {
+        const vs = await Speech.getAvailableVoicesAsync();
+        if (Array.isArray(vs) && vs.length > 0) {
+          const has = (code) => vs.some((v) =>
+            String(v.language || v.identifier || '').toLowerCase().replace(/_/g, '-').startsWith(code));
+          const ok = { ja: has('ja'), mm: has('my'), en: has('en') };
+          setVoicesOk(ok);
+          if (!ok.ja) setSpeakJA(false);
+          if (!ok.mm) setSpeakMM(false);
+          if (!ok.en) setSpeakEN(false);
+        }
+      } catch (e) {}
+    })();
+  }, []);
+
+  // စကားလုံးတစ်လုံး: 日本語×repeat → မြန်မာရှင်းချက်×1 → English×1
+  const buildUtterances = (item) => {
+    const u = [];
+    if (speakJA) {
+      for (let r = 0; r < Math.max(1, repeatN); r++) u.push({ text: item.japanese, lang: 'ja' });
+    }
+    if (speakMM && item.myanmar) {
+      u.push({ text: `${item.japanese}。${readingOf(item)}。 မြန်မာလို ${item.myanmar}。`, lang: 'my' });
+    }
+    if (speakEN && item.english) {
+      u.push({ text: `${item.japanese} means ${item.english}.`, lang: 'en' });
+    }
+    if (u.length === 0) u.push({ text: item.japanese, lang: 'ja' });
+    return u;
+  };
+
+  const stopPlaylist = () => {
+    const p = player.current;
+    p.active = false;
+    p.paused = false;
+    if (p.timer) { clearTimeout(p.timer); p.timer = null; }
+    try { Speech.stop(); } catch (e) {}
+    setPlayerUi({ active: false, paused: false, current: null, idx: 0, total: 0 });
+  };
+
+  const speakQueue = (arr, i) => {
+    const p = player.current;
+    if (!p.active) return;
+    if (i >= arr.length) {
+      p.timer = setTimeout(() => { if (player.current.active) playWordAt(p.idx + 1); }, 650);
+      return;
+    }
+    const u = arr[i];
+    try {
+      Speech.speak(u.text, {
+        language: u.lang,
+        rate: 0.9,
+        onDone: () => { if (player.current.active) speakQueue(arr, i + 1); },
+        onStopped: () => {},
+        onError: () => { if (player.current.active) speakQueue(arr, i + 1); },
+      });
+    } catch (e) {
+      if (player.current.active) speakQueue(arr, i + 1);
+    }
+  };
+
+  const playWordAt = (idx) => {
+    const p = player.current;
+    if (!p.active) return;
+    if (idx >= p.list.length) { stopPlaylist(); return; }
+    p.idx = idx;
+    const item = p.list[idx];
+    setPlayerUi({ active: true, paused: false, current: item, idx, total: p.list.length });
+    speakQueue(buildUtterances(item), 0);
+  };
+
+  const playFrom = (list, startIdx) => {
+    stopPlaylist();
+    if (!list || list.length === 0) return;
+    const p = player.current;
+    p.active = true;
+    p.paused = false;
+    p.list = list;
+    playWordAt(Math.max(0, Math.min(startIdx, list.length - 1)));
+  };
+
+  const pausePlaylist = () => {
+    const p = player.current;
+    p.active = false;
+    p.paused = true;
+    if (p.timer) { clearTimeout(p.timer); p.timer = null; }
+    try { Speech.stop(); } catch (e) {}
+    setPlayerUi((ui) => ({ ...ui, active: false, paused: true }));
+  };
+
+  const resumePlaylist = () => {
+    const p = player.current;
+    if (!p.list.length) return;
+    p.active = true;
+    p.paused = false;
+    setPlayerUi((ui) => ({ ...ui, active: true, paused: false }));
+    playWordAt(p.idx);
   };
 
   // Level အဓိပ္ပာယ် ပြရန် — chip ဖိထား (long-press) သို့မဟုတ် ⓘ နှိပ်
@@ -450,6 +567,74 @@ export default function DictionaryScreen({ user, onLogout, navigation }) {
       </View>
       <Text style={styles.tapHint}>{t.tapHint}{!staff ? `\n${t.viewOnly}` : ''}</Text>
 
+      {/* ▶️ Auto-playlist controls */}
+      <View style={styles.playBar}>
+        <TouchableOpacity style={styles.playAllBtn} onPress={() => playFrom(filteredData, 0)}>
+          <Text style={styles.playAllText}>{t.playAll} ({filteredData.length})</Text>
+        </TouchableOpacity>
+        <Text style={styles.repeatLbl}>{t.repeatLbl}</Text>
+        {[1, 2, 3].map((n) => (
+          <TouchableOpacity
+            key={n}
+            style={[styles.repChip, repeatN === n && styles.repChipActive]}
+            onPress={() => setRepeatN(n)}
+          >
+            <Text style={[styles.repText, repeatN === n && styles.repTextActive]}>{n}x</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <View style={styles.playBar}>
+        <Text style={styles.repeatLbl}>{t.langsLbl}</Text>
+        {[
+          { k: 'ja', flag: '🇯🇵', on: speakJA, set: setSpeakJA, ok: voicesOk.ja },
+          { k: 'mm', flag: '🇲🇲', on: speakMM, set: setSpeakMM, ok: voicesOk.mm },
+          { k: 'en', flag: '🇬🇧', on: speakEN, set: setSpeakEN, ok: voicesOk.en },
+        ].map((L) => (
+          <TouchableOpacity
+            key={L.k}
+            style={[styles.repChip, L.on && styles.repChipActive, !L.ok && styles.repChipOff]}
+            onPress={() => L.ok && L.set(!L.on)}
+          >
+            <Text style={[styles.repText, L.on && styles.repTextActive]}>
+              {L.flag}{L.ok ? '' : ` ${t.noVoice}`}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* mini-player */}
+      {(playerUi.active || playerUi.paused) && playerUi.current && (
+        <View style={styles.miniPlayer}>
+          <Text style={styles.miniWord} numberOfLines={1}>
+            {playerUi.paused ? '⏸️' : '🔊'} {playerUi.current.japanese} ({playerUi.idx + 1}/{playerUi.total})
+          </Text>
+          <View style={{ flexDirection: 'row' }}>
+            {playerUi.paused ? (
+              <TouchableOpacity style={styles.miniBtn} onPress={resumePlaylist}>
+                <Text style={styles.miniBtnText}>▶️</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.miniBtn} onPress={pausePlaylist}>
+                <Text style={styles.miniBtnText}>⏸️</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.miniBtn}
+              onPress={() => {
+                player.current.active = true;
+                player.current.paused = false;
+                playWordAt(playerUi.idx + 1);
+              }}
+            >
+              <Text style={styles.miniBtnText}>⏭️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.miniBtn} onPress={stopPlaylist}>
+              <Text style={styles.miniBtnText}>⏹️</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Optimized FlatList */}
       <FlatList
         data={filteredData}
@@ -512,6 +697,15 @@ export default function DictionaryScreen({ user, onLogout, navigation }) {
                       onPress={() => speakWord(item)}
                     >
                       <Text style={[styles.detailBtnText, { color: '#7B1FA2' }]}>🔊 {readingOf(item) || item.japanese}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.detailBtn, { backgroundColor: '#FFF3E0', marginTop: 6 }]}
+                      onPress={() => {
+                        const i = filteredData.findIndex((w) => w.id === item.id);
+                        playFrom(filteredData, i >= 0 ? i : 0);
+                      }}
+                    >
+                      <Text style={[styles.detailBtnText, { color: '#E65100' }]}>{t.fromHere}</Text>
                     </TouchableOpacity>
                     {staff && (
                       <View style={styles.detailActions}>
@@ -660,6 +854,19 @@ const styles = StyleSheet.create({
   filterTextActive: { color: '#FFF' },
   infoChip: { backgroundColor: '#E3F2FD', borderColor: '#90CAF9' },
   tapHint: { fontSize: 10, color: '#999', paddingHorizontal: 14, paddingBottom: 4 },
+  playBar: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingHorizontal: 12, paddingBottom: 6 },
+  playAllBtn: { backgroundColor: '#7B1FA2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginRight: 8, marginBottom: 4 },
+  playAllText: { color: '#FFF', fontWeight: 'bold', fontSize: 11 },
+  repeatLbl: { fontSize: 11, color: '#666', fontWeight: 'bold', marginRight: 6, marginBottom: 4 },
+  repChip: { paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#DDD', borderRadius: 14, marginRight: 5, marginBottom: 4, backgroundColor: '#FFF' },
+  repChipActive: { backgroundColor: '#D32F2F', borderColor: '#D32F2F' },
+  repChipOff: { opacity: 0.55 },
+  repText: { fontSize: 11, color: '#666', fontWeight: 'bold' },
+  repTextActive: { color: '#FFF' },
+  miniPlayer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#212121', marginHorizontal: 12, marginBottom: 6, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  miniWord: { flex: 1, color: '#FFF', fontSize: 13, fontWeight: 'bold', marginRight: 8 },
+  miniBtn: { padding: 6, marginLeft: 4 },
+  miniBtnText: { fontSize: 18 },
   cardItemExpanded: { borderColor: '#D32F2F', borderWidth: 1 },
   japaneseTextBig: { fontSize: 20 },
   readingTextBig: { fontSize: 13, color: '#555' },
