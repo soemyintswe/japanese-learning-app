@@ -41,7 +41,7 @@ components/dictionaryData/    # N5 nouns/verbs, N3, N2, N1 modules + fullDiction
 HANDOVER.md                   # ဒီမှတ်တမ်း
 ```
 
-`*- Copy*.js`, `Backups/`, `app - Copy.json`, `firebase - Copy.json` = **အဟောင်း backup များ — app က မသုံးပါ** (sec 8 roadmap: ဖျက်သင့်တယ်, password အဟောင်း ပါဝင်နေ ⚠️).
+Code backup copies (`*- Copy.js`, `*- Copy.json`, `Backups/*.js`) = **2026-10-05 မှာ ဖျက်ပြီးပြီ** (obsolete + password အဟောင်းပါနေလို့; git history sec 8 ကြည့်). `Backups/` ထဲ ပုံ 5 ပုံ (IMG_*.jpg, Weekly Study.*) သာ user ဆန္ဒအရ local မှာ ထားထား — `.gitignore` (`Backups/`, `*Copy*`) ကြောင့် commit မဝင်ပါ.
 
 ## 3. Data Model — Firestore `users` collection
 
@@ -129,7 +129,7 @@ firebase deploy --only hosting
 
 ## 8. Roadmap (ရှေ့ဆက်)
 
-- [ ] **P0 — Secret cleanup:** `*- Copy.js`, `Backups/`, Copy json များ repo က ဖျက် (password အဟောင်းပါ) + git history consideration + Admin Auth password rotate + Firestore `users` ထဲ password field ကျန်ရင် ရှင်း.
+- [x] **P0 — Secret cleanup (local, 2026-10-05):** local Copy files ဖျက်ပြီးပြီ. ကျန်: password အဟောင်း `***REMOVED***` က **git history (commit `7e4c0b6`, pushed)** ထဲ ကျန်နေ — တကယ့် credential မဟုတ် (client-side အတုသက်သက်) ပေမယ့် တခြားနေရာ (Gmail etc.) မှာ **ထပ်သုံးနေရင် အခု ချက်ချင်း ပြောင်း** + history purge စဉ်းစား (`git filter-repo` + force-push). Firestore `users` ထဲ password field ကျန်ရင် ရှင်း.
 - [ ] **P0 — Rules publish verify:** Console Rules = `firestore.rules` ဟုတ်/မဟုတ် တိုက်စစ်.
 - [ ] P1 — README `Google Drive Backup` ကြေညာချက်: code မရှိ → ဖြုတ် သို့မဟုတ် implement (Drive API + export/import JSON).
 - [ ] P1 — N4 dictionary content (N4 file မရှိ), words အရေအတွက် တိုး.
