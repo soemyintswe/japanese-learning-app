@@ -37,7 +37,14 @@ components/PlannerScreen.js   # Calendar + morning/evening checklist + notes (As
 components/NotesScreen.js     # Notes CRUD (AsyncStorage, 3-lang chrome)
 components/QAScreen.js        # Quiz + add/edit (Option4 + correct picker, AsyncStorage, 3-lang)
 components/TeacherScreen.js   # ⭐ Admin user table (approve/disable, role-picker modal, delete, tooltips) + bio + share + change-password
-components/dictionaryData/    # N5 nouns/verbs, N3, N2, N1 modules + fullDictionary.js (sample 9) + index.js (merge)
+components/dictionaryData/    # ~800 trilingual words: n5_nouns(170)/n5_verbs(110)/n5_adjectives(80)/n5_others(87)/n4_words(143)/n3(100)/n2(60)/n1(39) + fullDictionary.js (sample 9 w/ images) + index.js (merge/dedupe/normalizeImportEntry)
+# Schema: {id, japanese, reading(kana), myanmar, english, pos, level}. Old rows may use {hiragana}/{icon} — UI handles both.
+# Coverage aligned with standard JLPT lists (ref: OpenJLPT CC BY-SA 4.0 — Myanmar glosses are original, not copied).
+# Import accepts app format AND OpenJLPT format {word,reading,meanings[],level} (myanmar=''). Deps: expo-file-system/-sharing/-document-picker/-clipboard.
+components/quizData/      # Level banks N5(22)/N4(16)/N3(12)/N2(10)/N1(8) = 68 Qs {id,level,skill,question,speakText?,passage?,options[],correctIndex,explanation,mediaUrl?} + index (pools/shuffle/unlock logic). skills: vocab/grammar/reading/listening. Deps: expo-speech (TTS listening/model), expo-av (speaking record/playback).
+components/BotPanel.js    # Offline rule-based bot: dict lookup (800w), quiz/skill launch callbacks, grammar tips, level guide, small talk. No API key.
+# QAScreen modes: Quiz(levels+locks+best/unlock70%+placement75%→assessedLevel, progress AsyncStorage) | Skills(listening TTS/reading/writing-input/speaking record+self-mark) | Bot. Custom Qs now have level+mediaUrl. Video: question.mediaUrl → 🎬 button (Linking).
+# Dictionary UX: tap-expand cards (full meaning+level desc+edit/delete), Level chips long-press/ⓘ = JLPT guide, N-badge tap = level info. Video files bundled in app = roadmap (YouTube-link method available now).
 HANDOVER.md                   # ဒီမှတ်တမ်း
 ```
 
@@ -132,7 +139,7 @@ firebase deploy --only hosting
 - [x] **P0 — Secret cleanup (local, 2026-10-05):** local Copy files ဖျက်ပြီးပြီ. history purge ပြီးပြီ (2026-10-05, `git filter-branch` tree-filter + `push --force`; verify `git log --all -S` empty ✅; safety bundle: local Temp `pre-purge-backup.bundle`) — တကယ့် credential မဟုတ် (client-side အတုသက်သက်) ပေမယ့် တခြားနေရာ (Gmail etc.) မှာ **ထပ်သုံးနေရင် အခု ချက်ချင်း ပြောင်း** + history purge စဉ်းစား (`git filter-repo` + force-push). Firestore `users` ထဲ password field ကျန်ရင် ရှင်း.
 - [ ] **P0 — Rules publish verify:** Console Rules = `firestore.rules` ဟုတ်/မဟုတ် တိုက်စစ်.
 - [ ] P1 — README `Google Drive Backup` ကြေညာချက်: code မရှိ → ဖြုတ် သို့မဟုတ် implement (Drive API + export/import JSON).
-- [ ] P1 — N4 dictionary content (N4 file မရှိ), words အရေအတွက် တိုး.
+- [x] P1 — Dictionary data (2026-10-05): ~800 trilingual + level filter + import/export + reading/pos edit. ကျန်: words ဆက်တိုး (OpenJLPT bulk import via app Import), N3-N1 Myanmar refine (teacher review).
 - [ ] P1 — Home progress အစစ် (planner completion % တွက်; အခု 80→85% အတု).
 - [ ] P2 — Tests (quiz scoring, resolveUserProfile, role guard) + EAS build (Android package `com.mksedu.japanesestudyplanner` ready) + `expo-status-bar` plugin cleanup note (app.json).
 - [ ] P2 — Bottom tab titles i18n, QA question bank Firestore sync (ယခု local only), teacher question moderation flow.
