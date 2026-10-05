@@ -63,7 +63,8 @@ const mT = {
 const LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'];
 const TYPES = ['doc', 'video', 'audio', 'link'];
 
-export default function MaterialsScreen({ user, onLogout }) {
+export default function MaterialsScreen({ user, onLogout, navigation }) {
+  const goProfile = () => { try { navigation.navigate('Community', { seg: 'profile' }); } catch (e) {} };
   const { lang } = useLanguage();
   const t = mT[lang] || mT.my;
   const staff = (user?.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase()
@@ -153,6 +154,7 @@ export default function MaterialsScreen({ user, onLogout }) {
         title={t.header}
         user={user}
         onLogout={onLogout}
+        onProfilePress={goProfile}
         action={staff ? (
           <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
             <Text style={styles.addBtnText}>{t.add}</Text>

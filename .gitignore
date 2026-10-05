@@ -28,3 +28,6 @@ backup_code/
 .DS_Store
 Thumbs.db
 firebase-debug.log
+
+# Firebase local cache
+.firebase/

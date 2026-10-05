@@ -44,7 +44,8 @@ const DEFAULT_NOTES = [
   { id: '2', title: 'Kanji Daily List', content: '1. 勉強 (Benkyou) - လေ့လာသည်\n2. 先生 (Sensei) - ဆရာ' },
 ];
 
-export default function NotesScreen({ user, onLogout }) {
+export default function NotesScreen({ user, onLogout, navigation }) {
+  const goProfile = () => { try { navigation.navigate('Community', { seg: 'profile' }); } catch (e) {} };
   const { lang } = useLanguage();
   const t = notesT[lang] || notesT.my;
   const [notes, setNotes] = useState(DEFAULT_NOTES);
@@ -111,6 +112,7 @@ export default function NotesScreen({ user, onLogout }) {
         title={t.header}
         user={user}
         onLogout={onLogout}
+        onProfilePress={goProfile}
         action={
           <TouchableOpacity style={styles.addButton} onPress={() => { setEditingId(null); setNoteTitle(''); setNoteContent(''); setModalVisible(true); }}>
             <Text style={{ fontSize: 20, color: '#FFF' }}>➕</Text>

@@ -44,7 +44,8 @@ const translations = {
   }
 };
 
-export default function PlannerScreen({ user, onLogout }) {
+export default function PlannerScreen({ user, onLogout, navigation }) {
+  const goProfile = () => { try { navigation.navigate('Community', { seg: 'profile' }); } catch (e) {} };
   const { lang } = useLanguage();
   const t = translations[lang] || translations.my;
 
@@ -131,7 +132,7 @@ export default function PlannerScreen({ user, onLogout }) {
       <View style={styles.overlayContainer}>
         <SafeAreaView style={styles.container}>
           
-          <AppHeader title={t.title} user={user} onLogout={onLogout} />
+          <AppHeader title={t.title} user={user} onLogout={onLogout} onProfilePress={goProfile} />
 
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             

@@ -39,6 +39,7 @@ import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from 'firebase
 import { updatePassword } from 'firebase/auth';
 import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
+import ConfirmModal from './ConfirmModal';
 
 const teacherT = {
   my: {
@@ -77,6 +78,10 @@ const teacherT = {
     delQ: 'သတိပေးချက် ⚠️️', delConfirm: 'အကောင့်ကို စနစ်ထဲမှ လုံးဝ ဖျက်ပစ်ရန် သေချာပါသလား?', noDel: 'မဖျက်ပါ', yesDel: 'ဖျက်မည်', deleted: 'User အကောင့်ကို ဖျက်ပစ်ပြီးပါပြီ။',
     pwShort: 'Password အသစ်ကို အနည်းဆုံး ၆ လုံး ဖြည့်ပါ။', pwLoginFirst: 'Google/Email နဲ့ Login ဝင်ထားမှ Password ပြောင်းလို့ရပါတယ်။',
     pwDone: 'သင်၏ Password ကို Firebase မှာ တကယ်ပြောင်းပြီးပါပြီ။', pwRecent: 'လုံခြုံရေးအရ Logout လုပ်ပြီး Login ပြန်ဝင်ပြီးမှ ပြောင်းပါ။', pwFail: 'မအောင်မြင်ပါ',
+    okBtn: 'အိုကေ', bioEdit: '✏️ ပြင်ဆင်ရန်',
+    bioModalTitle: 'ဆရာ့ ကိုယ်ရေးအကျဉ်း ပြင်ဆင်ရန်',
+    bioFName: 'အမည်:', bioFDeg: 'ဘွဲ့/ပညာအရည်အချင်း:', bioFExpertise: 'ကျွမ်းကျင်မှု:', bioFExp: 'အတွေ့အကြုံ:', bioFContact: 'ဆက်သွယ်ရန်:',
+    bioSaved: 'ကိုယ်ရေးအကျဉ်း သိမ်းပြီးပါပြီ ✅',
   },
   en: {
     headerAdmin: '🛡️ Admin Panel & User Management', headerUser: '🎓 Student/Teacher Area',
@@ -114,6 +119,10 @@ const teacherT = {
     delQ: 'Warning ⚠️️', delConfirm: 'Permanently delete this account from the system?', noDel: 'No', yesDel: 'Delete', deleted: 'User account deleted.',
     pwShort: 'New password must be at least 6 characters.', pwLoginFirst: 'Please log in with Google/Email first.',
     pwDone: 'Your password has been changed in Firebase.', pwRecent: 'For security, log out and log in again first.', pwFail: 'Failed',
+    okBtn: 'OK', bioEdit: '✏️ Edit',
+    bioModalTitle: 'Edit Teacher Profile',
+    bioFName: 'Name:', bioFDeg: 'Degrees:', bioFExpertise: 'Expertise:', bioFExp: 'Experience:', bioFContact: 'Contact:',
+    bioSaved: 'Profile saved ✅',
   },
   jp: {
     headerAdmin: '🛡️ 管理者パネル・ユーザー管理', headerUser: '🎓 学生・先生エリア',
@@ -151,10 +160,15 @@ const teacherT = {
     delQ: '警告 ⚠️️', delConfirm: 'このアカウントをシステムから完全に削除しますか？', noDel: 'やめる', yesDel: '削除', deleted: 'ユーザーアカウントを削除しました。',
     pwShort: '新しいパスワードは6文字以上にしてください。', pwLoginFirst: 'Google/Emailでログインしてから変更してください。',
     pwDone: 'Firebaseでパスワードを変更しました。', pwRecent: 'セキュリティのため再ログインしてください。', pwFail: '失敗',
+    okBtn: 'OK', bioEdit: '✏️ 編集',
+    bioModalTitle: '先生プロフィール編集',
+    bioFName: '名前:', bioFDeg: '学位・学歴:', bioFExpertise: '専門:', bioFExp: '経験:', bioFContact: '連絡先:',
+    bioSaved: '保存しました ✅',
   },
 };
 
-export default function TeacherScreen({ currentUser, onLogout }) {
+export default function TeacherScreen({ currentUser, onLogout, navigation }) {
+  const goProfile = () => { try { navigation.navigate('Community', { seg: 'profile' }); } catch (e) {} };
   const { lang } = useLanguage();
   const t = teacherT[lang] || teacherT.my;
   const [refreshing, setRefreshing] = useState(false);
@@ -178,6 +192,61 @@ export default function TeacherScreen({ currentUser, onLogout }) {
 
   // ခလုတ်နှိပ်နေတုန်း (loading) ဘယ်အတန်းလဲ မှတ်ထားရန် — ခလုတ်အလုပ်လုပ်နေမှန်း သိသာအောင်
   const [busyId, setBusyId] = useState(null);
+
+  // In-app confirm/info dialog (web Alert.alert is NO-OP → custom modal)
+  // {title, message, confirmText?, cancelText?, danger?, onConfirm?} — confirmText မပါရင် info mode (OK သက်သက်)
+  const [confirm, setConfirm] = useState(null);
+  const showInfo = (title, message) => setConfirm({ title, message, info: true });
+
+  // Teacher bio — Firestore settings/teacherBio (staff ပြင်/ဖြည့်, အားလုံးကြည့်)
+  const DEFAULT_BIO = {
+    name: 'ဦးစိုးမြင့်ဆွေ (U Soe Myint Swe)',
+    degrees: 'B.Sc (Physics), Dip. in Education, MKS Edu Services Founder',
+    expertise: 'Japanese Language (JLPT N3/N4/N5), Python Automation, Educational Management',
+    experience: '၂၅ နှစ်ကျော် အစိုးရနှင့် ပညာရေးဝန်ဆောင်မှု လုပ်ငန်းအတွေ့အကြုံရှိသူ။',
+    contact: 'soemyintswe@gmail.com | Yangon, Myanmar',
+  };
+  const [bio, setBio] = useState(DEFAULT_BIO);
+  const [bioModal, setBioModal] = useState(false);
+  const [bioForm, setBioForm] = useState(DEFAULT_BIO);
+  const canEditBio = isAdmin || currentUser?.role === 'teacher';
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'settings', 'teacherBio'));
+        if (snap.exists()) setBio({ ...DEFAULT_BIO, ...snap.data() });
+      } catch (e) {
+        console.log('Load bio:', e.message);
+      }
+    })();
+  }, []);
+
+  const openBioEdit = () => {
+    setBioForm({ ...bio });
+    setBioModal(true);
+  };
+
+  const saveBio = async () => {
+    if (!canEditBio) return;
+    try {
+      const data = {
+        name: (bioForm.name || '').trim() || DEFAULT_BIO.name,
+        degrees: (bioForm.degrees || '').trim(),
+        expertise: (bioForm.expertise || '').trim(),
+        experience: (bioForm.experience || '').trim(),
+        contact: (bioForm.contact || '').trim(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser?.email || '',
+      };
+      await setDoc(doc(db, 'settings', 'teacherBio'), data, { merge: true });
+      setBio({ ...DEFAULT_BIO, ...data });
+      setBioModal(false);
+      showInfo(t.ok, t.bioSaved);
+    } catch (e) {
+      showInfo(t.err, firestoreErrorMsg(e, t.bioModalTitle));
+    }
+  };
 
   // Firestore မှ Users စာရင်းများကို ဆွဲထုတ်ခြင်း
   const fetchUsersFromFirestore = async (silent) => {
@@ -214,7 +283,7 @@ export default function TeacherScreen({ currentUser, onLogout }) {
       setUsersList(users);
     } catch (error) {
       console.error('Error fetching users: ', error);
-      if (!silent) Alert.alert(t.err, t.errFetch + error.message);
+      if (!silent) showInfo(t.err, t.errFetch + error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -245,7 +314,7 @@ export default function TeacherScreen({ currentUser, onLogout }) {
   const handleCreateUser = async () => {
     if (!isAdmin) return;
     if (!newName.trim() || !newEmail.trim()) {
-      Alert.alert(t.err, t.errCreateFill);
+      showInfo(t.err, t.errCreateFill);
       return;
     }
 
@@ -269,7 +338,7 @@ export default function TeacherScreen({ currentUser, onLogout }) {
         note: 'Admin က ကြိုဖန်တီးပေးထားသည် — ကျောင်းသား Login ဝင်မှ uid ချိတ်မယ်'
       });
 
-      Alert.alert(t.ok, t.userWord + ' "' + newName + '"' + t.createdTail);
+      showInfo(t.ok, t.userWord + ' "' + newName + '"' + t.createdTail);
       setNewName('');
       setNewEmail('');
       setNewRole('student');
@@ -277,7 +346,7 @@ export default function TeacherScreen({ currentUser, onLogout }) {
       fetchUsersFromFirestore();
     } catch (error) {
       console.error('Create User Error:', error);
-      Alert.alert(t.err, error.message);
+      showInfo(t.err, error.message);
     } finally {
       setLoading(false);
     }
@@ -314,74 +383,66 @@ export default function TeacherScreen({ currentUser, onLogout }) {
     setBusyId(roleTarget.id);
     try {
       await updateDoc(doc(db, 'users', roleTarget.id), { role: rolePick });
-      Alert.alert(t.ok, '"' + (roleTarget.name || t.userWord) + '" ' + t.roleTo + ' ' + ROLE_INFO[rolePick].label);
+      showInfo(t.ok, '"' + (roleTarget.name || t.userWord) + '" ' + t.roleTo + ' ' + ROLE_INFO[rolePick].label);
       setRoleModalVisible(false);
       setRoleTarget(null);
       fetchUsersFromFirestore(true);
     } catch (error) {
-      Alert.alert(t.err, firestoreErrorMsg(error, t.roleQ));
+      showInfo(t.err, firestoreErrorMsg(error, t.roleQ));
     } finally {
       setBusyId(null);
     }
   };
 
-  // User ၏ အသုံးပြုခွင့် Status ကို ပြောင်းလဲခြင်း
-  const handleToggleStatus = async (userId, currentStatus, userName) => {
+  // User ၏ အသုံးပြုခွင့် Status ကို ပြောင်းလဲခြင်း (in-app confirm modal)
+  const handleToggleStatus = (userId, currentStatus, userName) => {
     if (!isAdmin) return;
     const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
     const statusText = newStatus === 'active' ? t.statusActive : t.statusDisabled;
 
-    Alert.alert(
-      t.statusQ,
-      '"' + (userName || t.userWord) + '" — ' + statusText,
-      [
-        { text: t.noDo, style: 'cancel' },
-        {
-          text: t.statusConfirm,
-          onPress: async () => {
-            setBusyId(userId);
-            try {
-              const userRef = doc(db, 'users', userId);
-              await updateDoc(userRef, { status: newStatus });
-              Alert.alert(t.ok, statusText);
-              fetchUsersFromFirestore(true);
-            } catch (error) {
-              Alert.alert(t.err, firestoreErrorMsg(error, t.statusQ));
-            } finally {
-              setBusyId(null);
-            }
-          }
+    setConfirm({
+      title: t.statusQ,
+      message: '"' + (userName || t.userWord) + '" — ' + statusText,
+      confirmText: t.statusConfirm,
+      cancelText: t.noDo,
+      danger: newStatus !== 'active',
+      onConfirm: async () => {
+        setBusyId(userId);
+        try {
+          await updateDoc(doc(db, 'users', userId), { status: newStatus });
+          setConfirm({ title: t.ok, message: statusText, info: true });
+          fetchUsersFromFirestore(true);
+        } catch (error) {
+          setConfirm({ title: t.err, message: firestoreErrorMsg(error, t.statusQ), info: true });
+        } finally {
+          setBusyId(null);
         }
-      ]
-    );
+      },
+    });
   };
 
-  // User အကောင့်ကို ဖျက်ခြင်း
-  const handleDeleteUser = async (userId, userName) => {
+  // User အကောင့်ကို ဖျက်ခြင်း (in-app confirm modal)
+  const handleDeleteUser = (userId, userName) => {
     if (!isAdmin) return;
-    Alert.alert(
-      t.delQ,
-      '"' + (userName || t.userWord) + '" ' + t.delConfirm,
-      [
-        { text: t.noDel, style: 'cancel' },
-        {
-          text: t.yesDel,
-          style: 'destructive',
-          onPress: async () => {
-            setBusyId(userId);
-            try {
-              await deleteDoc(doc(db, 'users', userId));
-              Alert.alert(t.ok, t.deleted);
-              fetchUsersFromFirestore(true);
-            } catch (error) {
-              Alert.alert(t.err, firestoreErrorMsg(error, t.delQ));
-            } finally {
-              setBusyId(null);
-            }
-          }
+    setConfirm({
+      title: t.delQ,
+      message: '"' + (userName || t.userWord) + '" ' + t.delConfirm,
+      confirmText: t.yesDel,
+      cancelText: t.noDel,
+      danger: true,
+      onConfirm: async () => {
+        setBusyId(userId);
+        try {
+          await deleteDoc(doc(db, 'users', userId));
+          setConfirm({ title: t.ok, message: t.deleted, info: true });
+          fetchUsersFromFirestore(true);
+        } catch (error) {
+          setConfirm({ title: t.err, message: firestoreErrorMsg(error, t.delQ), info: true });
+        } finally {
+          setBusyId(null);
         }
-      ]
-    );
+      },
+    });
   };
 
   const onShareApp = async () => {
@@ -390,28 +451,28 @@ export default function TeacherScreen({ currentUser, onLogout }) {
         message: 'Japanese Study Planner အက်ပ်ကို အသုံးပြု၍ ဂျပန်စာလေ့လာမှုကို စနစ်တကျ စီမံကြပါစို့! Download link: https://mksedudoc.web.app',
       });
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showInfo('Error', error.message);
     }
   };
 
   // Firebase Auth အစစ်ဖြင့် Password ပြောင်းခြင်း
   const handleChangePassword = async () => {
     if (!newPass.trim() || newPass.trim().length < 6) {
-      Alert.alert(t.err, t.pwShort);
+      showInfo(t.err, t.pwShort);
       return;
     }
     try {
       if (!auth.currentUser) {
-        Alert.alert(t.err, t.pwLoginFirst);
+        showInfo(t.err, t.pwLoginFirst);
         return;
       }
       await updatePassword(auth.currentUser, newPass.trim());
-      Alert.alert(t.ok, t.pwDone);
+      showInfo(t.ok, t.pwDone);
       setOldPassword('');
       setNewPass('');
     } catch (e) {
       console.error('Change password error', e.message);
-      Alert.alert(
+      showInfo(
         t.pwFail,
         e.code === 'auth/requires-recent-login'
           ? t.pwRecent
@@ -422,7 +483,7 @@ export default function TeacherScreen({ currentUser, onLogout }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title={isAdmin ? t.headerAdmin : t.headerUser} user={currentUser} onLogout={onLogout} />
+      <AppHeader title={isAdmin ? t.headerAdmin : t.headerUser} user={currentUser} onLogout={onLogout} onProfilePress={goProfile} />
 
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
@@ -526,17 +587,30 @@ export default function TeacherScreen({ currentUser, onLogout }) {
           </View>
         )}
 
-        {/* ဆရာ့ ကိုယ်ရေးအကျဉ်း */}
+        {/* ဆရာ့ ကိုယ်ရေးအကျဉ်း — Firestore settings/teacherBio (ဆရာ/Admin ပြင်/ဖြည့်, အားလုံးကြည့်) */}
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <Text style={{ fontSize: 22 }}>🎖️</Text>
-            <Text style={styles.cardTitle}>{t.bioTitle}</Text>
+            <Text style={[styles.cardTitle, { flex: 1 }]}>{t.bioTitle}</Text>
+            {canEditBio && (
+              <TouchableOpacity style={styles.bioEditBtn} onPress={openBioEdit}>
+                <Text style={styles.bioEditText}>{t.bioEdit}</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          <Text style={styles.bioName}>{t.bioName}</Text>
-          <Text style={styles.bioText}><Text style={styles.bold}>{t.bioDegrees}</Text> {t.bioDegreesV}</Text>
-          <Text style={styles.bioText}><Text style={styles.bold}>{t.bioExpertise}</Text> {t.bioExpertiseV}</Text>
-          <Text style={styles.bioText}><Text style={styles.bold}>{t.bioExp}</Text> {t.bioExpV}</Text>
-          <Text style={styles.bioText}><Text style={styles.bold}>{t.bioContact}</Text> {t.bioContactV}</Text>
+          <Text style={styles.bioName}>{bio.name}</Text>
+          {!!bio.degrees && (
+            <Text style={styles.bioText}><Text style={styles.bold}>{t.bioDegrees}</Text> {bio.degrees}</Text>
+          )}
+          {!!bio.expertise && (
+            <Text style={styles.bioText}><Text style={styles.bold}>{t.bioExpertise}</Text> {bio.expertise}</Text>
+          )}
+          {!!bio.experience && (
+            <Text style={styles.bioText}><Text style={styles.bold}>{t.bioExp}</Text> {bio.experience}</Text>
+          )}
+          {!!bio.contact && (
+            <Text style={styles.bioText}><Text style={styles.bold}>{t.bioContact}</Text> {bio.contact}</Text>
+          )}
         </View>
 
         {/* App မျှဝေရန် Banner */}
@@ -684,6 +758,54 @@ export default function TeacherScreen({ currentUser, onLogout }) {
           </View>
         </Modal>
       )}
+
+      {/* Bio edit modal (ဆရာ/Admin) */}
+      {canEditBio && (
+        <Modal visible={bioModal} animationType="slide" transparent={true}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{t.bioModalTitle}</Text>
+
+              <Text style={styles.label}>{t.bioFName}</Text>
+              <TextInput style={styles.modalInput} value={bioForm.name} onChangeText={(v) => setBioForm({ ...bioForm, name: v })} placeholderTextColor="#999" />
+
+              <Text style={styles.label}>{t.bioFDeg}</Text>
+              <TextInput style={styles.modalInput} value={bioForm.degrees} onChangeText={(v) => setBioForm({ ...bioForm, degrees: v })} placeholderTextColor="#999" />
+
+              <Text style={styles.label}>{t.bioFExpertise}</Text>
+              <TextInput style={[styles.modalInput, { height: 60, textAlignVertical: 'top' }]} value={bioForm.expertise} onChangeText={(v) => setBioForm({ ...bioForm, expertise: v })} placeholderTextColor="#999" multiline={true} />
+
+              <Text style={styles.label}>{t.bioFExp}</Text>
+              <TextInput style={[styles.modalInput, { height: 60, textAlignVertical: 'top' }]} value={bioForm.experience} onChangeText={(v) => setBioForm({ ...bioForm, experience: v })} placeholderTextColor="#999" multiline={true} />
+
+              <Text style={styles.label}>{t.bioFContact}</Text>
+              <TextInput style={styles.modalInput} value={bioForm.contact} onChangeText={(v) => setBioForm({ ...bioForm, contact: v })} placeholderTextColor="#999" />
+
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setBioModal(false)}>
+                  <Text style={{ color: '#555', fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' }}>{t.cancel}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.saveModalBtn} onPress={saveBio}>
+                  <Text style={{ color: '#FFF', fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' }}>{t.saveRole}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Confirm / info dialog (Alert.alert အစား) */}
+      <ConfirmModal
+        visible={!!confirm}
+        title={confirm?.title}
+        message={confirm?.message}
+        confirmText={confirm?.info ? null : confirm?.confirmText}
+        cancelText={confirm?.info ? t.okBtn : confirm?.cancelText}
+        danger={!!confirm?.danger}
+        busy={!!busyId}
+        onConfirm={async () => { if (confirm?.onConfirm) await confirm.onConfirm(); }}
+        onCancel={() => { if (!busyId) setConfirm(null); }}
+      />
     </SafeAreaView>
   );
 }
@@ -702,6 +824,8 @@ const styles = StyleSheet.create({
   thText: { fontSize: 11, fontWeight: 'bold', color: '#C62828', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   tableRowItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#FFCDD2' },
   emptyTableContainer: { padding: 20, alignItems: 'center' },
+  bioEditBtn: { backgroundColor: '#E3F2FD', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, marginLeft: 8 },
+  bioEditText: { color: '#1976D2', fontSize: 11, fontWeight: 'bold' },
   bioName: { fontSize: 17, fontWeight: 'bold', color: '#D32F2F', marginBottom: 6, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   bioText: { fontSize: 13, color: '#555', marginBottom: 4, lineHeight: 18, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   bold: { fontWeight: 'bold', color: '#333', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },

@@ -54,9 +54,21 @@ service cloud.firestore {
       allow create, update, delete: if isStaff();
     }
 
+    // Teacher bio card (settings/teacherBio) — read all signed-in, write staff (teacher/admin)
+    match /settings/{docId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isStaff();
+    }
+
     match /chats/{chatId} {
       // member ဝင်ထားသူသာ ဖတ်/စာရင်း (query: where members array-contains own uid)
-      allow get, list: if isSignedIn() && request.auth.uid in resource.data.members;
+      // NOTE: DM အသစ် getDoc စစ်တုန်း doc မရှိသေးရင် resource.data = null → deny ဖြစ်မယ်၊
+      // ဒါကြောင့် get (မရှိရင် allow) နဲ့ list (member only) ခွဲထားတယ်
+      allow get: if isSignedIn() && (
+        !exists(/databases/$(database)/documents/chats/$(chatId))
+        || request.auth.uid in resource.data.members
+      );
+      allow list: if isSignedIn() && request.auth.uid in resource.data.members;
       // ဖန်တီး: ကိုယ် member ပါရမယ် + အနည်းဆုံး 2 ယောက်
       allow create: if isSignedIn()
         && request.auth.uid in request.resource.data.members

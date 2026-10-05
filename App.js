@@ -1,3 +1,4 @@
+import './src/webAlertPolyfill';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, RefreshControl, ImageBackground, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -53,7 +54,15 @@ const homeT = {
   },
 };
 
+// Bottom tab labels — ရွေးထားတဲ့ ဘာသာစကားအလိုက် ပြောင်းမယ်
+const tabT = {
+  my: { Home: 'ပင်မ', Dictionary: 'အဘိဓာန်', Planner: 'အချိန်ဇယား', Notes: 'မှတ်စု', QA: 'မေးခွန်း', Community: 'အဖွဲ့', Materials: 'စာကြည့်', Teacher: 'ဆရာ့အပိုင်း' },
+  en: { Home: 'Home', Dictionary: 'Dictionary', Planner: 'Planner', Notes: 'Notes', QA: 'Quiz', Community: 'People', Materials: 'Library', Teacher: 'Teacher' },
+  jp: { Home: 'ホーム', Dictionary: '辞書', Planner: 'プランナー', Notes: 'ノート', QA: 'クイズ', Community: '仲間', Materials: '資料', Teacher: '先生' },
+};
+
 function HomeScreen({ navigation, user, onLogout }) {
+  const goProfile = () => { try { navigation.navigate('Community', { seg: 'profile' }); } catch (e) {} };
   const [refreshing, setRefreshing] = useState(false);
   const [progress, setProgress] = useState('၈၀%');
   const { lang } = useLanguage();
@@ -75,7 +84,7 @@ function HomeScreen({ navigation, user, onLogout }) {
     >
       <View style={styles.overlayContainer}>
         <SafeAreaView style={styles.homeContainer}>
-          <AppHeader title="🌸 Japanese Study Planner" user={user} onLogout={onLogout} />
+          <AppHeader title="🌸 Japanese Study Planner" user={user} onLogout={onLogout} onProfilePress={goProfile} />
 
           <ScrollView 
             contentContainerStyle={styles.scrollContainer} 
@@ -143,6 +152,8 @@ function Main() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [notice, setNotice] = useState('');
+  const { lang } = useLanguage();
+  const tt = tabT[lang] || tabT.my;
 
   // Presence heartbeat (Active/idle/offline) — login ဝင်ထားမှ အလုပ်လုပ်မယ်
   usePresence(user);
@@ -231,31 +242,31 @@ function Main() {
             tabBarInactiveTintColor: 'gray',
           })}
         >
-          <Tab.Screen name="Home" options={{ title: 'ပင်မ' }}>
+          <Tab.Screen name="Home" options={{ title: tt.Home }}>
             {(props) => <HomeScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          <Tab.Screen name="Dictionary" options={{ title: 'အဘိဓာန်' }}>
+          <Tab.Screen name="Dictionary" options={{ title: tt.Dictionary }}>
             {(props) => <DictionaryScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          <Tab.Screen name="Planner" options={{ title: 'အချိန်ဇယား' }}>
+          <Tab.Screen name="Planner" options={{ title: tt.Planner }}>
             {(props) => <PlannerScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          <Tab.Screen name="Notes" options={{ title: 'မှတ်စု' }}>
+          <Tab.Screen name="Notes" options={{ title: tt.Notes }}>
             {(props) => <NotesScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          <Tab.Screen name="QA" options={{ title: 'မေးခွန်း' }}>
+          <Tab.Screen name="QA" options={{ title: tt.QA }}>
             {(props) => <QAScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          <Tab.Screen name="Community" options={{ title: 'အဖွဲ့' }}>
+          <Tab.Screen name="Community" options={{ title: tt.Community }}>
             {(props) => <CommunityScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          <Tab.Screen name="Materials" options={{ title: 'စာကြည့်' }}>
+          <Tab.Screen name="Materials" options={{ title: tt.Materials }}>
             {(props) => <MaterialsScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          
+
           {/* Teacher Tab ကို Teacher Role ရှိမှသာပြသမည် */}
           {user?.role === 'teacher' && (
-            <Tab.Screen name="Teacher" options={{ title: 'ဆရာ့အပိုင်း' }}>
+            <Tab.Screen name="Teacher" options={{ title: tt.Teacher }}>
               {(props) => <TeacherScreen {...props} currentUser={user} onLogout={handleLogout} />}
             </Tab.Screen>
           )}

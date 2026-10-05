@@ -5,7 +5,7 @@ import React from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, Platform } from 'react-native';
 import { useLanguage, LANGS } from '../src/LanguageContext';
 
-export default function AppHeader({ title, user, onLogout, action, showLang = true }) {
+export default function AppHeader({ title, user, onLogout, onProfilePress, action, showLang = true }) {
   const { lang, setLang } = useLanguage();
 
   const initial = ((user && user.name) || 'U').trim().charAt(0).toUpperCase();
@@ -35,7 +35,14 @@ export default function AppHeader({ title, user, onLogout, action, showLang = tr
       {action && <View style={styles.actionWrap}>{action}</View>}
 
       {user && (
-        <View style={styles.profile}>
+        <TouchableOpacity
+          style={styles.profile}
+          onPress={onProfilePress}
+          disabled={!onProfilePress}
+          activeOpacity={onProfilePress ? 0.6 : 1}
+          accessibilityLabel="Profile"
+          accessibilityRole="button"
+        >
           {user.photoURL ? (
             <Image source={{ uri: user.photoURL }} style={styles.avatar} />
           ) : (
@@ -43,10 +50,10 @@ export default function AppHeader({ title, user, onLogout, action, showLang = tr
               <Text style={styles.avatarText}>{initial}</Text>
             </View>
           )}
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, onProfilePress && styles.nameLink]} numberOfLines={1}>
             {user.name || 'User'}
           </Text>
-        </View>
+        </TouchableOpacity>
       )}
 
       {onLogout && (
@@ -142,6 +149,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     maxWidth: 85,
+  },
+  nameLink: {
+    color: '#1976D2',
+    textDecorationLine: 'underline',
   },
   logoutBtn: {
     padding: 6,

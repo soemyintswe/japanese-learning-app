@@ -5,6 +5,7 @@ import { iconNameToEmoji } from './AppIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Sharing from 'expo-sharing';
 import * as Clipboard from 'expo-clipboard';
+import * as Speech from 'expo-speech';
 import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
 import { dictionaryDatabase } from './dictionaryData/fullDictionary';
@@ -32,6 +33,7 @@ const dictT = {
     expAll: 'အားလုံး (base + ကိုယ်ထည့်ထားတာ)', expCustom: 'ကိုယ်ထည့်ထားတာသာ',
     expDo: 'Export လုပ်မည်', expDone: 'Export ပြီးပါပြီ ✅', expCopied: 'Clipboard မှာ ကူးပြီးပါပြီ ✅ (Share မရလို့)',
     tapHint: '💡 စကားလုံးကတ်ကို နှိပ်ရင် အဓိပ္ပာယ်အပြည့်အစုံ ဖြန့်ကြည့်လို့ရပါတယ်',
+    viewOnly: '🔒 ကြည့်ရှု့ခွင့်သာ (ပြင်ဆင်ခွင့်မရှိ)',
     levelInfoTitle: '🎚️ JLPT Level အဓိပ္ပာယ်',
     levelInfoAll: 'စုစုပေါင်း စကားလုံး',
     levelInfo: {
@@ -65,6 +67,7 @@ const dictT = {
     expAll: 'All (base + mine)', expCustom: 'Mine only',
     expDo: 'Export', expDone: 'Export done ✅', expCopied: 'Copied to clipboard ✅ (Share unavailable)',
     tapHint: '💡 Tap a word card to expand full details',
+    viewOnly: '🔒 View only',
     levelInfoTitle: '🎚️ JLPT Level Guide',
     levelInfoAll: 'Total words',
     levelInfo: {
@@ -98,6 +101,7 @@ const dictT = {
     expAll: 'すべて', expCustom: '自分の分のみ',
     expDo: 'エクスポート', expDone: 'エクスポート完了 ✅', expCopied: 'クリップボードにコピー ✅',
     tapHint: '💡 カードをタップで詳細表示',
+    viewOnly: '🔒 閲覧のみ',
     levelInfoTitle: '🎚️ JLPTレベル案内',
     levelInfoAll: '総単語数',
     levelInfo: {
@@ -133,7 +137,10 @@ const POS_EMOJI = {
 const posEmoji = (pos) => POS_EMOJI[pos] || '📚';
 const readingOf = (item) => item.reading || item.hiragana || '';
 
-export default function DictionaryScreen({ user, onLogout }) {
+export default function DictionaryScreen({ user, onLogout, navigation }) {
+  const goProfile = () => { try { navigation.navigate('Community', { seg: 'profile' }); } catch (e) {} };
+  // RBAC: shared dataset — staff (teacher/admin) only CRUD/import; students view (+export backup)
+  const staff = user?.role === 'teacher' || user?.role === 'admin';
   const { lang } = useLanguage();
   const t = dictT[lang] || dictT.my;
   const [searchQuery, setSearchQuery] = useState('');
@@ -180,6 +187,18 @@ export default function DictionaryScreen({ user, onLogout }) {
   // နှိပ်ပြီး ဖြန့်ကြည့်ရန် (expanded card)
   const [expandedId, setExpandedId] = useState(null);
 
+  // 🔊 TTS အသံထွက် — card ပြောင်းတိုင်း/ထွက်တိုင်း ရပ်မယ်
+  useEffect(() => {
+    return () => { try { Speech.stop(); } catch (e) {} };
+  }, []);
+
+  const speakWord = (item) => {
+    try {
+      Speech.stop();
+      Speech.speak(item.japanese, { language: 'ja', rate: 0.85 });
+    } catch (e) {}
+  };
+
   // Level အဓိပ္ပာယ် ပြရန် — chip ဖိထား (long-press) သို့မဟုတ် ⓘ နှိပ်
   const showLevelInfo = (lv) => {
     if (lv === 'All') {
@@ -212,6 +231,7 @@ export default function DictionaryScreen({ user, onLogout }) {
   data.forEach((w) => { levelCounts[w.level] = (levelCounts[w.level] || 0) + 1; });
 
   const handleSaveWord = () => {
+    if (!staff) return; // students view-only
     if (!jp.trim() || (!my.trim() && !en.trim())) {
       Alert.alert('⚠️', t.errFill);
       return;
@@ -253,6 +273,7 @@ export default function DictionaryScreen({ user, onLogout }) {
   };
 
   const handleDelete = (id) => {
+    if (!staff) return; // students view-only
     Alert.alert(t.delTitle, t.delMsg, [
       { text: t.no, style: 'cancel' },
       {
@@ -267,6 +288,7 @@ export default function DictionaryScreen({ user, onLogout }) {
 
   // ---------- Import ----------
   const doImportFromText = (text) => {
+    if (!staff) return; // students view-only
     let parsed;
     try {
       parsed = JSON.parse(text);
@@ -302,6 +324,7 @@ export default function DictionaryScreen({ user, onLogout }) {
   };
 
   const handlePickFile = async () => {
+    if (!staff) return; // students view-only
     try {
       const DP = require('expo-document-picker');
       const res = await DP.getDocumentAsync({ type: ['application/json', 'text/plain'], copyToCacheDirectory: true });
@@ -373,18 +396,23 @@ export default function DictionaryScreen({ user, onLogout }) {
         title={t.header}
         user={user}
         onLogout={onLogout}
+        onProfilePress={goProfile}
         action={
           <View style={{ flexDirection: 'row' }}>
-            <TouchableOpacity style={[styles.addBtn, { backgroundColor: '#1976D2', marginRight: 6 }]} onPress={() => setImpVisible(true)}>
-              <Text style={styles.addBtnText}>{t.importBtn}</Text>
-            </TouchableOpacity>
+            {staff && (
+              <TouchableOpacity style={[styles.addBtn, { backgroundColor: '#1976D2', marginRight: 6 }]} onPress={() => setImpVisible(true)}>
+                <Text style={styles.addBtnText}>{t.importBtn}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={[styles.addBtn, { backgroundColor: '#388E3C', marginRight: 6 }]} onPress={() => setExpVisible(true)}>
               <Text style={styles.addBtnText}>{t.exportBtn}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-              <Text style={{ fontSize: 16, color: '#FFF' }}>➕</Text>
-              <Text style={styles.addBtnText}> {t.add}</Text>
-            </TouchableOpacity>
+            {staff && (
+              <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
+                <Text style={{ fontSize: 16, color: '#FFF' }}>➕</Text>
+                <Text style={styles.addBtnText}> {t.add}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
@@ -420,7 +448,7 @@ export default function DictionaryScreen({ user, onLogout }) {
           <Text style={styles.filterText}>ⓘ</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.tapHint}>{t.tapHint}</Text>
+      <Text style={styles.tapHint}>{t.tapHint}{!staff ? `\n${t.viewOnly}` : ''}</Text>
 
       {/* Optimized FlatList */}
       <FlatList
@@ -479,27 +507,42 @@ export default function DictionaryScreen({ user, onLogout }) {
                     <Text style={styles.detailMM}>🇲🇲 {item.myanmar || '—'}</Text>
                     <Text style={styles.detailEN}>🇬🇧 {item.english || '—'}</Text>
                     <Text style={styles.detailMeta}>{t.detailLevel}: {item.level} — {t.levelInfo[item.level] || ''}</Text>
-                    <View style={styles.detailActions}>
-                      <TouchableOpacity style={styles.detailBtn} onPress={() => handleEdit(item)}>
-                        <Text style={styles.detailBtnText}>{t.editWord}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.detailBtn, { backgroundColor: '#FFEBEE' }]} onPress={() => handleDelete(item.id)}>
-                        <Text style={[styles.detailBtnText, { color: '#C62828' }]}>{t.deleteWord}</Text>
-                      </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity
+                      style={[styles.detailBtn, { backgroundColor: '#F3E5F5', marginTop: 8 }]}
+                      onPress={() => speakWord(item)}
+                    >
+                      <Text style={[styles.detailBtnText, { color: '#7B1FA2' }]}>🔊 {readingOf(item) || item.japanese}</Text>
+                    </TouchableOpacity>
+                    {staff && (
+                      <View style={styles.detailActions}>
+                        <TouchableOpacity style={styles.detailBtn} onPress={() => handleEdit(item)}>
+                          <Text style={styles.detailBtnText}>{t.editWord}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.detailBtn, { backgroundColor: '#FFEBEE' }]} onPress={() => handleDelete(item.id)}>
+                          <Text style={[styles.detailBtnText, { color: '#C62828' }]}>{t.deleteWord}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                     <Text style={styles.expandHint}>▲</Text>
                   </View>
                 )}
               </View>
 
               {!expanded && (
-                <View style={{ flexDirection: 'row' }}>
-                  <TouchableOpacity onPress={() => handleEdit(item)} style={{ marginRight: 12 }}>
-                    <Text style={{ fontSize: 18 }}>✏️</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TouchableOpacity onPress={() => speakWord(item)} style={{ marginRight: 12 }}>
+                    <Text style={{ fontSize: 18 }}>🔊</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                    <Text style={{ fontSize: 18 }}>🗑️</Text>
-                  </TouchableOpacity>
+                  {staff && (
+                    <>
+                      <TouchableOpacity onPress={() => handleEdit(item)} style={{ marginRight: 12 }}>
+                        <Text style={{ fontSize: 18 }}>✏️</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                        <Text style={{ fontSize: 18 }}>🗑️</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
               )}
             </TouchableOpacity>

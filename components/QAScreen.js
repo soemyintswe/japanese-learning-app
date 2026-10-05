@@ -118,6 +118,7 @@ const qaT = {
 const ORDER = ['N5', 'N4', 'N3', 'N2', 'N1'];
 
 export default function QAScreen({ user, onLogout, navigation }) {
+  const goProfile = () => { try { navigation.navigate('Community', { seg: 'profile' }); } catch (e) {} };
   const { lang } = useLanguage();
   const t = qaT[lang] || qaT.my;
 
@@ -732,7 +733,7 @@ export default function QAScreen({ user, onLogout, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title={t.title} user={user} onLogout={onLogout} />
+      <AppHeader title={t.title} user={user} onLogout={onLogout} onProfilePress={goProfile} />
 
       {/* Mode tabs */}
       <View style={styles.modeRow}>

@@ -9,7 +9,108 @@ import { db } from '../src/firebase';
 import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
 import { presenceOf } from '../src/presence';
-import { useDriveBackup } from '../src/driveBackup';
+import { useDriveBackup, driveConfigured } from '../src/driveBackup';
+
+// Safety net: child crash (e.g. OAuth misconfig) must never blank the whole tab
+class SectionErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { crashed: false };
+  }
+  static getDerivedStateFromError() {
+    return { crashed: true };
+  }
+  render() {
+    if (this.state.crashed) {
+      return (
+        <View style={{ backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 12, marginTop: 18 }}>
+          <Text style={{ fontSize: 12, color: '#C62828' }}>{this.props.fallbackText || '⚠️'}</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Drive UI isolated here so OAuth hook NEVER runs when not configured
+// (unconfigured Google.useAuthRequest throws at render → blank screen otherwise)
+function DriveSection({ user, t }) {
+  const drive = useDriveBackup(user);
+
+  const onBackup = async () => {
+    const r = await drive.backupNow();
+    if (r.needAuth) {
+      try {
+        await drive.connect();
+      } catch (e) {
+        Alert.alert('⚠️', String(e.message || e));
+      }
+      return;
+    }
+    if (r.expired) {
+      Alert.alert('⚠️', t.driveExpired);
+      return;
+    }
+    if (r.ok) Alert.alert('✅', t.driveBackedOk);
+    else Alert.alert('⚠️', `${t.driveErr} (${r.error || 'unknown'})`);
+  };
+
+  const onRestore = async () => {
+    const f = await drive.fetchLatest();
+    if (f.expired) {
+      Alert.alert('⚠️', t.driveExpired);
+      return;
+    }
+    if (f.empty) {
+      Alert.alert('ℹ️', t.driveEmpty);
+      return;
+    }
+    if (!f.ok) {
+      Alert.alert('⚠️', `${t.driveErr} (${f.error || 'unknown'})`);
+      return;
+    }
+    Alert.alert(t.driveRestore, `${f.file.name}\n${f.file.modifiedTime || ''}\n\n${t.driveConfirm}`, [
+      { text: t.no, style: 'cancel' },
+      {
+        text: t.yes, style: 'destructive', onPress: async () => {
+          const r = await drive.restoreNow(f.backup);
+          if (r.ok) Alert.alert('✅', `${t.driveRestoredOk} (${r.count})`);
+          else Alert.alert('⚠️', `${t.driveErr} (${r.error || 'unknown'})`);
+        }
+      }
+    ]);
+  };
+
+  return (
+    <View style={{ backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 12, marginTop: 18 }}>
+      <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#333', marginBottom: 4 }}>{t.driveTitle}</Text>
+      <Text style={{ fontSize: 11, color: '#666', marginBottom: 8, lineHeight: 16 }}>{t.driveHelp}</Text>
+      <Text style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
+        {drive.connected ? t.driveConnected : t.driveNotConnected}
+        {drive.lastBackup ? ` · ${t.driveLast} ${drive.lastBackup.name}` : ` · ${t.driveLast} ${t.driveNone}`}
+      </Text>
+      <View style={{ flexDirection: 'row', alignSelf: 'stretch' }}>
+        {!drive.connected ? (
+          <TouchableOpacity style={[styles.smallBtn, { flex: 1, alignItems: 'center' }]} onPress={() => drive.connect().catch((e) => Alert.alert('⚠️', String(e.message || e)))} disabled={drive.busy}>
+            <Text style={styles.smallBtnText}>{t.driveConnect}</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity style={[styles.smallBtn, { flex: 1, backgroundColor: '#2E7D32' }]} onPress={onBackup} disabled={drive.busy}>
+              <Text style={styles.smallBtnText}>{drive.busy ? '…' : t.driveBackup}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.smallBtn, { flex: 1, marginLeft: 8, backgroundColor: '#EF6C00' }]} onPress={onRestore} disabled={drive.busy}>
+              <Text style={styles.smallBtnText}>{t.driveRestore}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.smallBtn, { marginLeft: 8, backgroundColor: '#9E9E9E' }]} onPress={drive.disconnect} disabled={drive.busy}>
+              <Text style={styles.smallBtnText}>✕</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
 
 const ADMIN_EMAIL = 'soemyintswe@gmail.com';
 
@@ -146,12 +247,18 @@ function fmtTime(iso) {
   } catch (e) { return ''; }
 }
 
-export default function CommunityScreen({ user, onLogout, navigation }) {
+export default function CommunityScreen({ user, onLogout, navigation, route }) {
   const { lang } = useLanguage();
   const t = cT[lang] || cT.my;
   const isAdmin = (user?.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase() || user?.role === 'admin';
 
-  const [seg, setSeg] = useState('people');
+  const [seg, setSeg] = useState((route && route.params && route.params.seg) || 'people');
+
+  // Avatar tap (header) → profile seg (route params)
+  useEffect(() => {
+    const s = route && route.params && route.params.seg;
+    if (s && ['people', 'chats', 'profile', 'reports'].includes(s)) setSeg(s);
+  }, [route && route.params && route.params.seg]);
   const [users, setUsers] = useState([]);
   const [q, setQ] = useState('');
   const [now, setNow] = useState(Date.now());
@@ -171,53 +278,6 @@ export default function CommunityScreen({ user, onLogout, navigation }) {
 
   // profile view modal (other user)
   const [viewUser, setViewUser] = useState(null);
-
-  // Google Drive backup (my Drive)
-  const drive = useDriveBackup(user);
-
-  const onBackup = async () => {
-    const r = await drive.backupNow();
-    if (r.needAuth) {
-      try {
-        await drive.connect();
-      } catch (e) {
-        Alert.alert('⚠️', String(e.message || e));
-      }
-      return;
-    }
-    if (r.expired) {
-      Alert.alert('⚠️', t.driveExpired);
-      return;
-    }
-    if (r.ok) Alert.alert('✅', t.driveBackedOk);
-    else Alert.alert('⚠️', `${t.driveErr} (${r.error || 'unknown'})`);
-  };
-
-  const onRestore = async () => {
-    const f = await drive.fetchLatest();
-    if (f.expired) {
-      Alert.alert('⚠️', t.driveExpired);
-      return;
-    }
-    if (f.empty) {
-      Alert.alert('ℹ️', t.driveEmpty);
-      return;
-    }
-    if (!f.ok) {
-      Alert.alert('⚠️', `${t.driveErr} (${f.error || 'unknown'})`);
-      return;
-    }
-    Alert.alert(t.driveRestore, `${f.file.name}\n${f.file.modifiedTime || ''}\n\n${t.driveConfirm}`, [
-      { text: t.no, style: 'cancel' },
-      {
-        text: t.yes, style: 'destructive', onPress: async () => {
-          const r = await drive.restoreNow(f.backup);
-          if (r.ok) Alert.alert('✅', `${t.driveRestoredOk} (${r.count})`);
-          else Alert.alert('⚠️', `${t.driveErr} (${r.error || 'unknown'})`);
-        }
-      }
-    ]);
-  };
 
   // live clock for presence counts (60s)
   useEffect(() => {
@@ -502,7 +562,7 @@ export default function CommunityScreen({ user, onLogout, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title={t.title} user={user} onLogout={onLogout} />
+      <AppHeader title={t.title} user={user} onLogout={onLogout} onProfilePress={() => setSeg('profile')} />
 
       {/* segment */}
       <View style={styles.segRow}>
@@ -697,40 +757,17 @@ export default function CommunityScreen({ user, onLogout, navigation }) {
             <Text style={styles.saveBtnText}>{t.save}</Text>
           </TouchableOpacity>
 
-          {/* Google Drive backup/restore */}
-          <View style={{ backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 12, marginTop: 18 }}>
-            <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#333', marginBottom: 4 }}>{t.driveTitle}</Text>
-            <Text style={{ fontSize: 11, color: '#666', marginBottom: 8, lineHeight: 16 }}>{t.driveHelp}</Text>
-            {!drive.configured ? (
+          {/* Google Drive backup/restore — hook runs ONLY when OAuth configured */}
+          {driveConfigured() ? (
+            <SectionErrorBoundary fallbackText="⚠️ Drive">
+              <DriveSection user={user} t={t} />
+            </SectionErrorBoundary>
+          ) : (
+            <View style={{ backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 12, marginTop: 18 }}>
+              <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#333', marginBottom: 4 }}>{t.driveTitle}</Text>
               <Text style={{ fontSize: 11, color: '#C62828', lineHeight: 16 }}>{t.driveSetup}</Text>
-            ) : (
-              <>
-                <Text style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
-                  {drive.connected ? t.driveConnected : t.driveNotConnected}
-                  {drive.lastBackup ? ` · ${t.driveLast} ${drive.lastBackup.name}` : ` · ${t.driveLast} ${t.driveNone}`}
-                </Text>
-                <View style={{ flexDirection: 'row', alignSelf: 'stretch' }}>
-                  {!drive.connected ? (
-                    <TouchableOpacity style={[styles.smallBtn, { flex: 1, alignItems: 'center' }]} onPress={() => drive.connect().catch((e) => Alert.alert('⚠️', String(e.message || e)))} disabled={drive.busy}>
-                      <Text style={styles.smallBtnText}>{t.driveConnect}</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <>
-                      <TouchableOpacity style={[styles.smallBtn, { flex: 1, backgroundColor: '#2E7D32' }]} onPress={onBackup} disabled={drive.busy}>
-                        <Text style={styles.smallBtnText}>{drive.busy ? '…' : t.driveBackup}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.smallBtn, { flex: 1, marginLeft: 8, backgroundColor: '#EF6C00' }]} onPress={onRestore} disabled={drive.busy}>
-                        <Text style={styles.smallBtnText}>{t.driveRestore}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.smallBtn, { marginLeft: 8, backgroundColor: '#9E9E9E' }]} onPress={drive.disconnect} disabled={drive.busy}>
-                        <Text style={styles.smallBtnText}>✕</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </View>
-              </>
-            )}
-          </View>
+            </View>
+          )}
         </ScrollView>
       )}
 
