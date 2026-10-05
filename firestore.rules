@@ -12,8 +12,15 @@ service cloud.firestore {
         ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
         : '';
     }
+    // Super-admin = ADMIN_EMAIL (role field ဘာဖြစ်ဖြစ် အမြင့်ဆုံး)
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.email == 'soemyintswe@gmail.com';
+    }
+    function isAdminRole() {
+      return isSignedIn() && (callerRole() == 'admin' || isSuperAdmin());
+    }
     function isStaff() {
-      return isSignedIn() && (callerRole() == 'admin' || callerRole() == 'teacher');
+      return isSignedIn() && (callerRole() == 'teacher' || isAdminRole());
     }
 
     function isChatMember(chatId) {
@@ -32,24 +39,28 @@ service cloud.firestore {
       // Private profile ကို client ဘက်က ဖျောက်ပြမယ် (field-level rule မဟုတ် — sec HANDOVER)
       allow get, list: if isSignedIn();
 
-      // ဖန်တီးခွင့်: ကိုယ့် uid doc သက်သက် + email က ကိုယ့် Auth email ဖြစ်ရမယ်
-      allow create: if isSignedIn()
-        && request.auth.uid == userId
-        && request.resource.data.email == request.auth.token.email;
+      // ဖန်တီးခွင့်: (1) staff က ဘယ် doc မဆို — ဒါပေမယ့် admin role ပေးတာက admin/super-admin သက်သက်;
+      // (2) ကိုယ်တိုင် က ကိုယ့် uid doc + email က ကိုယ့် Auth email (self-register)
+      allow create: if isSignedIn() && (
+        (isStaff() && (request.resource.data.role != 'admin' || isAdminRole()))
+        || (request.auth.uid == userId
+          && request.resource.data.email == request.auth.token.email)
+      );
 
-      // ပြင်ခွင့်: staff က အကုန် (role/status အပါ);
-      // ကိုယ်တိုင် က profile fields (name/phone/birthdate/gender/education/jlpt/bio/photoURL/
-      // isPublic/testedLevel/lastSeenAt/lastActiveAt) — role/status ထိမရ
+      // ပြင်ခွင့်: (1) staff — ဒါပေမယ့် admin doc ထိတာ + admin role ပေးတာ admin/super-admin သက်သက်;
+      // (2) ကိုယ်တိုင် က profile fields (role/status ထိမရ)
       allow update: if isSignedIn() && (
-        isStaff()
+        (isStaff()
+          && (resource.data.role != 'admin' || isAdminRole())
+          && (request.resource.data.role != 'admin' || isAdminRole()))
         || (request.auth.uid == userId
           && request.resource.data.role == resource.data.role
           && request.resource.data.status == resource.data.status)
       );
 
-      // ဖျက်ခွင့်: staff, သို့မဟုတ် ကိုယ့် email နဲ့ doc (placeholder အဟောင်း ရှင်းဖို့)
+      // ဖျက်ခွင့်: admin doc ဖျက်တာ admin/super-admin သက်သက်; ကျန်တာ staff + ကိုယ့် email doc
       allow delete: if isSignedIn() && (
-        isStaff()
+        (isStaff() && (resource.data.role != 'admin' || isAdminRole()))
         || resource.data.email == request.auth.token.email
       );
     }

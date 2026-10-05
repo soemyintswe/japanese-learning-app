@@ -166,8 +166,8 @@ function HomeScreen({ navigation, user, onLogout }) {
               </TouchableOpacity>
             </View>
 
-            {/* Teacher Section Link (Only for Teacher/Admin) */}
-            {user?.role === 'teacher' && (
+            {/* Teacher Section Link (teacher + admin — admin အမြင့်ဆုံး, tab ပျောက်မသွားအောင်) */}
+            {(user?.role === 'teacher' || user?.role === 'admin') && (
               <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
                 <TouchableOpacity style={[styles.quickCard, { width: '100%' }]} onPress={() => navigation.navigate('Teacher')}>
                   <Text style={{fontSize: 24}}>🎓</Text>
@@ -301,8 +301,8 @@ function Main() {
             {(props) => <MaterialsScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
 
-          {/* Teacher Tab ကို Teacher Role ရှိမှသာပြသမည် */}
-          {user?.role === 'teacher' && (
+          {/* Teacher Tab — teacher + admin (admin role ချိန်းပြီးမှ tab ပျောက်တဲ့ bug fix) */}
+          {(user?.role === 'teacher' || user?.role === 'admin') && (
             <Tab.Screen name="Teacher" options={{ title: tt.Teacher }}>
               {(props) => <TeacherScreen {...props} currentUser={user} onLogout={handleLogout} />}
             </Tab.Screen>
