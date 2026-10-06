@@ -24,11 +24,21 @@ export function teacherDriveConfigured() {
   );
 }
 
+// Same fixed redirect as student backup (Drive UI lives in Community + Materials modal
+// navigates from Community-family screens; /community is always safe to land on).
+// NOTE: MaterialsScreen upload button is reached from 📚 tab — after Google redirect
+// the browser lands on /community. Teacher then re-opens 📚 (one tap). Acceptable.
+export function getTeacherRedirectUri() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
+  return window.location.origin + '/community';
+}
+
 export function useTeacherDrive() {
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    redirectUri: getTeacherRedirectUri(),
     scopes: [FILE_SCOPE],
   });
   const [token, setToken] = useState(null);

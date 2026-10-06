@@ -32,11 +32,20 @@ export function driveConfigured() {
   );
 }
 
+// Web redirect MUST be exact (Google matches exactly):
+// Drive buttons live ONLY in Community/Profile (/community) → always return there.
+// Owner registers EXACTLY this URL in Google Cloud Console (prod + localhost dev).
+export function getDriveRedirectUri() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
+  return window.location.origin + '/community';
+}
+
 export function useDriveBackup(user) {
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    redirectUri: getDriveRedirectUri(),
     scopes: [APPDATA_SCOPE],
   });
   const [accessToken, setAccessToken] = useState(null);

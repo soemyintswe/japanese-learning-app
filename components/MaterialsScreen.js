@@ -61,6 +61,7 @@ function TeacherUploadSection({ t, onUploaded }) {
         </TouchableOpacity>
       ) : (
         <>
+          <Text style={{ fontSize: 10, color: '#2E7D32', marginBottom: 6 }}>✅ {t.upConnected || ''}</Text>
           <View style={{ flexDirection: 'row' }}>
             <TouchableOpacity style={[styles.miniUpBtn, { flex: 1, backgroundColor: '#1976D2' }]} onPress={pick} disabled={td.busy}>
               <Text style={styles.miniUpText}>{t.upPick}</Text>
@@ -106,6 +107,7 @@ const mT = {
     upOk: 'Upload ပြီးပါပြီ ✅ — ခေါင်းစဉ်/အဆင့် စစ်ပြီး Save နှိပ်ပါ',
     upTooBig: '100MB ထက်ကြီးတယ် — Drive app ကနေ တိုက်ရိုက်တင်ပြီး link ကူးထည့်ပါ။',
     upErr: 'Upload error', upSetup: 'Admin setup လိုသေးတယ်: Google OAuth Client ID (.env)',
+    upConnected: 'Drive ချိတ်ထားပြီး ✅ — file ရွေး → Upload',
     types: { doc: '📄 စာရွက်', video: '🎬 ဗီဒီယို', audio: '🎧 အသံ', link: '🔗 လင့်' },
   },
   en: {
@@ -131,6 +133,7 @@ const mT = {
     upOk: 'Uploaded ✅ — check title/level then Save',
     upTooBig: 'Over 100MB — upload via Drive app and paste the link.',
     upErr: 'Upload error', upSetup: 'Admin setup needed: Google OAuth Client ID (.env)',
+    upConnected: 'Drive connected ✅ — pick a file → Upload',
     types: { doc: '📄 Doc', video: '🎬 Video', audio: '🎧 Audio', link: '🔗 Link' },
   },
   jp: {
@@ -156,6 +159,7 @@ const mT = {
     upOk: '完了 ✅ — 保存を押す',
     upTooBig: '100MB超 — Driveアプリで直接。',
     upErr: 'エラー', upSetup: '管理者設定が必要',
+    upConnected: '接続中 ✅',
     types: { doc: '📄 資料', video: '🎬 動画', audio: '🎧 音声', link: '🔗 リンク' },
   },
 };
