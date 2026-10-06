@@ -15,6 +15,7 @@ import { db } from '../src/firebase';
 import { logActivity } from '../src/activity';
 import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
+import { LESSON_SEED, ASSIGN_SEED } from './teachingSeed';
 
 const teachT = {
   my: {
@@ -30,6 +31,7 @@ const teachT = {
     grade: 'အမှတ်:', feedback: 'မှတ်ချက်:', gradeSave: 'အမှတ်ပေးမည်',
     noGrade: 'အမှတ်မပေးရသေး', subs: 'တင်ထားသူများ', delQ: 'ဖျက်မှာလား?', yesDel: 'ဖျက်မည်', noDel: 'မလုပ်တော့',
     errFill: 'ခေါင်းစဉ်ဖြည့်ပါ။', back: '◀ ပြန်သွားမည်',
+    seedBtn: '🌱 နမူနာထည့်မည် (၃+၃)', seeded: 'နမူနာ ထည့်ပြီးပါပြီ ✅',
   },
   en: {
     title: '📖 Lessons & Class', segLessons: 'Lessons', segAssign: 'Assignments',
@@ -44,6 +46,7 @@ const teachT = {
     grade: 'Grade:', feedback: 'Feedback:', gradeSave: 'Grade it',
     noGrade: 'Not graded yet', subs: 'Submissions', delQ: 'Delete?', yesDel: 'Delete', noDel: 'Cancel',
     errFill: 'Title is required.', back: '◀ Back',
+    seedBtn: '🌱 Add samples (3+3)', seeded: 'Samples added ✅',
   },
   jp: {
     title: '📖 授業', segLessons: 'レッスン', segAssign: '課題',
@@ -58,10 +61,36 @@ const teachT = {
     grade: '評価:', feedback: 'コメント:', gradeSave: '採点する',
     noGrade: '未採点', subs: '提出一覧', delQ: '削除しますか?', yesDel: '削除', noDel: 'キャンセル',
     errFill: 'タイトルを入力してください。', back: '◀ 戻る',
+    seedBtn: '🌱 見本を入れる (3+3)', seeded: '見本を追加しました ✅',
   },
 };
 
 const LEVELS = ['All', 'N5', 'N4', 'N3', 'N2', 'N1'];
+
+// Section error boundary — detail/sub render တစ်ခုခု ပေါက်ကွဲရင်တောင်
+// tab တခုလုံး ဖြူမသွားအောင် (header + tabs ကျန်, inline error + retry)
+class TeachErrorBoundary extends React.Component {
+  constructor(p) { super(p); this.state = { err: null }; }
+  static getDerivedStateFromError(e) { return { err: String((e && e.message) || e) }; }
+  render() {
+    if (this.state.err) {
+      return (
+        <View style={{ padding: 20, alignItems: 'center' }}>
+          <Text style={{ fontSize: 13, color: '#C62828', marginBottom: 10 }}>⚠️ {this.state.err}</Text>
+          <TouchableOpacity
+            style={{ backgroundColor: '#D32F2F', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 }}
+            onPress={() => this.setState({ err: null })}
+          >
+            <Text style={{ color: '#FFF', fontWeight: 'bold' }}>🔄 Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const safeArr = (a) => (Array.isArray(a) ? a : []);
 
 export default function TeachingScreen({ user, onLogout, navigation }) {
   const { lang } = useLanguage();
@@ -92,31 +121,18 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
   const fetchAll = async (silent) => {
     if (!silent) setLoading(true);
     try {
-      const lq = await getDocs(query(collection(db, 'lessons'), orderBy('at', 'desc')));
+      // lessons + assignments parallel (sequential မဟုတ် — မြန်အောင်)
+      const [lq, aq] = await Promise.all([
+        getDocs(query(collection(db, 'lessons'), orderBy('at', 'desc'))),
+        getDocs(query(collection(db, 'assignments'), orderBy('at', 'desc'))),
+      ]);
       const la = [];
       lq.forEach((d) => la.push({ id: d.id, ...d.data() }));
       setLessons(la);
-      const aq = await getDocs(query(collection(db, 'assignments'), orderBy('at', 'desc')));
       const aa = [];
       aq.forEach((d) => aa.push({ id: d.id, ...d.data() }));
-      setAssigns(aq);
+      setAssigns(aa);
       if (user?.uid) {
-        // own level (for level-targeted assignments) + users directory (staff picker)
-        try {
-          const me = await getDoc(doc(db, 'users', user.uid));
-          if (me.exists()) {
-            const d = me.data();
-            setMyLevel(String(d.jlpt || d.testedLevel || '').toUpperCase());
-          }
-        } catch (e) {}
-        if (isStaff) {
-          try {
-            const uq = await getDocs(collection(db, 'users'));
-            const ua = [];
-            uq.forEach((d) => ua.push({ id: d.id, ...d.data() }));
-            setAllUsers(ua);
-          } catch (e) {}
-        }
         // single-field queries only (no composite index):
         // staff → all subs of open assignment; student → own subs only
         let sq;
@@ -142,13 +158,86 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
     }
   };
 
+  // own JLPT level — once on mount only (fetchAll တိုင်း ပြန်မဖတ်ဘူး)
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!user?.uid) return;
+        const me = await getDoc(doc(db, 'users', user.uid));
+        if (me.exists()) {
+          const d = me.data();
+          setMyLevel(String(d.jlpt || d.testedLevel || '').toUpperCase());
+        }
+      } catch (e) {}
+    })();
+  }, []);
+
+  // users directory — staff က assign editor ဖွင့်မှသာ lazy-load (photoURL base64 မပါ — name/email/role only)
+  const ensureUsers = async () => {
+    if (allUsers.length || !isStaff) return;
+    try {
+      const uq = await getDocs(collection(db, 'users'));
+      const ua = [];
+      uq.forEach((d) => {
+        const dd = d.data() || {};
+        ua.push({ id: d.id, name: dd.name || '', email: dd.email || '', role: dd.role || '' });
+      });
+      setAllUsers(ua);
+    } catch (e) {}
+  };
+
+  // safety: loading 15s ထက် ကြာရင် အတင်းရပ် (spinner တစ်သက်လုံး မလည်)
+  useEffect(() => {
+    if (!loading) return;
+    const tmr = setTimeout(() => { setLoading(false); setRefreshing(false); }, 15000);
+    return () => clearTimeout(tmr);
+  }, [loading]);
+
   useEffect(() => { fetchAll(false); }, []);
   // staff opens an assignment → reload its submissions
   useEffect(() => { if (openId) fetchAll(true); }, [openId]);
 
   const onRefresh = () => { setRefreshing(true); fetchAll(false); };
 
+  // 🌱 starter samples (fixed IDs — existing ones skipped, staff only)
+  const seedSamples = async () => {
+    if (!isStaff) return;
+    setBusy(true);
+    try {
+      const now = new Date().toISOString();
+      for (const l of LESSON_SEED) {
+        const ref = doc(db, 'lessons', l.id);
+        const ex = await getDoc(ref);
+        if (!ex.exists()) {
+          await setDoc(ref, {
+            title: l.title, body: l.body, level: l.level, mediaUrl: l.mediaUrl || '',
+            target: 'all', by: user?.uid || '', byName: user?.name || user?.email || '', at: now,
+          });
+        }
+      }
+      for (const a of ASSIGN_SEED) {
+        const ref = doc(db, 'assignments', a.id);
+        const ex = await getDoc(ref);
+        if (!ex.exists()) {
+          await setDoc(ref, {
+            title: a.title, desc: a.desc, level: a.level, due: a.due || '',
+            target: a.target || 'all', targetLevel: a.targetLevel || 'N5', targetUids: a.targetUids || [],
+            by: user?.uid || '', byName: user?.name || user?.email || '', at: now,
+          });
+        }
+      }
+      logActivity(user, 'teaching.seed', '3 lessons + 3 assignments', '');
+      Alert.alert(t.seeded);
+      fetchAll(true);
+    } catch (e) {
+      Alert.alert('Error', String(e?.code || e?.message));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const openEditor = (kind, item) => {
+    if (kind === 'assign') ensureUsers(); // picker အတွက် lazy-load
     setModal({
       kind, id: item?.id || null,
       title: item?.title || '',
@@ -266,13 +355,13 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
     }
   };
 
-  const rawList = seg === 'lessons' ? lessons : assigns;
+  const rawList = seg === 'lessons' ? safeArr(lessons) : safeArr(assigns);
   // students see only assignments targeted at them (old docs without target = everyone)
   const list = (seg === 'assignments' && !isStaff)
     ? rawList.filter((a) => {
         if (!a.target || a.target === 'all') return true;
         if (a.target === 'level') return !myLevel || (a.targetLevel || 'All') === 'All' || a.targetLevel === myLevel;
-        if (a.target === 'students') return (a.targetUids || []).includes(user?.uid);
+        if (a.target === 'students') return safeArr(a.targetUids).includes(user?.uid);
         return true;
       })
     : rawList;
@@ -288,8 +377,8 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
     const avg = nums.length ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(1) : '—';
     return `${t.stSubmitted} ${total} · ${t.stGraded} ${graded.length} · ${t.stAvg} ${avg} · ${t.stPending} ${total - graded.length}`;
   };
-  const opened = openId ? list.find((x) => x.id === openId) : null;
-  const openedSubs = openId ? subs.filter((s) => s.assignmentId === openId) : [];
+  const opened = openId ? rawList.find((x) => x && x.id === openId) : null;
+  const openedSubs = openId ? safeArr(subs).filter((s) => s && s.assignmentId === openId) : [];
   const mySub = !isStaff && opened ? openedSubs[0] : null;
 
   return (
@@ -323,6 +412,7 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <TeachErrorBoundary key={seg}>
         {loading ? (
           <ActivityIndicator size="large" color="#D32F2F" style={{ marginTop: 30 }} />
         ) : opened ? (
@@ -430,7 +520,14 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
             )}
           </View>
         ) : list.length === 0 ? (
-          <Text style={styles.empty}>{t.empty}</Text>
+          <View style={{ alignItems: 'center', marginTop: 30 }}>
+            <Text style={styles.empty}>{t.empty}</Text>
+            {isStaff && (
+              <TouchableOpacity style={[styles.saveBtn, { paddingHorizontal: 20 }]} onPress={seedSamples} disabled={busy}>
+                <Text style={styles.btnText}>{t.seedBtn}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         ) : (
           list.map((x) => (
             <TouchableOpacity key={x.id} style={styles.card} onPress={() => setOpenId(x.id)}>
@@ -442,6 +539,7 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
             </TouchableOpacity>
           ))
         )}
+        </TeachErrorBoundary>
       </ScrollView>
 
       <Modal visible={!!modal} transparent animationType="fade" onRequestClose={() => setModal(null)}>

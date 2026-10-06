@@ -38,7 +38,7 @@ components/PlannerScreen.js   # Calendar + morning/evening checklist + notes (As
 components/NotesScreen.js     # Notes CRUD (AsyncStorage, 3-lang chrome)
 components/QAScreen.js        # Quiz + add/edit (Option4 + correct picker, AsyncStorage, 3-lang)
 components/TeacherScreen.js   # ⭐ Admin user table (approve/disable, role-picker modal, delete, tooltips) + bio + share + change-password + 📋 activity viewer (latest 50) + horizontal-scroll table (minWidth 660, mobile)
-components/TeachingScreen.js  # 📖 Teaching module MVP: lessons + assignments + submissions/grading (staff CRUD, student submit-once, single-field queries only — no composite index)
+components/TeachingScreen.js  # 📖 Teaching module MVP: lessons + assignments + submissions/grading (staff CRUD, student submit-once, single-field queries only — no composite index) + TeachErrorBoundary (white-screen guard) + 🌱 samples seed
 components/dictionaryData/    # ~1330 trilingual words: n5_nouns(274)/n5_verbs(113)/n5_adjectives(100)/n5_others(107)/n4_words(285)/n3(208)/n2(148)/n1(96) + fullDictionary.js (sample 9 w/ images) + index.js (merge/dedupe/normalizeImportEntry). Validated: scripts Temp count_dict.py + dupe_detail.py + dedupe_files.py + sanity_dict.py (0 dupes, readings present) + check_quiz.py.
 # Coverage aligned with standard JLPT lists (ref: OpenJLPT CC BY-SA 4.0 — Myanmar glosses are original, not copied). OpenJLPT totals for reference: N5 662 / N4 632 / N3 1784 / N2 1793 / N1 3463 (8,334 words). Our coverage ≈ N5 88% / N4 45% / N3 12% / N2 8% / N1 3% — N3-N1 gaps remain (bulk import via app Import + teacher Myanmar review).
 # Schema: {id, japanese, reading(kana), myanmar, english, pos, level}. Old rows may use {hiragana}/{icon} — UI handles both.
@@ -174,6 +174,12 @@ firebase deploy --only hosting
 - **Photo submit**: student can attach 1 photo (expo-image-picker, quality 0.4, base64 cap ~500KB → reject with message) stored as `photo` data-uri on submission doc; shown in own view + staff grading view. Same base64-in-Firestore pattern as avatars (cost note P2-9 applies; Storage still Blaze-blocked).
 - **Grade stats** (staff, per assignment): submitted / graded / avg-of-numeric / pending counts, computed client-side.
 - Safety: `git tag pre-round5` before edits (rollback = `git reset --hard pre-round5` + redeploy); export caught 1 brace error pre-deploy, fixed, re-export clean → hosting deployed → pushed. No `firestore.rules` change this round (rules deploy skipped).
+
+### 6.10 Teaching fix round (2026-10-06) — spinner + blank screen + samples
+- **Bug 1 — spinner ကြာ**: `fetchAll` が queries 4-5 ခု sequential + staff ဆို `users` **အကုန်လုံး (photoURL base64 ~MBs)** ကို mount/refresh/open/save တိုင်း ဆွဲနေလို့. Fix: lessons+assignments `Promise.all` parallel; users directory → editor ဖွင့်မှ lazy-load + **photoURL မသိမ်း (id/name/email/role only)**; own level → mount-once effect; + 15s loading safety timeout (spinner အမြဲမလည်).
+- **Bug 2 — Assignments နှိပ်ရင် white screen**: render throw တက်ရင် boundary မရှိလို့ tab တခုလုံး ဖြူသွားတာ. Fix: `TeachErrorBoundary` (class, inline error + 🔄 Retry, `key={seg}`) + `safeArr` guards (lessons/assigns/subs/opened/targetUids). Exact throw line မမျိုးနိုင်ခဲ့ (local repro မရ) — ဒါပေမယ့် ဖြစ်နိုင်ခြေလမ်းအားလုံး ကာကွယ် + boundary ခံ → header/tabs ဘယ်တော့မှ မပျောက်။
+- **Samples (staff 🌱 one-tap, fixed IDs, skip-existing)**: `components/teachingSeed.js` — lessons 3 (あ-row + self-intro pattern + te-form作り方, all original) + assignments 3 (seed_a1 all/N5 self-intro ✍️ + seed_a2 N5-level family + seed_a3 N4-level diary). Empty-state မှာ staff only 🌱 button. Seeding logs activity.
+- Verify: export clean (677 modules) → hosting deployed → pushed. Ctrl+F5 ပြီး `/teaching` ပြန်စမ်းရန်။
 
 ## 7. Lesson Learned (နောင် AI/dev သတိထားရန်)
 
