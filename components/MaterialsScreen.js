@@ -2,7 +2,9 @@
 // Teacher shares from THEIR own Google Drive app (Anyone-with-link viewer) → pastes link here.
 // Firestore `materials`: {title, desc, level, type, url, createdBy, createdByName, createdAt, updatedAt}
 // Rules: read signed-in, write staff(teacher/admin). No Drive API needed.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as Speech from 'expo-speech';
+import { ESSAYS } from './essayData';
 import { StyleSheet, Text, View, TextInput, FlatList, TouchableOpacity, Modal, Alert, Linking, Platform, ScrollView } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Video, ResizeMode } from 'expo-av';
@@ -85,6 +87,8 @@ const mT = {
     header: '📚 စာကြည့်တိုက်', searchPh: 'ခေါင်းစဉ်ရှာရန်...', all: 'အားလုံး',
     add: '➕ အသစ်', edit: 'ပြင်မည်', del: 'ဖျက်မည်', open: 'ဖွင့်ကြည့်မည် ↗',
     empty: 'သင်ခန်းစာ မရှိသေးပါ။',
+    segLib: '📚 စာကြည့်တိုက်', segEssay: '📖 Essay & သီချင်း',
+    backToList: '← စာရင်း', essPlayAll: '▶️ အစဆုံးဖွင့်',
     mTitle: 'ခေါင်းစဉ်:', mTitlePh: 'ဥပမာ - N5 Kanji Worksheet 1',
     mDesc: 'ရှင်းလင်းချက်:', mDescPh: 'အကျဉ်းရေးပါ...',
     mLevel: 'Level:', mType: 'အမျိုးအစား:', mUrl: 'Google Drive Link:',
@@ -108,6 +112,8 @@ const mT = {
     header: '📚 Library', searchPh: 'Search titles...', all: 'All',
     add: '➕ New', edit: 'Edit', del: 'Delete', open: 'Open ↗',
     empty: 'No materials yet.',
+    segLib: '📚 Library', segEssay: '📖 Essays & Songs',
+    backToList: '← List', essPlayAll: '▶️ Play all',
     mTitle: 'Title:', mTitlePh: 'e.g. N5 Kanji Worksheet 1',
     mDesc: 'Description:', mDescPh: 'Short description...',
     mLevel: 'Level:', mType: 'Type:', mUrl: 'Google Drive Link:',
@@ -131,6 +137,8 @@ const mT = {
     header: '📚 資料室', searchPh: 'タイトル検索...', all: 'すべて',
     add: '➕ 新規', edit: '編集', del: '削除', open: '開く ↗',
     empty: '資料なし。',
+    segLib: '📚 資料', segEssay: '📖 エッセイ・歌',
+    backToList: '← 一覧', essPlayAll: '▶️ 全部再生',
     mTitle: 'タイトル:', mTitlePh: '例 - N5漢字ワークシート1',
     mDesc: '説明:', mDescPh: '短く書く...',
     mLevel: 'レベル:', mType: '種類:', mUrl: 'Googleドライブリンク:',
@@ -202,6 +210,82 @@ export default function MaterialsScreen({ user, onLogout, navigation }) {
   const [editId, setEditId] = useState(null);
   const [viewer, setViewer] = useState(null); // {title, resolved}
   const videoRef = React.useRef(null);
+
+  // 📖 Essay & Songs reader — continuous sentence listening (JA → MM per line)
+  const [essMode, setEssMode] = useState('lib'); // lib | essay
+  const [readerEssay, setReaderEssay] = useState(null);
+  const [essIdx, setEssIdx] = useState(-1);
+  const [essPlaying, setEssPlaying] = useState(false);
+  const essRef = useRef({ active: false, idx: 0, timer: null });
+  const essListRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      const p = essRef.current;
+      p.active = false;
+      if (p.timer) clearTimeout(p.timer);
+      try { Speech.stop(); } catch (e) {}
+    };
+  }, []);
+
+  const stopEss = () => {
+    const p = essRef.current;
+    p.active = false;
+    if (p.timer) { clearTimeout(p.timer); p.timer = null; }
+    try { Speech.stop(); } catch (e) {}
+    setEssPlaying(false);
+    setEssIdx(-1);
+  };
+
+  const nextEss = (essay, i) => {
+    if (!essRef.current.active) return;
+    essRef.current.timer = setTimeout(() => speakEssLine(essay, i + 1), 650);
+  };
+
+  const speakEssLine = (essay, i) => {
+    const p = essRef.current;
+    if (!p.active || !essay) return;
+    if (i >= essay.lines.length) { stopEss(); return; }
+    p.idx = i;
+    setEssIdx(i);
+    try {
+      if (essListRef.current && essListRef.current.scrollToIndex) {
+        essListRef.current.scrollToIndex({ index: i, viewPosition: 0.25, animated: true });
+      }
+    } catch (e) {}
+    const L = essay.lines[i];
+    try {
+      Speech.speak(L.ja, {
+        language: 'ja', rate: 0.85,
+        onDone: () => {
+          if (!essRef.current.active) return;
+          try {
+            Speech.speak(L.mm, {
+              language: 'my', rate: 0.95,
+              onDone: () => nextEss(essay, i),
+              onError: () => nextEss(essay, i),
+            });
+          } catch (e) { nextEss(essay, i); }
+        },
+        onError: () => nextEss(essay, i),
+      });
+    } catch (e) { nextEss(essay, i); }
+  };
+
+  const playEssFrom = (essay, i) => {
+    stopEss();
+    if (!essay || !essay.lines.length) return;
+    essRef.current.active = true;
+    setEssPlaying(true);
+    speakEssLine(essay, Math.max(0, i));
+  };
+
+  const openEssay = (essay) => {
+    stopEss();
+    essRef.current.idx = 0;
+    setEssIdx(-1);
+    setReaderEssay(essay);
+  };
   const [fTitle, setFTitle] = useState('');
   const [fDesc, setFDesc] = useState('');
   const [fLevel, setFLevel] = useState('N5');
@@ -318,6 +402,25 @@ export default function MaterialsScreen({ user, onLogout, navigation }) {
         ) : null}
       />
 
+      {/* 📚 Library | 📖 Essay & Songs */}
+      <View style={{ flexDirection: 'row', paddingHorizontal: 12, paddingTop: 8 }}>
+        {[
+          { k: 'lib', label: t.segLib },
+          { k: 'essay', label: t.segEssay },
+        ].map((s) => (
+          <TouchableOpacity
+            key={s.k}
+            style={[styles.segBtn, essMode === s.k && styles.segBtnActive]}
+            onPress={() => { stopEss(); setReaderEssay(null); setEssMode(s.k); }}
+          >
+            <Text style={[styles.segText, essMode === s.k && styles.segTextActive]}>{s.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {essMode === 'lib' ? (
+      <>
+
       <View style={styles.searchRow}>
         <Text style={{ fontSize: 16, marginRight: 6 }}>🔍</Text>
         <TextInput style={styles.searchInput} placeholder={t.searchPh} placeholderTextColor="#999" value={q} onChangeText={setQ} />
@@ -378,6 +481,86 @@ export default function MaterialsScreen({ user, onLogout, navigation }) {
             </View>
           )}
         />
+      )}
+      </>
+      ) : !readerEssay ? (
+        <FlatList
+          data={ESSAYS}
+          keyExtractor={(e) => e.id}
+          contentContainerStyle={{ padding: 12 }}
+          renderItem={({ item: e }) => (
+            <TouchableOpacity style={styles.card} onPress={() => openEssay(e)} activeOpacity={0.85}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 28, marginRight: 10 }}>{e.kind === 'song' ? '🎵' : '📖'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>{e.title}</Text>
+                  <Text style={styles.cardDesc}>{e.level} • {e.lines.length} lines</Text>
+                </View>
+                <Text style={{ fontSize: 20 }}>▶️</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      ) : (
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8 }}>
+            <TouchableOpacity
+              style={{ backgroundColor: '#EEE', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, marginRight: 8 }}
+              onPress={() => { stopEss(); setReaderEssay(null); }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: 'bold' }}>{t.backToList}</Text>
+            </TouchableOpacity>
+            <Text style={[styles.cardTitle, { flex: 1 }]} numberOfLines={1}>
+              {readerEssay.kind === 'song' ? '🎵' : '📖'} {readerEssay.title}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 8 }}>
+            {!essPlaying ? (
+              <TouchableOpacity
+                style={[styles.openBtn, { flex: 1, backgroundColor: '#7B1FA2' }]}
+                onPress={() => {
+                  essRef.current.active = true;
+                  setEssPlaying(true);
+                  const p = essRef.current;
+                  p.idx = 0;
+                  speakEssLine(readerEssay, 0);
+                }}
+              >
+                <Text style={styles.openBtnText}>{t.essPlayAll} ({readerEssay.lines.length})</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.openBtn, { flex: 1, backgroundColor: '#555' }]}
+                onPress={stopEss}
+              >
+                <Text style={styles.openBtnText}>⏹️</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <FlatList
+            ref={essListRef}
+            data={readerEssay.lines}
+            keyExtractor={(_, i) => String(i)}
+            contentContainerStyle={{ padding: 12, paddingTop: 0 }}
+            renderItem={({ item: L, index }) => (
+              <TouchableOpacity
+                style={[styles.card, index === essIdx && essPlaying && styles.playingLine]}
+                onPress={() => {
+                  stopEss();
+                  essRef.current.active = true;
+                  setEssPlaying(true);
+                  speakEssLine(readerEssay, index);
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.lineJA}>{L.ja}</Text>
+                {!!L.reading && <Text style={styles.lineReading}>{L.reading}</Text>}
+                <Text style={styles.lineMM}>🇲🇲 {L.mm}</Text>
+                {index === essIdx && essPlaying && <Text style={styles.nowBadge}>🔊</Text>}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
       )}
 
       <Modal visible={modal} animationType="slide" transparent={true}>
@@ -487,6 +670,15 @@ const styles = StyleSheet.create({
   searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', margin: 10, marginBottom: 0, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: '#DDD' },
   searchInput: { flex: 1, fontSize: 13, color: '#333' },
   chipRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8 },
+  segBtn: { flex: 1, paddingVertical: 7, borderRadius: 16, alignItems: 'center', marginHorizontal: 3, backgroundColor: '#F0F0F0' },
+  segBtnActive: { backgroundColor: '#D32F2F' },
+  segText: { fontSize: 12, fontWeight: 'bold', color: '#666' },
+  segTextActive: { color: '#FFF' },
+  playingLine: { borderColor: '#7B1FA2', borderWidth: 2, backgroundColor: '#F9F1FF' },
+  lineJA: { fontSize: 15, fontWeight: 'bold', color: '#222', lineHeight: 23 },
+  lineReading: { fontSize: 12, color: '#888', marginTop: 2 },
+  lineMM: { fontSize: 13, color: '#333', marginTop: 5, lineHeight: 19 },
+  nowBadge: { position: 'absolute', top: 8, right: 10, fontSize: 16 },
   chipRow2: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 2 },
   chip: { paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1, borderColor: '#DDD', borderRadius: 14, marginRight: 6, marginBottom: 6, backgroundColor: '#FFF' },
   chipActive: { backgroundColor: '#D32F2F', borderColor: '#D32F2F' },
