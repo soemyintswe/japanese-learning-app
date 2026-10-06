@@ -65,6 +65,14 @@ service cloud.firestore {
       );
     }
 
+    // Banned/deleted accounts — true delete without Admin SDK:
+    // delete flow writes banned/{uid}; login checks it first and refuses.
+    // Email re-register with same address is ALSO blocked (email check).
+    match /banned/{docId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdminRole();
+    }
+
     // Shared teacher materials (teacher's Drive links) — read all signed-in, write staff
     match /materials/{docId} {
       allow get, list: if isSignedIn();

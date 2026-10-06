@@ -39,6 +39,22 @@ async function findProfilesByEmail(email) {
 export async function resolveUserProfile(fbUser, defaultName) {
   const email = fbUser.email || '';
   const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  // Banned/deleted account? (uid OR email match) — refuse before anything else
+  try {
+    const bDirect = await getDoc(doc(db, 'banned', fbUser.uid));
+    let banned = bDirect.exists();
+    if (!banned && email) {
+      const be = await getDocs(query(collection(db, 'banned'), where('email', '==', email)));
+      banned = !be.empty;
+    }
+    if (banned) {
+      return { banned: true, isAdmin: false, firestoreOk: true, name: '', role: '', status: '', photoURL: null, hasPassword: false, mustChangePassword: false };
+    }
+  } catch (e) {
+    // check failed (offline/rules) → do NOT block login on uncertainty; continue normal resolve
+    console.log('Ban check skipped:', e.message);
+  }
   let profile = {
     name: defaultName || fbUser.displayName || (email.includes('@') ? email.split('@')[0] : 'User'),
     role: isAdmin ? 'teacher' : 'student',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   GoogleAuthProvider,
@@ -15,6 +15,33 @@ import {
 import { auth } from '../src/firebase';
 import { resolveUserProfile } from '../src/session';
 import { useLanguage } from '../src/LanguageContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const CONSENT_KEY = '@japanese_privacy_consent_v1';
+
+const POLICY = {
+  my: {
+    title: '🔒 Privacy Policy (ကိုယ်ရေးအချက်အလက် မူဝါဒ)',
+    body: '1) စုဆောင်းတာ: အမည်, Email, ဖုန်း, မွေးနေ့, ကျား/မ, ပညာ, ဂျပန်အဆင့်, bio, ဓာတ်ပုံ, စာများ/အသံများ (chat), လေ့လာမှုမှတ်တမ်း။\n\n2) သုံးတာ: ပညာရေးဝန်ဆောင်မှု (အတန်းစီမံမှု, တိုးတက်မှုကြည့်မှု, အပြန်အလှန်ဆက်သွယ်မှု) အတွက်သာ။\n\n3) မြင်နိုင်သူ: Public profile (နာမည်/ပုံ/bio) ကို login ဝင်ထားသူများ မြင်နိုင်; ဖုန်း/မွေးနေ့ ကို Admin + ကိုယ်တိုင်သာ; Private ပိတ်ထားရင် အသေးစိတ်မပြ။\n\n4) အခွင့်အရေး: ပြင်/ဖျက်ခိုင်းနိုင် (Profile ပြင်, Admin ကို အကောင့်ဖျက်ခိုင်း)။ Admin: soemyintswe@gmail.com',
+    agree: 'သဘောတူပြီး ဆက်လုပ်မည် ✅', close: 'ပိတ်မည်',
+    consent: 'Privacy Policy ကို ဖတ်၍ သဘောတူပါတယ်',
+    need: 'ဆက်လုပ်ဖို့ Privacy Policy ကို အရင် သဘောတူပေးပါ။',
+  },
+  en: {
+    title: '🔒 Privacy Policy',
+    body: '1) Collected: name, email, phone, birthdate, gender, education, Japanese level, bio, photo, chat messages/voice, study records.\n\n2) Used only for education services (classes, progress, communication).\n\n3) Visible to: public profile (name/photo/bio) to signed-in users; phone/birthdate to admin + self only; private profiles hidden.\n\n4) Rights: edit anytime; request account deletion via admin: soemyintswe@gmail.com',
+    agree: 'Agree & Continue ✅', close: 'Close',
+    consent: 'I have read and agree to the Privacy Policy',
+    need: 'Please agree to the Privacy Policy first.',
+  },
+  jp: {
+    title: '🔒 プライバシーポリシー',
+    body: '1) 収集: 名前、Email、電話、生年月日、性別、学歴、日本語レベル、自己紹介、写真、チャット、学習記録。\n\n2) 教育サービスのみに利用。\n\n3) 公開プロフィールはログインユーザーに表示。電話・生年月日は管理者＋本人のみ。\n\n4) 削除依頼: soemyintswe@gmail.com',
+    agree: '同意して続ける ✅', close: '閉じる',
+    consent: 'プライバシーポリシーに同意します',
+    need: '先に同意してください。',
+  },
+};
 
 const translations = {
   my: {
@@ -80,6 +107,34 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
   // မှားရင် မှားကြောင်း အမြဲ မြင်ရမယ်
   const [errorMsg, setErrorMsg] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [policyVisible, setPolicyVisible] = useState(false);
+  const policy = POLICY[lang] || POLICY.my;
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const v = await AsyncStorage.getItem(CONSENT_KEY);
+        if (v === 'yes') setConsent(true);
+      } catch (e) {}
+    })();
+  }, []);
+
+  const needConsent = () => {
+    if (consent) return false;
+    showError('⚠️ ' + policy.need);
+    setPolicyVisible(true);
+    return true;
+  };
+
+  const agreePolicy = async () => {
+    try {
+      await AsyncStorage.setItem(CONSENT_KEY, 'yes');
+    } catch (e) {}
+    setConsent(true);
+    setPolicyVisible(false);
+    clearMsg();
+  };
 
   // App.js က ပို့တဲ့ notice (ဥပမာ pending approve စောင့်နေတာ) ကို ပြမယ်
   useEffect(() => {
@@ -145,6 +200,7 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
   // Firestore users/{uid} မှာ status=active ဖြစ်မှသာ ဝင်ခွင့်ပေးမယ်
   const handleAuthAction = async () => {
     if (step !== 'login') return;
+    if (needConsent()) return;
 
     const loginEmail = (email.trim() || username.trim()).trim();
     if (!loginEmail || !password.trim()) {
@@ -165,6 +221,12 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
 
       // Firestore profile resolve (uid doc → email placeholder adopt → admin auto-active)
       const p = await resolveUserProfile(fbUser);
+
+      if (p.banned) {
+        await signOut(auth);
+        showError('⛔ ဤအကောင့်ကို ပိတ်ထားပြီးပါပြီ (Admin ဆုံးဖြတ်)။ Admin ကို ဆက်သွယ်ပါ။');
+        return;
+      }
 
       if (!p.isAdmin && p.status !== 'active') {
         await signOut(auth);
@@ -246,6 +308,7 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
   const [regLoading, setRegLoading] = useState(false);
 
   const handleEmailRegister = async () => {
+    if (needConsent()) return;
     const name = regName.trim();
     const rEmail = regEmail.trim();
     if (!name) {
@@ -270,6 +333,12 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
       try {
         await updateProfile(fbUser, { displayName: name });
       } catch (e) {}
+
+      if (p.banned) {
+        await signOut(auth);
+        showError('⛔ ဤအကောင့်ကို ပိတ်ထားပြီးပါပြီ (Admin ဆုံးဖြတ်)။ Admin ကို ဆက်သွယ်ပါ။');
+        return;
+      }
 
       if (!p.isAdmin && p.status !== 'active') {
         await signOut(auth);
@@ -309,6 +378,12 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
   const processGoogleUser = async (user) => {
     const p = await resolveUserProfile(user);
 
+    if (p.banned) {
+      await signOut(auth);
+      showError('⛔ ဤအကောင့်ကို ပိတ်ထားပြီးပါပြီ (Admin ဆုံးဖြတ်)။ Admin ကို ဆက်သွယ်ပါ။');
+      return;
+    }
+
     if (!p.isAdmin && p.status !== 'active') {
       await signOut(auth);
       showInfo(
@@ -337,6 +412,7 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
   // Google ဖြင့် Register / ဝင်ရောက်ခြင်း နှင့် Status စစ်ဆေးခြင်း
   // NOTE: signInWithPopup က Web (browser) မှာသာ အလုပ်လုပ်ပါတယ်။
   const handleGoogleRegister = async () => {
+    if (needConsent()) return;
     if (Platform.OS !== 'web') {
       showError('Web မှာသာ ရပါတယ် 🌐 — Google Login က ဖုန်း App (Expo Go) မှာ တိုက်ရိုက်မရသေးပါ။ ကွန်ပျူတာ Browser (https://japanese-mksedu.web.app) ကနေ ဝင်ပါ၊ သို့မဟုတ် Email + Password နဲ့ Login ဝင်ပါ။');
       return;
@@ -441,6 +517,25 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
                   </TouchableOpacity>
                 </View>
 
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}
+                  onPress={() => setPolicyVisible(true)}
+                >
+                  <TouchableOpacity onPress={async () => {
+                    const v = !consent;
+                    setConsent(v);
+                    try {
+                      await AsyncStorage.setItem(CONSENT_KEY, v ? 'yes' : 'no');
+                    } catch (e) {}
+                    if (v) clearMsg();
+                  }}>
+                    <Text style={{ fontSize: 18 }}>{consent ? '☑️' : '⬜'}</Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.switchText, { marginLeft: 6, flex: 1 }]} onPress={() => setPolicyVisible(true)}>
+                    {policy.consent}
+                  </Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity style={styles.submitBtn} onPress={handleAuthAction}>
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{t.loginBtn}</Text>}
                 </TouchableOpacity>
@@ -519,6 +614,25 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
                 />
 
                 <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
+                  onPress={() => setPolicyVisible(true)}
+                >
+                  <TouchableOpacity onPress={async () => {
+                    const v = !consent;
+                    setConsent(v);
+                    try {
+                      await AsyncStorage.setItem(CONSENT_KEY, v ? 'yes' : 'no');
+                    } catch (e) {}
+                    if (v) clearMsg();
+                  }}>
+                    <Text style={{ fontSize: 18 }}>{consent ? '☑️' : '⬜'}</Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.switchText, { marginLeft: 6, flex: 1 }]} onPress={() => setPolicyVisible(true)}>
+                    {policy.consent}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   style={[styles.submitBtn, { backgroundColor: '#2E7D32' }]}
                   onPress={handleEmailRegister}
                   disabled={regLoading}
@@ -553,6 +667,32 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 🔒 Privacy Policy modal */}
+      <Modal visible={policyVisible} animationType="slide" transparent={true}>
+        <View style={styles.policyOverlay}>
+          <View style={styles.policyBox}>
+            <Text style={styles.policyTitle}>{policy.title}</Text>
+            <ScrollView style={{ maxHeight: 320 }}>
+              <Text style={styles.policyBody}>{policy.body}</Text>
+            </ScrollView>
+            <View style={{ flexDirection: 'row', marginTop: 14 }}>
+              <TouchableOpacity
+                style={[styles.policyBtn, { backgroundColor: '#E0E0E0', marginRight: 6 }]}
+                onPress={() => setPolicyVisible(false)}
+              >
+                <Text style={[styles.policyBtnText, { color: '#333' }]}>{policy.close}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.policyBtn, { backgroundColor: '#2E7D32', marginLeft: 6 }]}
+                onPress={agreePolicy}
+              >
+                <Text style={styles.policyBtnText}>{policy.agree}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -588,4 +728,10 @@ const styles = StyleSheet.create({
   errorText: { color: '#C62828', fontSize: 12, lineHeight: 17 },
   infoBox: { backgroundColor: '#E3F2FD', borderWidth: 1, borderColor: '#90CAF9', borderRadius: 8, padding: 10, marginTop: 8, marginBottom: 4 },
   infoText: { color: '#1565C0', fontSize: 12, lineHeight: 17 },
+  policyOverlay: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.55)', padding: 20 },
+  policyBox: { backgroundColor: '#FFF', borderRadius: 12, padding: 18 },
+  policyTitle: { fontSize: 15, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
+  policyBody: { fontSize: 12, color: '#333', lineHeight: 19 },
+  policyBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  policyBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
 });

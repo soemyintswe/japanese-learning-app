@@ -35,7 +35,8 @@ function firestoreErrorMsg(error, actionName) {
 
 // Firebase ချိတ်ဆက်မှု
 import { db, auth, firebaseConfig } from '../src/firebase';
-import { collection, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
+import * as ExpoSharing from 'expo-sharing';
 import { initializeApp, deleteApp } from 'firebase/app';
 import {
   updatePassword, getAuth, createUserWithEmailAndPassword,
@@ -94,6 +95,10 @@ const teacherT = {
     resetGo: 'Reset လုပ်မည်', resetNoAuth: 'မှာ Auth အကောင့် မရှိသေးဘူး — temp password နဲ့ login အသစ် ဖန်တီးပေးမလား?',
     resetCreateGo: 'ဖန်တီးပေးမည်',
     tipReset: 'Password reset — reset email ပို့ + နောက် login မှာ ပြောင်းခိုင်း',
+    backupBtn: 'Backup', backupDone: 'Backup သိမ်းပြီးပါပြီ ✅',
+    bannedTitle: '⛔ ပိတ်ထားသောအကောင့်များ', bannedEmpty: 'ပိတ်ထားတာ မရှိပါ။',
+    unbanQ: 'ပြန်ဖွင့်ပေးမလား?', unbanMsg: 'ပိတ်ထားမှုကို ရုပ်သိမ်းပြီး ပြန် register/login ဝင်ခွင့်ပေးမယ်။',
+    unbanGo: 'ပြန်ဖွင့်မည်', unbannedOk: 'ပြန်ဖွင့်ပြီးပါပြီ ✅ — အကောင့်အသစ်မှတ်ပုံတင်/ဝင်နိုင်ပြီ။',
     errPwShort: 'Password အနည်းဆုံး ၆ လုံး ဖြစ်ရမယ်။',
     errEmailInvalid: 'Email ပုံစံမှားနေပါတယ်။',
     errExists: 'ဤ Email နဲ့ Auth အကောင့်ရှိပြီးသား — Login ဝင်ခိုင်း သို့မဟုတ် 🔑 Reset သုံးပါ။',
@@ -149,6 +154,10 @@ const teacherT = {
     resetGo: 'Reset', resetNoAuth: 'has no Auth account yet — create login with temp password now?',
     resetCreateGo: 'Create it',
     tipReset: 'Password reset — send reset email + force change',
+    backupBtn: 'Backup', backupDone: 'Backup saved ✅',
+    bannedTitle: '⛔ Banned accounts', bannedEmpty: 'None banned.',
+    unbanQ: 'Unban?', unbanMsg: 'Lift the ban — they can register/log in again.',
+    unbanGo: 'Unban', unbannedOk: 'Unbanned ✅',
     errPwShort: 'Password must be at least 6 characters.',
     errEmailInvalid: 'Invalid email format.',
     errExists: 'Auth account already exists — ask them to log in, or use 🔑 Reset.',
@@ -204,6 +213,10 @@ const teacherT = {
     resetGo: '実行', resetNoAuth: 'Authなし — 仮パスで新規作成しますか？',
     resetCreateGo: '作成',
     tipReset: 'パスワードリセット',
+    backupBtn: 'Backup', backupDone: '保存 ✅',
+    bannedTitle: '⛔ 停止中', bannedEmpty: 'なし。',
+    unbanQ: '解除しますか？', unbanMsg: '再登録可能にします。',
+    unbanGo: '解除', unbannedOk: '解除 ✅',
     errPwShort: '6文字以上。',
     errEmailInvalid: '形式エラー。',
     errExists: '既存あり — ログインか🔑リセットを。',
@@ -638,6 +651,120 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
   };
 
   // User အကောင့်ကို ဖျက်ခြင်း (in-app confirm modal)
+  const [bannedList, setBannedList] = useState([]);
+  const [showBanned, setShowBanned] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // 📥 Admin one-click full backup (DR) — users/chats(last100 msgs, no voice)/materials/settings/banned.
+  // Photos (base64) + voice clips omitted for size (note in file).
+  const handleBackupAll = async () => {
+    if (!isAdmin || exporting) return;
+    setExporting(true);
+    try {
+      const noBig = (o) => {
+        const c = { ...o };
+        if (typeof c.photoURL === 'string' && c.photoURL.startsWith('data:')) c.photoURL = '(base64-avatar-omitted)';
+        return c;
+      };
+      const us = await getDocs(collection(db, 'users'));
+      const users = [];
+      us.forEach((d) => users.push(noBig({ id: d.id, ...d.data() })));
+      const cs = await getDocs(collection(db, 'chats'));
+      const chats = [];
+      for (const c of cs.docs) {
+        const cd = { id: c.id, ...c.data() };
+        try {
+          const ms = await getDocs(query(collection(db, 'chats', c.id, 'messages'), orderBy('at', 'desc'), limit(100)));
+          const arr = [];
+          ms.forEach((m) => arr.push({ id: m.id, ...m.data() }));
+          cd.messages = arr.reverse();
+        } catch (e) {
+          cd.messages = [];
+        }
+        chats.push(cd);
+      }
+      const ms2 = await getDocs(collection(db, 'materials'));
+      const materials = [];
+      ms2.forEach((d) => materials.push({ id: d.id, ...d.data() }));
+      let teacherBio = null;
+      try {
+        const bs = await getDoc(doc(db, 'settings', 'teacherBio'));
+        if (bs.exists()) teacherBio = bs.data();
+      } catch (e) {}
+      const bn = await getDocs(collection(db, 'banned'));
+      const banned = [];
+      bn.forEach((d) => banned.push({ id: d.id, ...d.data() }));
+      const payload = JSON.stringify({
+        app: 'JapaneseStudyPlanner-backup', version: 1,
+        exportedAt: new Date().toISOString(), exportedBy: currentUser?.email || '',
+        note: 'photos(base64) and voice clips omitted for size',
+        counts: { users: users.length, chats: chats.length, materials: materials.length, banned: banned.length },
+        users, chats, materials, settings: { teacherBio }, banned,
+      }, null, 2);
+      const fileName = `mks-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const blob = new Blob([payload], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      } else {
+        const FS = require('expo-file-system');
+        const file = new FS.File(FS.Paths.cache, fileName);
+        const writable = file.writableStream();
+        const writer = writable.getWriter();
+        await writer.write(new TextEncoder().encode(payload));
+        await writer.close();
+        if (await ExpoSharing.isAvailableAsync()) {
+          await ExpoSharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Backup' });
+        } else {
+          throw new Error('share-unavailable');
+        }
+      }
+      showInfo(t.ok, `${t.backupDone || ''} (${users.length}/${chats.length}/${materials.length})`);
+    } catch (e) {
+      showInfo(t.err, String(e.message || e));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const fetchBanned = async () => {
+    if (!isAdmin) return;
+    try {
+      const snap = await getDocs(collection(db, 'banned'));
+      const arr = [];
+      snap.forEach((d) => arr.push({ id: d.id, ...d.data() }));
+      setBannedList(arr);
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (isAdmin) fetchBanned();
+  }, [isAdmin]);
+
+  const handleUnban = (b) => {
+    setConfirm({
+      title: t.unbanQ || t.delQ,
+      message: `"${b.name || b.email || ''}" — ${t.unbanMsg || ''}`,
+      confirmText: t.unbanGo || t.yesDel,
+      cancelText: t.noDel,
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'banned', b.id));
+          setConfirm({ title: t.ok, message: t.unbannedOk || '', info: true });
+          fetchBanned();
+        } catch (error) {
+          setConfirm({ title: t.err, message: firestoreErrorMsg(error, t.delQ), info: true });
+        }
+      },
+    });
+  };
+
   const handleDeleteUser = (userId, userName) => {
     if (!isAdmin) return;
     setConfirm({
@@ -649,9 +776,22 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
       onConfirm: async () => {
         setBusyId(userId);
         try {
+          // profile doc + ban record (Auth account cannot be deleted client-side —
+          // ban blocks re-login AND re-register with same email)
+          const target = usersList.find((u) => u.id === userId) || {};
           await deleteDoc(doc(db, 'users', userId));
+          try {
+            await setDoc(doc(db, 'banned', userId), {
+              uid: userId,
+              name: target.name || userName || '',
+              email: (target.email || '').toLowerCase(),
+              at: new Date().toISOString(),
+              by: currentUser?.email || '',
+            });
+          } catch (e) {}
           setConfirm({ title: t.ok, message: t.deleted, info: true });
           fetchUsersFromFirestore(true);
+          fetchBanned();
         } catch (error) {
           setConfirm({ title: t.err, message: firestoreErrorMsg(error, t.delQ), info: true });
         } finally {
@@ -710,6 +850,9 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <Text style={[styles.cardTitle, { color: '#D32F2F', flex: 1 }]}>{t.adminTitle}</Text>
 
+              <TouchableOpacity style={[styles.addUserBtnHeader, { backgroundColor: '#455A64', marginRight: 6 }]} onPress={handleBackupAll} disabled={exporting}>
+                <Text style={styles.addUserBtnText}>{exporting ? '…' : `📥 ${t.backupBtn || 'Backup'}`}</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.addUserBtnHeader} onPress={() => setModalVisible(true)}>
                 <Text style={{ fontSize: 14, color: '#FFF', marginRight: 4 }}>👤➕</Text>
                 <Text style={styles.addUserBtnText}>{t.addUser}</Text>
@@ -799,6 +942,36 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                   </View>
                 );
               })
+            )}
+
+            {/* ⛔ Banned list + Unban */}
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}
+              onPress={() => setShowBanned(!showBanned)}
+            >
+              <Text style={[styles.cardTitle, { color: '#333', marginBottom: 0 }]}>
+                {showBanned ? '▼' : '▶'} {t.bannedTitle} ({bannedList.length})
+              </Text>
+            </TouchableOpacity>
+            {showBanned && (
+              bannedList.length === 0 ? (
+                <Text style={styles.noDataText}>{t.bannedEmpty}</Text>
+              ) : (
+                bannedList.map((b) => (
+                  <View key={b.id} style={[styles.tableRowItem, { backgroundColor: '#F5F5F5', borderRadius: 6, paddingHorizontal: 6 }]}>
+                    <View style={{ flex: 2, marginRight: 4 }}>
+                      <Text style={styles.studentName}>{b.name || 'No Name'}</Text>
+                      <Text style={styles.studentDate}>{b.email || 'N/A'}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.addUserBtnHeader, { backgroundColor: '#2E7D32' }]}
+                      onPress={() => handleUnban(b)}
+                    >
+                      <Text style={styles.addUserBtnText}>{t.unbanGo}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )
             )}
           </View>
         ) : (

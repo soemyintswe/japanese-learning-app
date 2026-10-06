@@ -205,6 +205,12 @@ function Main() {
           return;
         }
         const p = await resolveUserProfile(fbUser);
+        if (p.banned) {
+          await signOut(auth);
+          setUser(null);
+          setNotice('⛔ ဤအကောင့်ကို ပိတ်ထားပြီးပါပြီ (Admin ဆုံးဖြတ်)။');
+          return;
+        }
         if (!p.isAdmin && p.status !== 'active') {
           await signOut(auth);
           setUser(null);
