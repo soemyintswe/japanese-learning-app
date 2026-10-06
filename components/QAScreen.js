@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
+import * as Sharing from 'expo-sharing';
+import * as Clipboard from 'expo-clipboard';
 import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
 import BotPanel from './BotPanel';
@@ -44,6 +46,9 @@ const qaT = {
     errFill: 'မေးခွန်း + အဖြေ ၂ ခု ဖြည့်ပါ။',
     delTitle: 'သတိပေးချက်', delMsg: 'ဖျက်ရန် သေချာလား?', no: 'မဖျက်ပါ', yes: 'ဖျက်မည်',
     passBadge: 'အောင် ✅', failBadge: 'မအောင်',
+    impTitle: '📥 မေးခွန်း Import', impHelp: 'JSON paste (သို့) file ရွေး — [{question, options[], correctIndex, level}] ပုံစံ။',
+    impDo: 'ထည့်သွင်းမည်', impOk: 'Import ပြီးပါပြီ ✅', impNone: 'အသစ်မတွေ့ပါ။', impInvalid: 'JSON ပုံစံမှားနေပါတယ်။',
+    expDone: 'Export ပြီးပါပြီ ✅',
     micNeed: '🎤 Microphone ခွင့်ပြုချက် လိုပါတယ် — Settings မှာ ဖွင့်ပေးပါ။',
     ttsFail: 'အသံထွက်မရပါ (device TTS မရှိ) — စာဖတ်ပြီး လေ့ကျင့်ပါ။',
   },
@@ -77,6 +82,9 @@ const qaT = {
     errFill: 'Fill question + 2 answers.',
     delTitle: 'Warning', delMsg: 'Delete?', no: 'No', yes: 'Delete',
     passBadge: 'PASS ✅', failBadge: '—',
+    impTitle: '📥 Import Questions', impHelp: 'Paste JSON or pick a file — [{question, options[], correctIndex, level}].',
+    impDo: 'Import', impOk: 'Import done ✅', impNone: 'Nothing new.', impInvalid: 'Invalid JSON shape.',
+    expDone: 'Export done ✅',
     micNeed: '🎤 Microphone permission needed — enable in Settings.',
     ttsFail: 'No TTS voice on device — read instead.',
   },
@@ -110,6 +118,9 @@ const qaT = {
     errFill: '質問＋答え2つを入力。',
     delTitle: '確認', delMsg: '削除しますか？', no: 'いいえ', yes: '削除',
     passBadge: '合格 ✅', failBadge: '—',
+    impTitle: '📥 問題インポート', impHelp: 'JSONを貼付/選択 — [{question, options[], correctIndex, level}]。',
+    impDo: '取込', impOk: '取込完了 ✅', impNone: '新規なし。', impInvalid: 'JSON形式エラー。',
+    expDone: '書出完了 ✅',
     micNeed: '🎤 マイク許可が必要です。',
     ttsFail: 'TTS音声がありません。',
   }
@@ -397,6 +408,115 @@ export default function QAScreen({ user, onLogout, navigation }) {
     ]);
   };
 
+  // ---------- customs Export / Import (bulk via other-AI JSON) ----------
+  const [impVisible, setImpVisible] = useState(false);
+  const [impText, setImpText] = useState('');
+
+  const normalizeQuizEntry = (e, idx) => {
+    if (!e || typeof e !== 'object') return null;
+    const question = String(e.question || '').trim();
+    const options = Array.isArray(e.options) ? e.options.map(String).map((s) => s.trim()).filter(Boolean) : [];
+    const ci = Number(e.correctIndex);
+    if (!question || options.length < 2 || !(ci >= 0 && ci < options.length)) return null;
+    const lv = String(e.level || 'N5').toUpperCase();
+    return {
+      id: e.id ? String(e.id) : ('cq_' + Date.now().toString(36) + '_' + idx),
+      question, options, correctIndex: ci,
+      level: ['N5', 'N4', 'N3', 'N2', 'N1'].includes(lv) ? lv : 'N5',
+      skill: 'custom', custom: true, mediaUrl: String(e.mediaUrl || ''),
+      explanation: String(e.explanation || ''),
+    };
+  };
+
+  const doQuizImport = (text) => {
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      Alert.alert('⚠️', t.impInvalid);
+      return;
+    }
+    const arr = Array.isArray(parsed) ? parsed : parsed.questions;
+    if (!Array.isArray(arr)) {
+      Alert.alert('⚠️', t.impInvalid);
+      return;
+    }
+    const existing = new Set(customs.map((q) => `${q.question}||${(q.options || []).join('|')}`));
+    const fresh = [];
+    arr.forEach((e, idx) => {
+      const n = normalizeQuizEntry(e, idx);
+      if (!n) return;
+      const key = `${n.question}||${n.options.join('|')}`;
+      if (existing.has(key)) return;
+      existing.add(key);
+      fresh.push(n);
+    });
+    if (fresh.length === 0) {
+      Alert.alert('ℹ️', t.impNone);
+      return;
+    }
+    setCustoms([...customs, ...fresh]);
+    setImpText('');
+    setImpVisible(false);
+    Alert.alert('✅', `${t.impOk} (+${fresh.length})`);
+  };
+
+  const handleQuizPickFile = async () => {
+    try {
+      const DP = require('expo-document-picker');
+      const res = await DP.getDocumentAsync({ type: ['application/json', 'text/plain'], copyToCacheDirectory: true });
+      if (res.canceled) return;
+      const uri = res.assets && res.assets[0] ? res.assets[0].uri : null;
+      if (!uri) return;
+      const resp = await fetch(uri);
+      setImpText(await resp.text());
+    } catch (e) {
+      Alert.alert('⚠️', String(e.message || e));
+    }
+  };
+
+  const handleQuizExport = async () => {
+    const payload = JSON.stringify({
+      app: 'JapaneseStudyPlanner-quiz', version: 1,
+      exportedAt: new Date().toISOString(), count: customs.length, questions: customs,
+    }, null, 2);
+    const fileName = `quiz-custom-${customs.length}q.json`;
+    try {
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const blob = new Blob([payload], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        Alert.alert('✅', `${t.expDone} (${customs.length})`);
+      } else {
+        const FS = require('expo-file-system');
+        const file = new FS.File(FS.Paths.cache, fileName);
+        const writable = file.writableStream();
+        const writer = writable.getWriter();
+        await writer.write(new TextEncoder().encode(payload));
+        await writer.close();
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: t.customTitle });
+        } else {
+          throw new Error('share-unavailable');
+        }
+        Alert.alert('✅', `${t.expDone} (${customs.length})`);
+      }
+    } catch (e) {
+      try {
+        await Clipboard.setStringAsync(payload);
+        Alert.alert('✅', `${t.expDone} (${customs.length})`);
+      } catch (e2) {
+        Alert.alert('⚠️', String((e && e.message) || e));
+      }
+    }
+  };
+
   // ---------- render helpers ----------
   const renderMcqRound = () => {
     const qs = round.questions;
@@ -539,9 +659,17 @@ export default function QAScreen({ user, onLogout, navigation }) {
       <View style={[styles.levelCard, { marginTop: 12 }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={styles.levelCardTitle}>✏️ {t.customTitle} ({customs.length})</Text>
-          <TouchableOpacity style={styles.addButton} onPress={openAdd}>
-            <Text style={{ fontSize: 16, color: '#FFF' }}>➕</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity style={[styles.addButton, { backgroundColor: '#455A64', marginRight: 6 }]} onPress={() => setImpVisible(true)}>
+              <Text style={{ fontSize: 14, color: '#FFF' }}>📥</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.addButton, { backgroundColor: '#455A64', marginRight: 6 }]} onPress={handleQuizExport}>
+              <Text style={{ fontSize: 14, color: '#FFF' }}>📤</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.addButton} onPress={openAdd}>
+              <Text style={{ fontSize: 16, color: '#FFF' }}>➕</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         {customs.map((q) => (
           <View key={q.id} style={styles.customRow}>
@@ -841,6 +969,31 @@ export default function QAScreen({ user, onLogout, navigation }) {
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleSaveQuestion}>
                 <Text style={styles.saveBtnText}>{t.save}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={impVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t.impTitle}</Text>
+            <Text style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>{t.impHelp}</Text>
+            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#1976D2', marginBottom: 8 }]} onPress={handleQuizPickFile}>
+              <Text style={styles.saveBtnText}>📁 JSON</Text>
+            </TouchableOpacity>
+            <TextInput
+              style={[styles.input, { minHeight: 120, textAlignVertical: 'top' }]}
+              value={impText} onChangeText={setImpText} multiline
+              placeholder='[{"question":"…","options":["…"],"correctIndex":0,"level":"N5"}]'
+              placeholderTextColor="#999"
+            />
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setImpVisible(false)}>
+                <Text style={styles.cancelBtnText}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={() => doQuizImport(impText)}>
+                <Text style={styles.saveBtnText}>{t.impDo}</Text>
               </TouchableOpacity>
             </View>
           </View>

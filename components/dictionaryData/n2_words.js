@@ -150,4 +150,9 @@ export const n2Words = [
   { id: 'n2163', japanese: '浪費', reading: 'ろうひ', myanmar: 'ဖြုန်းတီးမှု', english: 'Waste / Extravagance', pos: 'noun', level: 'N2' },
   { id: 'n2164', japanese: '仲裁', reading: 'ちゅうさい', myanmar: 'ကြားဝင်ဖြန်ဖြေမှု', english: 'Arbitration / Mediation', pos: 'noun', level: 'N2' },
   { id: 'n2165', japanese: '権威', reading: 'けんい', myanmar: 'အာဏာတည်ရှိမှု', english: 'Authority / Prestige', pos: 'noun', level: 'N2' },
+  { id: 'n2166', japanese: '賢明', reading: 'けんめい', myanmar: 'ပညာရှိသော', english: 'Wise / Sagacious', pos: 'adj-na', level: 'N2' },
+  { id: 'n2167', japanese: '愚か', reading: 'おろか', myanmar: 'မိုက်မဲသော', english: 'Foolish', pos: 'adj-na', level: 'N2' },
+  { id: 'n2168', japanese: '大胆', reading: 'だいたん', myanmar: 'ရဲရင့်သော', english: 'Bold / Daring', pos: 'adj-na', level: 'N2' },
+  { id: 'n2169', japanese: '臆病', reading: 'おくびょう', myanmar: 'ကြောက်တတ်သော', english: 'Cowardly / Timid', pos: 'adj-na', level: 'N2' },
+  { id: 'n2170', japanese: '頑丈', reading: 'がんじょう', myanmar: 'ခိုင်ခံ့သော', english: 'Sturdy / Solid', pos: 'adj-na', level: 'N2' },
 ];

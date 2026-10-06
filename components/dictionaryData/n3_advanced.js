@@ -209,4 +209,9 @@ export const n3Advanced = [
   { id: 'n3277', japanese: '効率的', reading: 'こうりつてき', myanmar: 'စွမ်းဆောင်ရည်ကောင်းသော', english: 'Efficient', pos: 'adj-na', level: 'N3' },
   { id: 'n3278', japanese: '必然', reading: 'ひつぜん', myanmar: 'မလွဲမသွေဖြစ်ပေါ်မှု', english: 'Inevitable / Necessity', pos: 'noun', level: 'N3' },
   { id: 'n3279', japanese: '偶然', reading: 'ぐうぜん', myanmar: 'တိုက်ဆိုင်မှု', english: 'Coincidence', pos: 'noun', level: 'N3' },
+  { id: 'n3280', japanese: '辛抱', reading: 'しんぼう', myanmar: 'သည်းခံမှု', english: 'Patience / Endurance', pos: 'noun', level: 'N3' },
+  { id: 'n3281', japanese: '率直', reading: 'そっちょく', myanmar: 'ပွင့်လင်းရိုးသားသော', english: 'Frank / Candid', pos: 'adj-na', level: 'N3' },
+  { id: 'n3282', japanese: '快適', reading: 'かいてき', myanmar: 'သက်သောင့်သက်သာရှိသော', english: 'Comfortable', pos: 'adj-na', level: 'N3' },
+  { id: 'n3283', japanese: '退屈', reading: 'たいくつ', myanmar: 'ငြီးငွေ့မှု', english: 'Boredom / Tedium', pos: 'noun', level: 'N3' },
+  { id: 'n3284', japanese: '謙遜', reading: 'けんそん', myanmar: 'နှိမ့်ချမှု', english: 'Humility / Modesty', pos: 'noun', level: 'N3' },
 ];

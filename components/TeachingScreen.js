@@ -11,6 +11,8 @@ import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, Activi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
+import * as Sharing from 'expo-sharing';
+import * as Clipboard from 'expo-clipboard';
 import { db } from '../src/firebase';
 import { logActivity } from '../src/activity';
 import { useLanguage } from '../src/LanguageContext';
@@ -32,6 +34,9 @@ const teachT = {
     noGrade: 'အမှတ်မပေးရသေး', subs: 'တင်ထားသူများ', delQ: 'ဖျက်မှာလား?', yesDel: 'ဖျက်မည်', noDel: 'မလုပ်တော့',
     errFill: 'ခေါင်းစဉ်ဖြည့်ပါ။', back: '◀ ပြန်သွားမည်',
     seedBtn: '🌱 နမူနာထည့်မည် (၃+၃)', seeded: 'နမူနာ ထည့်ပြီးပါပြီ ✅',
+    impTitle: '📥 Lessons/Assignments Import', impHelp: 'JSON paste (သို့) file ရွေး — {lessons:[], assignments:[]} ပုံစံ။ id တူရင် skip.',
+    impDo: 'ထည့်သွင်းမည်', impOk: 'Import ပြီးပါပြီ ✅', impNone: 'အသစ်မတွေ့ပါ။', impInvalid: 'JSON ပုံစံမှားနေပါတယ်။',
+    expDone: 'Export ပြီးပါပြီ ✅',
   },
   en: {
     title: '📖 Lessons & Class', segLessons: 'Lessons', segAssign: 'Assignments',
@@ -47,6 +52,9 @@ const teachT = {
     noGrade: 'Not graded yet', subs: 'Submissions', delQ: 'Delete?', yesDel: 'Delete', noDel: 'Cancel',
     errFill: 'Title is required.', back: '◀ Back',
     seedBtn: '🌱 Add samples (3+3)', seeded: 'Samples added ✅',
+    impTitle: '📥 Import Lessons/Assignments', impHelp: 'Paste JSON or pick a file — {lessons:[], assignments:[]} shape. Same id = skip.',
+    impDo: 'Import', impOk: 'Import done ✅', impNone: 'Nothing new.', impInvalid: 'Invalid JSON shape.',
+    expDone: 'Export done ✅',
   },
   jp: {
     title: '📖 授業', segLessons: 'レッスン', segAssign: '課題',
@@ -62,6 +70,9 @@ const teachT = {
     noGrade: '未採点', subs: '提出一覧', delQ: '削除しますか?', yesDel: '削除', noDel: 'キャンセル',
     errFill: 'タイトルを入力してください。', back: '◀ 戻る',
     seedBtn: '🌱 見本を入れる (3+3)', seeded: '見本を追加しました ✅',
+    impTitle: '📥 インポート', impHelp: 'JSONを貼付/選択 — {lessons:[], assignments:[]}。同idはスキップ。',
+    impDo: '取込', impOk: '取込完了 ✅', impNone: '新規なし。', impInvalid: 'JSON形式エラー。',
+    expDone: '書出完了 ✅',
   },
 };
 
@@ -196,6 +207,130 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
   useEffect(() => { fetchAll(false); }, []);
   // staff opens an assignment → reload its submissions
   useEffect(() => { if (openId) fetchAll(true); }, [openId]);
+
+  // ---------- Export / Import (JSON backup + bulk add, staff import) ----------
+  const [impVisible, setImpVisible] = useState(false);
+  const [impText, setImpText] = useState('');
+
+  const handleExport = async () => {
+    const payload = JSON.stringify({
+      app: 'JapaneseStudyPlanner-teaching', version: 1,
+      exportedAt: new Date().toISOString(),
+      lessons, assignments,
+    }, null, 2);
+    const fileName = `teaching-${lessons.length}L-${assigns.length}A.json`;
+    try {
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const blob = new Blob([payload], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        Alert.alert('✅', `${t.expDone} (${lessons.length + assigns.length})`);
+      } else {
+        const FS = require('expo-file-system');
+        const file = new FS.File(FS.Paths.cache, fileName);
+        const writable = file.writableStream();
+        const writer = writable.getWriter();
+        await writer.write(new TextEncoder().encode(payload));
+        await writer.close();
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: t.title });
+        } else {
+          throw new Error('share-unavailable');
+        }
+        Alert.alert('✅', `${t.expDone} (${lessons.length + assigns.length})`);
+      }
+    } catch (e) {
+      try {
+        await Clipboard.setStringAsync(payload);
+        Alert.alert('✅', `${t.expDone} (${lessons.length + assigns.length})`);
+      } catch (e2) {
+        Alert.alert('⚠️', String((e && e.message) || e));
+      }
+    }
+  };
+
+  const handlePickFile = async () => {
+    if (!isStaff) return;
+    try {
+      const DP = require('expo-document-picker');
+      const res = await DP.getDocumentAsync({ type: ['application/json', 'text/plain'], copyToCacheDirectory: true });
+      if (res.canceled) return;
+      const uri = res.assets && res.assets[0] ? res.assets[0].uri : null;
+      if (!uri) return;
+      const resp = await fetch(uri);
+      setImpText(await resp.text());
+    } catch (e) {
+      Alert.alert('⚠️', String(e.message || e));
+    }
+  };
+
+  const cleanLevel = (v) => (LEVELS.includes(v) ? v : 'All');
+
+  const doImportFromText = async (text) => {
+    if (!isStaff) return;
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      Alert.alert('⚠️', t.impInvalid);
+      return;
+    }
+    const lArr = Array.isArray(parsed) ? [] : (parsed.lessons || []);
+    const aArr = Array.isArray(parsed) ? parsed : (parsed.assignments || []);
+    if (!Array.isArray(lArr) || !Array.isArray(aArr) || (lArr.length + aArr.length === 0)) {
+      Alert.alert('⚠️', t.impInvalid);
+      return;
+    }
+    setBusy(true);
+    let added = 0;
+    try {
+      const now = new Date().toISOString();
+      for (let i = 0; i < lArr.length; i++) {
+        const e = lArr[i] || {};
+        if (!e.title || !String(e.title).trim()) continue;
+        const id = e.id ? String(e.id) : ('imp_l' + Date.now().toString(36) + '_' + i);
+        const ref = doc(db, 'lessons', id);
+        if ((await getDoc(ref)).exists()) continue;
+        await setDoc(ref, {
+          title: String(e.title), body: String(e.body || ''), level: cleanLevel(e.level),
+          mediaUrl: String(e.mediaUrl || ''), target: 'all',
+          by: user?.uid || '', byName: user?.name || user?.email || '', at: now,
+        });
+        added += 1;
+      }
+      for (let i = 0; i < aArr.length; i++) {
+        const e = aArr[i] || {};
+        if (!e.title || !String(e.title).trim()) continue;
+        const id = e.id ? String(e.id) : ('imp_a' + Date.now().toString(36) + '_' + i);
+        const ref = doc(db, 'assignments', id);
+        if ((await getDoc(ref)).exists()) continue;
+        const tg = e.target === 'level' ? 'level' : (e.target === 'students' && Array.isArray(e.targetUids) ? 'students' : 'all');
+        await setDoc(ref, {
+          title: String(e.title), desc: String(e.desc || ''), level: cleanLevel(e.level),
+          due: String(e.due || ''), target: tg,
+          targetLevel: cleanLevel(e.targetLevel || 'N5'),
+          targetUids: Array.isArray(e.targetUids) ? e.targetUids.map(String) : [],
+          by: user?.uid || '', byName: user?.name || user?.email || '', at: now,
+        });
+        added += 1;
+      }
+      logActivity(user, 'teaching.import', '+' + added, '');
+      setImpText('');
+      setImpVisible(false);
+      Alert.alert('✅', added > 0 ? `${t.impOk} (+${added})` : t.impNone);
+      fetchAll(true);
+    } catch (e) {
+      Alert.alert('⚠️', String(e?.code || e?.message || e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onRefresh = () => { setRefreshing(true); fetchAll(false); };
 
@@ -388,10 +523,22 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
         user={user}
         onLogout={onLogout}
         onProfilePress={goProfile}
-        action={isStaff && !opened ? (
-          <TouchableOpacity style={styles.addBtn} onPress={() => openEditor(seg === 'lessons' ? 'lesson' : 'assign', null)}>
-            <Text style={styles.addBtnText}>{t.add}</Text>
-          </TouchableOpacity>
+        action={!opened ? (
+          <View style={{ flexDirection: 'row' }}>
+            {isStaff && (
+              <TouchableOpacity style={[styles.addBtn, { marginRight: 6 }]} onPress={() => setImpVisible(true)}>
+                <Text style={styles.addBtnText}>📥</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[styles.addBtn, { marginRight: 6, backgroundColor: '#455A64' }]} onPress={handleExport}>
+              <Text style={styles.addBtnText}>📤</Text>
+            </TouchableOpacity>
+            {isStaff && (
+              <TouchableOpacity style={styles.addBtn} onPress={() => openEditor(seg === 'lessons' ? 'lesson' : 'assign', null)}>
+                <Text style={styles.addBtnText}>{t.add}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         ) : null}
       />
       <View style={styles.segRow}>
@@ -601,6 +748,34 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.saveBtn} onPress={saveItem} disabled={busy}>
                   <Text style={styles.btnText}>{busy ? '…' : t.save}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={impVisible} transparent animationType="fade" onRequestClose={() => setImpVisible(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.modalBox}>
+            <ScrollView>
+              <Text style={styles.itemTitle}>{t.impTitle}</Text>
+              <Text style={styles.meta}>{t.impHelp}</Text>
+              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#1976D2' }]} onPress={handlePickFile}>
+                <Text style={styles.btnText}>📁 JSON</Text>
+              </TouchableOpacity>
+              <TextInput
+                style={[styles.input, { minHeight: 120, textAlignVertical: 'top', marginTop: 8 }]}
+                value={impText} onChangeText={setImpText} multiline
+                placeholder='{"lessons":[],"assignments":[]}'
+                placeholderTextColor="#999"
+              />
+              <View style={styles.rowBtns}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setImpVisible(false)}>
+                  <Text style={styles.btnText}>{t.cancel}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.saveBtn} onPress={() => doImportFromText(impText)} disabled={busy}>
+                  <Text style={styles.btnText}>{busy ? '…' : t.impDo}</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>

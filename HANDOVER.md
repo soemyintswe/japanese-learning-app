@@ -1,7 +1,7 @@
 # Japanese Learning App — Maintenance Handover (ထိန်းသိမ်းရေး လွှဲပြောင်းမှတ်တမ်း)
 
 > ဖတ်သူ: နောက်ဆက်တွဲ ပြင်မယ့် developer / AI assistant
-> နောက်ဆုံး update: 2026-10-06 (teaching module MVP + activity log built & deployed, by Muse Spark via OpenCode)
+> နောက်ဆုံး update: 2026-10-06 (export/import all 5 areas + AI prompt + content top-up, by Muse Spark via OpenCode)
 > Repo: https://github.com/soemyintswe/japanese-learning-app (branch: `main`)
 > Live site: https://japanese-mksedu.web.app
 > Firebase project: `japanese-mksedu`
@@ -38,8 +38,9 @@ components/PlannerScreen.js   # Calendar + morning/evening checklist + notes (As
 components/NotesScreen.js     # Notes CRUD (AsyncStorage, 3-lang chrome)
 components/QAScreen.js        # Quiz + add/edit (Option4 + correct picker, AsyncStorage, 3-lang)
 components/TeacherScreen.js   # ⭐ Admin user table (approve/disable, role-picker modal, delete, tooltips) + bio + share + change-password + 📋 activity viewer (latest 50) + horizontal-scroll table (minWidth 660, mobile)
-components/TeachingScreen.js  # 📖 Teaching module MVP: lessons + assignments + submissions/grading (staff CRUD, student submit-once, single-field queries only — no composite index) + TeachErrorBoundary (white-screen guard) + 🌱 samples seed
-components/dictionaryData/    # ~1330 trilingual words: n5_nouns(274)/n5_verbs(113)/n5_adjectives(100)/n5_others(107)/n4_words(285)/n3(208)/n2(148)/n1(96) + fullDictionary.js (sample 9 w/ images) + index.js (merge/dedupe/normalizeImportEntry). Validated: scripts Temp count_dict.py + dupe_detail.py + dedupe_files.py + sanity_dict.py (0 dupes, readings present) + check_quiz.py.
+components/TeachingScreen.js  # 📖 Teaching module MVP: lessons + assignments + submissions/grading (staff CRUD, student submit-once, single-field queries only — no composite index) + TeachErrorBoundary (white-screen guard) + 🌱 samples seed + 📥📤 export/import (staff import)
+AI_CONTENT_PROMPT.md          # ⭐ Other-AI bulk content prompt (copy-paste EN+MM) + 5 JSON schemas (A words / B quiz / C library / D essays / E teaching) + import paths + copyright policy
+components/dictionaryData/    # ~1340 trilingual words: n5_nouns(274)/n5_verbs(113)/n5_adjectives(100)/n5_others(107)/n4_words(285)/n3(213)/n2(153)/n1(96) + fullDictionary.js (sample 9 w/ images) + index.js (merge/dedupe/normalizeImportEntry). Validated: scripts Temp count_dict.py + dupe_detail.py + dedupe_files.py + sanity_dict.py (0 dupes, readings present) + check_quiz.py.
 # Coverage aligned with standard JLPT lists (ref: OpenJLPT CC BY-SA 4.0 — Myanmar glosses are original, not copied). OpenJLPT totals for reference: N5 662 / N4 632 / N3 1784 / N2 1793 / N1 3463 (8,334 words). Our coverage ≈ N5 88% / N4 45% / N3 12% / N2 8% / N1 3% — N3-N1 gaps remain (bulk import via app Import + teacher Myanmar review).
 # Schema: {id, japanese, reading(kana), myanmar, english, pos, level}. Old rows may use {hiragana}/{icon} — UI handles both.
 # Coverage aligned with standard JLPT lists (ref: OpenJLPT CC BY-SA 4.0 — Myanmar glosses are original, not copied).
@@ -180,6 +181,16 @@ firebase deploy --only hosting
 - **Bug 2 — Assignments နှိပ်ရင် white screen**: render throw တက်ရင် boundary မရှိလို့ tab တခုလုံး ဖြူသွားတာ. Fix: `TeachErrorBoundary` (class, inline error + 🔄 Retry, `key={seg}`) + `safeArr` guards (lessons/assigns/subs/opened/targetUids). Exact throw line မမျိုးနိုင်ခဲ့ (local repro မရ) — ဒါပေမယ့် ဖြစ်နိုင်ခြေလမ်းအားလုံး ကာကွယ် + boundary ခံ → header/tabs ဘယ်တော့မှ မပျောက်။
 - **Samples (staff 🌱 one-tap, fixed IDs, skip-existing)**: `components/teachingSeed.js` — lessons 3 (あ-row + self-intro pattern + te-form作り方, all original) + assignments 3 (seed_a1 all/N5 self-intro ✍️ + seed_a2 N5-level family + seed_a3 N4-level diary). Empty-state မှာ staff only 🌱 button. Seeding logs activity.
 - Verify: export clean (677 modules) → hosting deployed → pushed. Ctrl+F5 ပြီး `/teaching` ပြန်စမ်းရန်။
+
+### 6.11 Export/Import all 5 areas + AI bulk prompt (2026-10-06)
+- **Audit**: Dictionary ✅ (ရှိ) / Quiz customs ❌ / Library ❌ / Essays ❌ / Teaching ❌ → ၄ ခု ထပ်ဆောက်. Pattern = Dictionary flow (web download + native share + clipboard fallback; paste + file pick).
+- **Quiz customs** (QAScreen ✏️ section): 📥📤 buttons + import modal; validate {question, options≥2, correctIndex in range, level}; dedupe question+options; customs auto-merge into level pools (`levelPool`) → import-တာနဲ့ quiz မှာ တန်းပေါ်.
+- **Library** (MaterialsScreen seg toolbar): 📥 staff-only (validate https, dupe title+url, addDoc) + 📤 everyone; seedBtn count 24→29 corrected.
+- **Essays custom** (personal AsyncStorage `@japanese_essays_custom_v1`): reader merges `[...ESSAYS, ...customEssays]` (same schema → TTS reader auto-works); 📥 (validate lines[].ja) + 📤 everyone.
+- **Teaching** (Class header): 📥 staff-only (`{lessons, assignments}`, same-id skip, level/target sanitize) + 📤 everyone; activity-logged.
+- **`AI_CONTENT_PROMPT.md`** (NEW, committable): copy-paste prompt (EN+MM) + 5 schemas with examples + import paths + copyright rules (no copied lyrics/exams/textbooks; Tadoku link-only; OpenJLPT level-refs). Owner flow: other-AI JSON → 📥 import → quick check (kana readings? original MM? levels?) → done. No code deploy needed for bulk adds.
+- **Content top-up (bounded)**: dict +10 (N3: 辛抱/率直/快適/退屈/謙遜 + N2: 賢明/愚か/大胆/臆病/頑丈; 切実 dropped — dupe). Dict total 1331→1341, dupes 0.
+- Verify: export clean → hosting deploy → push. Ctrl+F5.
 
 ## 7. Lesson Learned (နောင် AI/dev သတိထားရန်)
 

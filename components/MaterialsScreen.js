@@ -11,6 +11,9 @@ import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
 import { db } from '../src/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Sharing from 'expo-sharing';
+import * as Clipboard from 'expo-clipboard';
 import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
 import { MATERIALS_SEED } from './materialsSeed';
@@ -100,7 +103,12 @@ const mT = {
     errFill: 'ခေါင်းစဉ် + Drive link ဖြည့်ပါ။', errUrl: 'Link ပုံစံမှားနေပါတယ် (https://...)။',
     delQ: 'ဖျက်ရန် သေချာလား?', no: 'မလုပ်ပါ', yes: 'ဖျက်မည်', done: 'ပြီးပါပြီ ✅',
     openExternal: 'Browser နဲ့ဖွင့်မည် ↗', closeViewer: 'ပိတ်မည် ✕',
-    seedBtn: '🌱 အဆင်သင့် (24)', seedDone: 'Starter ထည့်ပြီးပါပြီ ✅', seedNone: 'အကုန်ရှိနေပြီးသား ✅',
+    seedBtn: '🌱 အဆင်သင့် (29)', seedDone: 'Starter ထည့်ပြီးပါပြီ ✅', seedNone: 'အကုန်ရှိနေပြီးသား ✅',
+    impTitle: '📥 Library Import', impHelp: 'JSON paste (သို့) file ရွေး — [{title, url, level, type, desc}] ပုံစံ။ https link သာ။',
+    impDo: 'ထည့်သွင်းမည်', impOk: 'Import ပြီးပါပြီ ✅', impNone: 'အသစ်မတွေ့ပါ။', impInvalid: 'JSON ပုံစံမှားနေပါတယ်။',
+    expDone: 'Export ပြီးပါပြီ ✅',
+    essImpTitle: '📥 Essay Import', essImpHelp: 'JSON — [{title, kind, level, lines:[{ja,reading,mm}]}] ပုံစံ။',
+    essExpTitle: 'ကိုယ်တိုင်ထည့်ထားတဲ့ Essays',
     upTitle: '📤 100GB Drive တိုက်ရိုက်တင် (ဆရာ)',
     upHelp: '100GB Gmail ချိတ် → file ရွေး → Upload → "MKS Materials" folder + Anyone-link auto → link auto-ဖြည့်',
     upConnect: '🔗 100GB Gmail ချိတ်မယ်', upPick: '📁 File ရွေးမယ်', upDo: '⬆️ Upload + link ဖြည့်မည်',
@@ -126,7 +134,12 @@ const mT = {
     errFill: 'Fill title + Drive link.', errUrl: 'Bad link format (https://...).',
     delQ: 'Delete?', no: 'No', yes: 'Delete', done: 'Done ✅',
     openExternal: 'Open in browser ↗', closeViewer: 'Close ✕',
-    seedBtn: '🌱 Starter (24)', seedDone: 'Starter added ✅', seedNone: 'Already all there ✅',
+    seedBtn: '🌱 Starter (29)', seedDone: 'Starter added ✅', seedNone: 'Already all there ✅',
+    impTitle: '📥 Import Library', impHelp: 'Paste JSON or pick a file — [{title, url, level, type, desc}]. https links only.',
+    impDo: 'Import', impOk: 'Import done ✅', impNone: 'Nothing new.', impInvalid: 'Invalid JSON shape.',
+    expDone: 'Export done ✅',
+    essImpTitle: '📥 Import Essays', essImpHelp: 'JSON — [{title, kind, level, lines:[{ja,reading,mm}]}].',
+    essExpTitle: 'My custom essays',
     upTitle: '📤 Direct upload to 100GB Drive (teacher)',
     upHelp: 'Connect 100GB Gmail → pick file → Upload → "MKS Materials" folder + Anyone-link auto → link auto-filled',
     upConnect: '🔗 Connect 100GB Gmail', upPick: '📁 Pick file', upDo: '⬆️ Upload + fill link',
@@ -153,6 +166,11 @@ const mT = {
     delQ: '削除しますか？', no: 'いいえ', yes: '削除', done: '完了 ✅',
     openExternal: 'ブラウザで開く ↗', closeViewer: '閉じる ✕',
     seedBtn: '🌱 スターター', seedDone: '追加 ✅', seedNone: '追加済み ✅',
+    impTitle: '📥 インポート', impHelp: 'JSONを貼付/選択 — [{title, url, level, type, desc}]。httpsのみ。',
+    impDo: '取込', impOk: '取込完了 ✅', impNone: '新規なし。', impInvalid: 'JSON形式エラー。',
+    expDone: '書出完了 ✅',
+    essImpTitle: '📥 エッセイ取込', essImpHelp: 'JSON — [{title, kind, level, lines:[{ja,reading,mm}]}]。',
+    essExpTitle: '自作エッセイ',
     upTitle: '📤 100GBドライブ直接upload',
     upHelp: 'Gmail接続 → 選択 → Upload → フォルダ＋公開リンク自動',
     upConnect: '🔗 接続', upPick: '📁 選択', upDo: '⬆️ Upload',
@@ -296,6 +314,181 @@ export default function MaterialsScreen({ user, onLogout, navigation }) {
   const [fType, setFType] = useState('doc');
   const [fUrl, setFUrl] = useState('');
 
+  // ---------- Library Export (all) / Import (staff) ----------
+  const [impVisible, setImpVisible] = useState(false);
+  const [impText, setImpText] = useState('');
+  const [impMode, setImpMode] = useState('lib'); // lib | essay
+
+  const exportPayload = (app, arr, extra) => JSON.stringify({
+    app, version: 1, exportedAt: new Date().toISOString(), count: arr.length, ...extra,
+  }, null, 2);
+
+  const sharePayload = async (payload, fileName, title, count) => {
+    try {
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const blob = new Blob([payload], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        Alert.alert('✅', `${t.expDone} (${count})`);
+      } else {
+        const FS = require('expo-file-system');
+        const file = new FS.File(FS.Paths.cache, fileName);
+        const writable = file.writableStream();
+        const writer = writable.getWriter();
+        await writer.write(new TextEncoder().encode(payload));
+        await writer.close();
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: title });
+        } else {
+          throw new Error('share-unavailable');
+        }
+        Alert.alert('✅', `${t.expDone} (${count})`);
+      }
+    } catch (e) {
+      try {
+        await Clipboard.setStringAsync(payload);
+        Alert.alert('✅', `${t.expDone} (${count})`);
+      } catch (e2) {
+        Alert.alert('⚠️', String((e && e.message) || e));
+      }
+    }
+  };
+
+  const handleLibExport = () => sharePayload(
+    exportPayload('JapaneseStudyPlanner-library', items, { materials: items }),
+    `library-${items.length}.json`, t.header, items.length,
+  );
+
+  const handleLibPickFile = async () => {
+    try {
+      const DP = require('expo-document-picker');
+      const res = await DP.getDocumentAsync({ type: ['application/json', 'text/plain'], copyToCacheDirectory: true });
+      if (res.canceled) return;
+      const uri = res.assets && res.assets[0] ? res.assets[0].uri : null;
+      if (!uri) return;
+      setImpText(await (await fetch(uri)).text());
+    } catch (e) {
+      Alert.alert('⚠️', String(e.message || e));
+    }
+  };
+
+  const doLibImport = async (text) => {
+    if (!staff) return;
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      Alert.alert('⚠️', t.impInvalid);
+      return;
+    }
+    const arr = Array.isArray(parsed) ? parsed : parsed.materials;
+    if (!Array.isArray(arr)) {
+      Alert.alert('⚠️', t.impInvalid);
+      return;
+    }
+    const have = new Set(items.map((m) => `${(m.title || '').trim().toLowerCase()}||${(m.url || '').trim()}`));
+    let added = 0;
+    try {
+      for (const e of arr) {
+        if (!e || !e.title || !e.url || !/^https:\/\//.test(String(e.url).trim())) continue;
+        const key = `${String(e.title).trim().toLowerCase()}||${String(e.url).trim()}`;
+        if (have.has(key)) continue;
+        have.add(key);
+        await addDoc(collection(db, 'materials'), {
+          title: String(e.title).trim(), desc: String(e.desc || ''), level: String(e.level || 'All'),
+          type: ['doc', 'video', 'audio', 'link'].includes(e.type) ? e.type : 'link',
+          url: String(e.url).trim(),
+          createdBy: user.uid, createdByName: (user.name || '') + ' (import)',
+          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        });
+        added += 1;
+      }
+      setImpText('');
+      setImpVisible(false);
+      Alert.alert('✅', added > 0 ? `${t.impOk} (+${added})` : t.impNone);
+    } catch (e) {
+      Alert.alert('⚠️', e.message);
+    }
+  };
+
+  // ---------- Custom essays (personal, AsyncStorage) + Export/Import ----------
+  const ESSAY_KEY = '@japanese_essays_custom_v1';
+  const [customEssays, setCustomEssays] = useState([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(ESSAY_KEY);
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) setCustomEssays(arr);
+        }
+      } catch (e) {}
+    })();
+  }, []);
+  useEffect(() => {
+    AsyncStorage.setItem(ESSAY_KEY, JSON.stringify(customEssays)).catch(() => {});
+  }, [customEssays]);
+  const allEssays = [...ESSAYS, ...customEssays];
+
+  const normalizeEssay = (e, idx) => {
+    if (!e || typeof e !== 'object') return null;
+    if (!e.title || !Array.isArray(e.lines) || e.lines.length === 0) return null;
+    const lines = e.lines
+      .filter((L) => L && L.ja && String(L.ja).trim())
+      .map((L) => ({ ja: String(L.ja), reading: String(L.reading || ''), mm: String(L.mm || '') }));
+    if (!lines.length) return null;
+    return {
+      id: e.id ? String(e.id) : ('ce_' + Date.now().toString(36) + '_' + idx),
+      title: String(e.title), kind: e.kind === 'song' ? 'song' : 'essay',
+      level: ['N5', 'N4', 'N3', 'N2', 'N1'].includes(e.level) ? e.level : 'N5',
+      lines, custom: true,
+    };
+  };
+
+  const doEssayImport = (text) => {
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      Alert.alert('⚠️', t.impInvalid);
+      return;
+    }
+    const arr = Array.isArray(parsed) ? parsed : parsed.essays;
+    if (!Array.isArray(arr)) {
+      Alert.alert('⚠️', t.impInvalid);
+      return;
+    }
+    const have = new Set(allEssays.map((e) => `${e.title}||${e.lines.length}`));
+    const fresh = [];
+    arr.forEach((e, idx) => {
+      const n = normalizeEssay(e, idx);
+      if (!n) return;
+      const key = `${n.title}||${n.lines.length}`;
+      if (have.has(key)) return;
+      have.add(key);
+      fresh.push(n);
+    });
+    if (!fresh.length) {
+      Alert.alert('ℹ️', t.impNone);
+      return;
+    }
+    setCustomEssays([...customEssays, ...fresh]);
+    setImpText('');
+    setImpVisible(false);
+    Alert.alert('✅', `${t.impOk} (+${fresh.length})`);
+  };
+
+  const handleEssayExport = () => sharePayload(
+    exportPayload('JapaneseStudyPlanner-essays', customEssays, { essays: customEssays }),
+    `essays-custom-${customEssays.length}.json`, t.essExpTitle, customEssays.length,
+  );
+
   useEffect(() => {
     const unsub = onSnapshot(
       query(collection(db, 'materials'), orderBy('updatedAt', 'desc')),
@@ -420,6 +613,20 @@ export default function MaterialsScreen({ user, onLogout, navigation }) {
             <Text style={[styles.segText, essMode === s.k && styles.segTextActive]}>{s.label}</Text>
           </TouchableOpacity>
         ))}
+        {(staff || essMode === 'essay') && (
+          <TouchableOpacity
+            style={[styles.segBtn, { flex: 0, paddingHorizontal: 12, marginLeft: 6 }]}
+            onPress={() => { setImpMode(essMode); setImpVisible(true); }}
+          >
+            <Text style={styles.segText}>📥</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={[styles.segBtn, { flex: 0, paddingHorizontal: 12, marginLeft: 6 }]}
+          onPress={() => { essMode === 'essay' ? handleEssayExport() : handleLibExport(); }}
+        >
+          <Text style={styles.segText}>📤</Text>
+        </TouchableOpacity>
       </View>
 
       {essMode === 'lib' ? (
@@ -489,7 +696,7 @@ export default function MaterialsScreen({ user, onLogout, navigation }) {
       </>
       ) : !readerEssay ? (
         <FlatList
-          data={ESSAYS}
+          data={allEssays}
           keyExtractor={(e) => e.id}
           contentContainerStyle={{ padding: 12 }}
           renderItem={({ item: e }) => (
@@ -620,6 +827,38 @@ export default function MaterialsScreen({ user, onLogout, navigation }) {
                 </TouchableOpacity>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={impVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{impMode === 'essay' ? t.essImpTitle : t.impTitle}</Text>
+            <Text style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>{impMode === 'essay' ? t.essImpHelp : t.impHelp}</Text>
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: '#1976D2', marginBottom: 8 }]}
+              onPress={handleLibPickFile}
+            >
+              <Text style={styles.saveBtnText}>📁 JSON</Text>
+            </TouchableOpacity>
+            <TextInput
+              style={[styles.input, { minHeight: 120, textAlignVertical: 'top' }]}
+              value={impText} onChangeText={setImpText} multiline
+              placeholder={impMode === 'essay' ? '[{"title":"…","kind":"essay","level":"N5","lines":[]}]' : '[{"title":"…","url":"https://…"}]'}
+              placeholderTextColor="#999"
+            />
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setImpVisible(false)}>
+                <Text style={styles.cancelBtnText}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={() => { impMode === 'essay' ? doEssayImport(impText) : doLibImport(impText); }}
+              >
+                <Text style={styles.saveBtnText}>{t.impDo}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
