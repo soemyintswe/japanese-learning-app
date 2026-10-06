@@ -15,33 +15,10 @@ import {
 import { auth } from '../src/firebase';
 import { resolveUserProfile } from '../src/session';
 import { useLanguage } from '../src/LanguageContext';
+import { POLICY } from '../src/privacyPolicy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CONSENT_KEY = '@japanese_privacy_consent_v1';
-
-const POLICY = {
-  my: {
-    title: '🔒 Privacy Policy (ကိုယ်ရေးအချက်အလက် မူဝါဒ)',
-    body: '1) စုဆောင်းတာ: အမည်, Email, ဖုန်း, မွေးနေ့, ကျား/မ, ပညာ, ဂျပန်အဆင့်, bio, ဓာတ်ပုံ, စာများ/အသံများ (chat), လေ့လာမှုမှတ်တမ်း။\n\n2) သုံးတာ: ပညာရေးဝန်ဆောင်မှု (အတန်းစီမံမှု, တိုးတက်မှုကြည့်မှု, အပြန်အလှန်ဆက်သွယ်မှု) အတွက်သာ။\n\n3) မြင်နိုင်သူ: Public profile (နာမည်/ပုံ/bio) ကို login ဝင်ထားသူများ မြင်နိုင်; ဖုန်း/မွေးနေ့ ကို Admin + ကိုယ်တိုင်သာ; Private ပိတ်ထားရင် အသေးစိတ်မပြ။\n\n4) အခွင့်အရေး: ပြင်/ဖျက်ခိုင်းနိုင် (Profile ပြင်, Admin ကို အကောင့်ဖျက်ခိုင်း)။ Admin: soemyintswe@gmail.com',
-    agree: 'သဘောတူပြီး ဆက်လုပ်မည် ✅', close: 'ပိတ်မည်',
-    consent: 'Privacy Policy ကို ဖတ်၍ သဘောတူပါတယ်',
-    need: 'ဆက်လုပ်ဖို့ Privacy Policy ကို အရင် သဘောတူပေးပါ။',
-  },
-  en: {
-    title: '🔒 Privacy Policy',
-    body: '1) Collected: name, email, phone, birthdate, gender, education, Japanese level, bio, photo, chat messages/voice, study records.\n\n2) Used only for education services (classes, progress, communication).\n\n3) Visible to: public profile (name/photo/bio) to signed-in users; phone/birthdate to admin + self only; private profiles hidden.\n\n4) Rights: edit anytime; request account deletion via admin: soemyintswe@gmail.com',
-    agree: 'Agree & Continue ✅', close: 'Close',
-    consent: 'I have read and agree to the Privacy Policy',
-    need: 'Please agree to the Privacy Policy first.',
-  },
-  jp: {
-    title: '🔒 プライバシーポリシー',
-    body: '1) 収集: 名前、Email、電話、生年月日、性別、学歴、日本語レベル、自己紹介、写真、チャット、学習記録。\n\n2) 教育サービスのみに利用。\n\n3) 公開プロフィールはログインユーザーに表示。電話・生年月日は管理者＋本人のみ。\n\n4) 削除依頼: soemyintswe@gmail.com',
-    agree: '同意して続ける ✅', close: '閉じる',
-    consent: 'プライバシーポリシーに同意します',
-    need: '先に同意してください。',
-  },
-};
 
 const translations = {
   my: {

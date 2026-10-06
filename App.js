@@ -39,6 +39,7 @@ async function computeTodayProgress() {
 import { NotificationProvider, navRef } from './src/notifications';
 import NotificationPanel from './components/NotificationPanel';
 import ForceChangePassword from './components/ForceChangePassword';
+import PrivacyScreen from './components/PrivacyScreen';
 import AppHeader from './components/AppHeader';
 
 // Web back/refresh မှာ tab မပျောက်အောင် URL နဲ့ ချိတ်မယ်
@@ -237,6 +238,16 @@ function Main() {
     setUser(null);
     setNotice('');
   };
+
+  // Public privacy page (login မလို — Google OAuth branding အတွက်)
+  if (Platform.OS === 'web' && typeof window !== 'undefined'
+    && window.location.pathname.replace(/\/$/, '') === '/privacy') {
+    return (
+      <SafeAreaProvider>
+        <PrivacyScreen />
+      </SafeAreaProvider>
+    );
+  }
 
   if (authLoading) {
     return (
