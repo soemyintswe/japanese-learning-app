@@ -213,6 +213,7 @@ export default function DictionaryScreen({ user, onLogout, navigation }) {
   const [repeatN, setRepeatN] = useState(1);
   const [playerUi, setPlayerUi] = useState({ active: false, paused: false, current: null, idx: 0, total: 0 });
   const player = useRef({ active: false, paused: false, list: [], idx: 0, timer: null });
+  const listRef = useRef(null);
 
   // device TTS voices စစ် — မရှိတဲ့ ဘာသာကို auto-off (မရှိရင် list ശൂന്യ → default ON ထား)
   useEffect(() => {
@@ -284,7 +285,13 @@ export default function DictionaryScreen({ user, onLogout, navigation }) {
     if (idx >= p.list.length) { stopPlaylist(); return; }
     p.idx = idx;
     const item = p.list[idx];
-    setPlayerUi({ active: true, paused: false, current: item, idx, total: p.list.length });
+    setPlayerUi({ active: true, current: item, idx, total: p.list.length });
+    // ရောက်တဲ့နေရာ list မှာ ပြ� + scroll (နားထောင် + စာဖတ် တစ်ပြိုင်တည်း)
+    try {
+      if (listRef.current && listRef.current.scrollToIndex) {
+        listRef.current.scrollToIndex({ index: idx, viewPosition: 0.25, animated: true });
+      }
+    } catch (e) {}
     speakQueue(buildUtterances(item), 0);
   };
 
@@ -637,6 +644,7 @@ export default function DictionaryScreen({ user, onLogout, navigation }) {
 
       {/* Optimized FlatList */}
       <FlatList
+        ref={listRef}
         data={filteredData}
         keyExtractor={(item) => item.id.toString()}
         initialNumToRender={10}
@@ -645,9 +653,10 @@ export default function DictionaryScreen({ user, onLogout, navigation }) {
         contentContainerStyle={styles.listContainer}
         renderItem={({ item }) => {
           const expanded = expandedId === item.id;
+          const isPlaying = playerUi.current && playerUi.current.id === item.id && (playerUi.active || playerUi.paused);
           return (
             <TouchableOpacity
-              style={[styles.cardItem, expanded && styles.cardItemExpanded]}
+              style={[styles.cardItem, expanded && styles.cardItemExpanded, isPlaying && styles.playingCard]}
               onPress={() => setExpandedId(expanded ? null : item.id)}
               activeOpacity={0.85}
             >
@@ -868,6 +877,7 @@ const styles = StyleSheet.create({
   miniBtn: { padding: 6, marginLeft: 4 },
   miniBtnText: { fontSize: 18 },
   cardItemExpanded: { borderColor: '#D32F2F', borderWidth: 1 },
+  playingCard: { borderColor: '#7B1FA2', borderWidth: 2, backgroundColor: '#F9F1FF' },
   japaneseTextBig: { fontSize: 20 },
   readingTextBig: { fontSize: 13, color: '#555' },
   expandHint: { fontSize: 10, color: '#BBB', textAlign: 'center', marginTop: 2 },
