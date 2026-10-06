@@ -276,4 +276,11 @@ export const n5Nouns = [
   { id: 'n5n265', japanese: '駄目', reading: 'だめ', myanmar: 'မရသော', english: 'No good', pos: 'adj-na', level: 'N5' },
   { id: 'n5n266', japanese: '本当', reading: 'ほんとう', myanmar: 'အမှန်တကယ်', english: 'Truth / Real', pos: 'noun', level: 'N5' },
   { id: 'n5n267', japanese: '嘘', reading: 'うそ', myanmar: 'လိမ်', english: 'Lie', pos: 'noun', level: 'N5' },
+  { id: 'n5n268', japanese: '切手', reading: 'きって', myanmar: 'တံဆိပ်ခေါင်း', english: 'Postage stamp', pos: 'noun', level: 'N5' },
+  { id: 'n5n269', japanese: '封筒', reading: 'ふうとう', myanmar: 'စာအိတ်', english: 'Envelope', pos: 'noun', level: 'N5' },
+  { id: 'n5n270', japanese: '消防署', reading: 'しょうぼうしょ', myanmar: 'မီးသတ်စခန်း', english: 'Fire station', pos: 'noun', level: 'N5' },
+  { id: 'n5n271', japanese: '水族館', reading: 'すいぞくかん', myanmar: 'ငါးပြတိုက်', english: 'Aquarium', pos: 'noun', level: 'N5' },
+  { id: 'n5n272', japanese: '遊園地', reading: 'ゆうえんち', myanmar: 'အပန်းဖြေဥယျာဉ်', english: 'Amusement park', pos: 'noun', level: 'N5' },
+  { id: 'n5n273', japanese: '神社', reading: 'じんじゃ', myanmar: 'ရှင်တိုဘုရားကျောင်း', english: 'Shinto shrine', pos: 'noun', level: 'N5' },
+  { id: 'n5n274', japanese: 'お寺', reading: 'おてら', myanmar: 'ဘုန်းကြီးကျောင်း', english: 'Buddhist temple', pos: 'noun', level: 'N5' },
 ];

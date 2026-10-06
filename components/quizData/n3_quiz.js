@@ -28,4 +28,7 @@ export const n3Quiz = [
   { id: 'n3q26', level: 'N3', skill: 'reading', question: '男の人はどうしましたか。', passage: '映画がとても感動的で、女の人は泣きました。隣の男の人は笑っていました。', options: ['泣いた', '笑っていた', '寝ていた', '帰った'], correctIndex: 1, explanation: '隣の男の人は笑っていました' },
   { id: 'n3q27', level: 'N3', skill: 'listening', question: '聞こえた曜日は？', speakText: 'かいぎは水曜日です', options: ['火曜日', '水曜日', '木曜日', '金曜日'], correctIndex: 1, explanation: '水曜日（すいようび）' },
   { id: 'n3q28', level: 'N3', skill: 'vocab', question: '「慌てる」の意味は？', options: ['အလန့်တကြားဖြစ်သည်', 'အလျင်လိုသည်', 'စိတ်ငြိမ်သည်', 'ပျင်းရိသည်'], correctIndex: 0, explanation: '慌てる（あわてる）= အလန့်တကြားဖြစ်သည်' },
+  { id: 'n3q29', level: 'N3', skill: 'vocab', question: '「曖昧」の読み方は？', options: ['あいまい', 'あまい', 'まいあい', 'あいみ'], correctIndex: 0, explanation: '曖昧（あいまい）= မရေရာသော' },
+  { id: 'n3q30', level: 'N3', skill: 'grammar', question: '説明が ___ で分かりやすい。', options: ['具体的', '抽象的', '消極的', '積極的'], correctIndex: 0, explanation: '具体的（ぐたいてき）= တိတိကျကျဖြစ်သော' },
+  { id: 'n3q31', level: 'N3', skill: 'reading', question: '筆者は何が大切だと言っていますか。', passage: '日本語の上達には、毎日少しずつ続けることが大切です。一度にたくさん勉強するより、具体的な目標を決めて続ける方が効果的です。', options: ['一度にたくさん勉強すること', '毎日少しずつ続けること', '目標を決めないこと', '休まず勉強すること'], correctIndex: 1, explanation: '毎日少しずつ続けることが大切' },
 ];

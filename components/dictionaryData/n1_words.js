@@ -90,4 +90,11 @@ export const n1Words = [
   { id: 'n1088', japanese: '忍びない', reading: 'しのびない', myanmar: 'မကြည့်ရက်သော', english: 'Unbearable to see', pos: 'adj-i', level: 'N1' },
   { id: 'n1089', japanese: '堪らない', reading: 'たまらない', myanmar: 'မခံနိုင်သော', english: 'Unbearable', pos: 'adj-i', level: 'N1' },
   { id: 'n1090', japanese: 'もどかしい', reading: 'もどかしい', myanmar: 'စိတ်မရှည်စရာကောင်းသော', english: 'Frustrating / Irritating', pos: 'adj-i', level: 'N1' },
+  { id: 'n1091', japanese: '邂逅', reading: 'かいこう', myanmar: 'မမျှော်လင့်ဘဲတွေ့ဆုံမှု', english: 'Chance encounter', pos: 'noun', level: 'N1' },
+  { id: 'n1092', japanese: '黎明', reading: 'れいめい', myanmar: 'အရုဏ်တက်ချိန်', english: 'Dawn / Daybreak', pos: 'noun', level: 'N1' },
+  { id: 'n1093', japanese: '黄昏', reading: 'たそがれ', myanmar: 'ဆည်းဆာချိန်', english: 'Dusk / Twilight', pos: 'noun', level: 'N1' },
+  { id: 'n1094', japanese: '刹那', reading: 'せつな', myanmar: 'ခဏတာအခိုက်အတန့်', english: 'Moment / Instant', pos: 'noun', level: 'N1' },
+  { id: 'n1095', japanese: '永劫', reading: 'えいごう', myanmar: 'ထာဝရကာလ', english: 'Eternity', pos: 'noun', level: 'N1' },
+  { id: 'n1096', japanese: '混沌', reading: 'こんとん', myanmar: 'ရှုပ်ထွေးပွေလီမှု', english: 'Chaos', pos: 'noun', level: 'N1' },
+  { id: 'n1097', japanese: '虚無', reading: 'きょむ', myanmar: 'အနှစ်သာရမဲ့မှု', english: 'Nothingness / Nihility', pos: 'noun', level: 'N1' },
 ];

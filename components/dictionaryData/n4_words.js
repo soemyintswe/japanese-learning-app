@@ -283,4 +283,9 @@ export const n4Words = [
   { id: 'n4332', japanese: 'わくわくする', reading: 'わくわくする', myanmar: 'ရင်ခုန်စိတ်လှုပ်ရှားသည်', english: 'To be excited', pos: 'verb', level: 'N4' },
   { id: 'n4333', japanese: 'イライラする', reading: 'いらいらする', myanmar: 'စိတ်တိုသည်', english: 'To get irritated', pos: 'verb', level: 'N4' },
   { id: 'n4334', japanese: 'うろうろする', reading: 'うろうろする', myanmar: 'လမ်းပျောက်နေသည်', english: 'To wander', pos: 'verb', level: 'N4' },
+  { id: 'n4335', japanese: '遠慮', reading: 'えんりょ', myanmar: 'အားနာမှု / ဆင်ခြင်မှု', english: 'Restraint / Reserve', pos: 'noun', level: 'N4' },
+  { id: 'n4336', japanese: '承知', reading: 'しょうち', myanmar: 'သဘောတူလက်ခံမှု', english: 'Consent / Knowledge', pos: 'noun', level: 'N4' },
+  { id: 'n4337', japanese: '結婚式', reading: 'けっこんしき', myanmar: 'မင်္ဂလာဆောင်ပွဲ', english: 'Wedding ceremony', pos: 'noun', level: 'N4' },
+  { id: 'n4338', japanese: '退院', reading: 'たいいん', myanmar: 'ဆေးရုံမှဆင်းခြင်း', english: 'Discharge from hospital', pos: 'noun', level: 'N4' },
+  { id: 'n4339', japanese: '診察', reading: 'しんさつ', myanmar: 'ဆေးစစ်မှုခံယူခြင်း', english: 'Medical examination', pos: 'noun', level: 'N4' },
 ];

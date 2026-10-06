@@ -20,4 +20,7 @@ export const n1Quiz = [
   { id: 'n1q18', level: 'N1', skill: 'grammar', question: '感動して泣き出さん ___ にした。', options: ['ばかり', 'ばかりか', 'ばかりで', 'ばかりの'], correctIndex: 0, explanation: '〜んばかりに = as if about to (泣き出さんばかり)' },
   { id: 'n1q19', level: 'N1', skill: 'reading', question: '筆者が最も言いたいことは？', passage: '便利さばかり追うと、大切なものを失う。少し不便でも、手をかける暮らしにこそ豊かさがあると筆者は説く。', options: ['便利が一番だ', '手をかける暮らしに豊かさがある', '不便は悪いことだ', '豊かさは要らない'], correctIndex: 1, explanation: '手をかける暮らしにこそ豊かさがある' },
   { id: 'n1q20', level: 'N1', skill: 'listening', question: '聞こえた内容は？', speakText: 'でんしゃが十分おくれています', options: ['定刻通り', '十分遅れ', '運休', '満員'], correctIndex: 1, explanation: '十分（じゅうぶん）遅れています' },
+  { id: 'n1q21', level: 'N1', skill: 'vocab', question: '「邂逅」の読み方は？', options: ['かいこう', 'かいごう', 'こうかい', 'きかい'], correctIndex: 0, explanation: '邂逅（かいこう）= မမျှော်လင့်ဘဲတွေ့ဆုံမှု' },
+  { id: 'n1q22', level: 'N1', skill: 'grammar', question: '混沌 ___ した時代に、新しい思想が生まれた。', options: ['ときわ', 'と化', 'と化した', 'とする'], correctIndex: 2, explanation: '〜と化した = …အဖြစ်သို့ပြောင်းသွားသော (混沌と化した時代)' },
+  { id: 'n1q23', level: 'N1', skill: 'reading', question: '筆者の主張は？', passage: '刹那的な快楽を追う生き方は、結局虚無しか残さない。永劫に残る価値を求めるなら、日々の小さな積み重ねこそが、混沌とした時代を生き抜く力になると筆者は論じる。', options: ['快楽だけ追え', '日々の積み重ねが力になる', '価値は求めるな', '時代は変えられない'], correctIndex: 1, explanation: '日々の小さな積み重ねこそが力になる' },
 ];

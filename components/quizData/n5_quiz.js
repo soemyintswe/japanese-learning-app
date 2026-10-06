@@ -47,4 +47,7 @@ export const n5Quiz = [
   { id: 'n5q40', level: 'N5', skill: 'listening', question: '聞こえた挨拶は？', speakText: 'こんばんは', options: ['おはよう', 'こんにちは', 'こんばんは', 'おやすみ'], correctIndex: 2, explanation: 'こんばんは = မင်္ဂလာညချမ်း' },
   { id: 'n5q41', level: 'N5', skill: 'vocab', question: '「もっと」の意味は？', options: ['ပိုပြီး', 'အမြဲတမ်း', 'သေချာပေါက်', 'လုံးဝ'], correctIndex: 0, explanation: 'もっと = ပိုပြီး' },
   { id: 'n5q42', level: 'N5', skill: 'grammar', question: 'ここで写真を ___ ください。', options: ['撮って', '撮る', '撮り', '撮った'], correctIndex: 0, explanation: '〜てください request (撮ってください)' },
+  { id: 'n5q43', level: 'N5', skill: 'vocab', question: '「切手」の読み方は？', options: ['きって', 'きっぷ', 'ふうとう', 'はがき'], correctIndex: 0, explanation: '切手（きって）= တံဆိပ်ခေါင်း' },
+  { id: 'n5q44', level: 'N5', skill: 'grammar', question: 'バス ___ 降ります。', options: ['を', 'に', 'で', 'から'], correctIndex: 3, explanation: '起点 + から (バスから降ります = ဘတ်စ်ကားပေါ်ကဆင်းတယ်)' },
+  { id: 'n5q45', level: 'N5', skill: 'listening', question: '聞こえた言葉は？', speakText: 'おてらにいきました', options: ['じんじゃに行った', 'お寺に行った', 'こうえんに行った', 'がっこうに行った'], correctIndex: 1, explanation: 'お寺（おてら）= ဘုန်းကြီးကျောင်း' },
 ];

@@ -22,4 +22,7 @@ export const n2Quiz = [
   { id: 'n2q20', level: 'N2', skill: 'grammar', question: '知らない人に話しかけられて、 ___ した。', options: ['どぎまぎ', 'はらはら', 'そわそわ', 'うろうろ'], correctIndex: 0, explanation: 'どぎまぎする = ရင်ခုန်စိုးရိမ်သည်' },
   { id: 'n2q21', level: 'N2', skill: 'reading', question: '店が閉まった理由は？', passage: '人手不足のため、店は来月閉まることになりました。常連客は残念がっています。', options: ['人手不足のため', '売上が悪いため', '移転のため', '改装のため'], correctIndex: 0, explanation: '人手不足のため' },
   { id: 'n2q22', level: 'N2', skill: 'listening', question: '聞こえた金額は？', speakText: 'ぜんぶで千五百円です', options: ['五百円', '千円', '千五百円', '二千円'], correctIndex: 2, explanation: '千五百円（せんごひゃくえん）' },
+  { id: 'n2q23', level: 'N2', skill: 'vocab', question: '「倹約」の意味は？', options: ['ချွေတာမှု', 'ဖြုန်းတီးမှု', 'စုဆောင်းမှု', 'ရင်းနှီးမှုမှု'], correctIndex: 0, explanation: '倹約（けんやく）= ချွေတာမှု ⇔ 浪費' },
+  { id: 'n2q24', level: 'N2', skill: 'grammar', question: '話し合いの ___、両社は妥協した。', options: ['すえ', '末に', '末で', '末を'], correctIndex: 1, explanation: '〜末に = …၏အဆုံးတွင် (話し合いの末に)' },
+  { id: 'n2q25', level: 'N2', skill: 'reading', question: 'この文章の要点は？', passage: '倹約は大切だが、必要な出費まで削ると逆効果になる。浪費を避けつつ、使うべきところには使うのが賢い家計管理だと筆者は述べる。', options: ['何も買うな', '浪費を避け、使うべき所には使え', '倹約は不要だ', '出費は全て削れ'], correctIndex: 1, explanation: '浪費を避けつつ、使うべきところには使う' },
 ];

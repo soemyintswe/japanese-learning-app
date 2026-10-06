@@ -25,4 +25,9 @@ export const MATERIALS_SEED = [
   { title: 'Japanese From Zero', desc: 'YouTube — N5 course videos', level: 'N5', type: 'video', url: 'https://www.youtube.com/@JapaneseFromZero' },
   { title: 'ToKini Andy (Genki series)', desc: 'YouTube — Genki I/II lesson videos', level: 'N5', type: 'video', url: 'https://www.youtube.com/@ToKiniAndy' },
   { title: 'Nihongo con Teppei (Podcast)', desc: 'N5~N4 listening — short daily episodes', level: 'N5', type: 'audio', url: 'https://nihongoconteppei.com/' },
+  { title: 'Tadoku — Free Graded Readers', desc: 'NPO多言語多読: free level 0~ readers (PDF/YouTube, link only — CC BY-NC-ND)', level: 'N5', type: 'doc', url: 'https://tadoku.org/japanese/en/free-books-en/' },
+  { title: 'Practice JLPT — Grammar/Vocab/Kanji + Tests', desc: 'N5~N1 free study + past-exam style tests (verified 2026)', level: 'All', type: 'link', url: 'https://practicejlpt.com/' },
+  { title: 'Nihon Torii — Free SRS + Kanji Writing + Mocks', desc: 'N5~N1 game-style SRS, stroke-order writing, mock tests (verified 2026)', level: 'All', type: 'link', url: 'https://www.nihontorii.com/' },
+  { title: 'JLPTPass — Grammar/Vocab/Kanji + Mock Tests', desc: 'N5~N3 full + N2/N1 partial, no sign-up (verified 2026)', level: 'All', type: 'link', url: 'https://jlptpass.com/' },
+  { title: 'Minna Nihongo — Courses + Quizzes + Mock Tests', desc: 'N5~N1 structured courses, daily news reading, placement test (verified 2026)', level: 'All', type: 'link', url: 'https://www.minnanihongo.com/' },
 ];

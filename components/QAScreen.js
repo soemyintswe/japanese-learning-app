@@ -762,6 +762,7 @@ export default function QAScreen({ user, onLogout, navigation }) {
       {tab === 'bot' && (
         <BotPanel
           lang={lang}
+          user={user}
           onStartQuiz={(lv) => startLevelQuiz(lv)}
           onStartPlacement={startPlacement}
           onStartSkill={(sk) => {

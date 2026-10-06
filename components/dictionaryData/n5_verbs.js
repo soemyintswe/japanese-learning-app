@@ -113,4 +113,5 @@ export const n5Verbs = [
   { id: 'n5v110', japanese: '終わる', reading: 'おわる', myanmar: 'ပြီးဆုံးသည်', english: 'To end', pos: 'verb', level: 'N5' },
   { id: 'n5v111', japanese: '急ぐ', reading: 'いそぐ', myanmar: 'အလျင်လိုသည်', english: 'To hurry', pos: 'verb', level: 'N5' },
   { id: 'n5v112', japanese: '助ける', reading: 'たすける', myanmar: 'ကူညီသည်', english: 'To help', pos: 'verb', level: 'N5' },
+  { id: 'n5v113', japanese: '払う', reading: 'はらう', myanmar: 'ပေးချေသည်', english: 'To pay', pos: 'verb', level: 'N5' },
 ];

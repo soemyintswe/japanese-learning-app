@@ -32,4 +32,7 @@ export const n4Quiz = [
   { id: 'n4q30', level: 'N4', skill: 'listening', question: '聞こえた番号は？', speakText: '三番線に電車がきます', options: ['一番線', '二番線', '三番線', '四番線'], correctIndex: 2, explanation: '三番線（さんばんせん）に' },
   { id: 'n4q31', level: 'N4', skill: 'vocab', question: '「卒業」の読み方は？', options: ['そつぎょう', 'にゅうがく', 'たいがく', 'しゅうしょく'], correctIndex: 0, explanation: '卒業（そつぎょう）= ကျောင်းပြီးခြင်း' },
   { id: 'n4q32', level: 'N4', skill: 'grammar', question: 'このボタンを ___ ください。', options: ['押して', '押す', '押し', '押した'], correctIndex: 0, explanation: '〜てください (押してください)' },
+  { id: 'n4q33', level: 'N4', skill: 'vocab', question: '「診察」の読み方は？', options: ['しんさつ', 'しんさく', 'ちんさつ', 'しんだん'], correctIndex: 0, explanation: '診察（しんさつ）= ဆေးစစ်မှုခံယူခြင်း' },
+  { id: 'n4q34', level: 'N4', skill: 'grammar', question: '病気 ___ 会社を休みました。', options: ['が', 'を', 'で', 'に'], correctIndex: 2, explanation: '原因 + で (病気で = နေမကောင်းလို့)' },
+  { id: 'n4q35', level: 'N4', skill: 'reading', question: '男の人はなぜ病院へ行きましたか。', passage: '朝から頭が痛かったので、男の人は会社を休んで病院へ行きました。診察の結果、風邪でした。', options: ['頭が痛かったから', '会社が休みだから', '風邪が治ったから', '薬が欲しかったから'], correctIndex: 0, explanation: '朝から頭が痛かったので' },
 ];

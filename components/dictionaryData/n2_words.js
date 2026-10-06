@@ -145,4 +145,9 @@ export const n2Words = [
   { id: 'n2158', japanese: '格調高い', reading: 'かくちょうたかい', myanmar: 'ဂုဏ်သရေရှိသော', english: 'Lofty / Dignified', pos: 'adj-i', level: 'N2' },
   { id: 'n2159', japanese: 'せっせと', reading: 'せっせと', myanmar: 'ကြိုးကြိုးစားစား', english: 'Diligently', pos: 'adverb', level: 'N2' },
   { id: 'n2160', japanese: 'テキパキ', reading: 'てきぱき', myanmar: 'လျင်လျင်မြန်မြန်', english: 'Briskly', pos: 'adverb', level: 'N2' },
+  { id: 'n2161', japanese: '憂鬱', reading: 'ゆううつ', myanmar: 'စိတ်ဓာတ်ကျဆင်းမှု', english: 'Depression / Melancholy', pos: 'noun', level: 'N2' },
+  { id: 'n2162', japanese: '倹約', reading: 'けんやく', myanmar: 'ချွေတာမှု', english: 'Thrift / Frugality', pos: 'noun', level: 'N2' },
+  { id: 'n2163', japanese: '浪費', reading: 'ろうひ', myanmar: 'ဖြုန်းတီးမှု', english: 'Waste / Extravagance', pos: 'noun', level: 'N2' },
+  { id: 'n2164', japanese: '仲裁', reading: 'ちゅうさい', myanmar: 'ကြားဝင်ဖြန်ဖြေမှု', english: 'Arbitration / Mediation', pos: 'noun', level: 'N2' },
+  { id: 'n2165', japanese: '権威', reading: 'けんい', myanmar: 'အာဏာတည်ရှိမှု', english: 'Authority / Prestige', pos: 'noun', level: 'N2' },
 ];
