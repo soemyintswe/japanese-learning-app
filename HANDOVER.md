@@ -1,7 +1,7 @@
 # Japanese Learning App — Maintenance Handover (ထိန်းသိမ်းရေး လွှဲပြောင်းမှတ်တမ်း)
 
 > ဖတ်သူ: နောက်ဆက်တွဲ ပြင်မယ့် developer / AI assistant
-> နောက်ဆုံး update: 2026-10-06 (content round 4 + bot small-talk/app-data, by Muse Spark via OpenCode)
+> နောက်ဆုံး update: 2026-10-06 (teaching module MVP + activity log built & deployed, by Muse Spark via OpenCode)
 > Repo: https://github.com/soemyintswe/japanese-learning-app (branch: `main`)
 > Live site: https://japanese-mksedu.web.app
 > Firebase project: `japanese-mksedu`
@@ -28,6 +28,7 @@ firestore.rules               # ⭐ Firestore Security Rules — Console မှ�
 .env.example                  # Firebase env template (.env ဖန်တီးသုံးရန်, .env က gitignore)
 src/firebase.js               # Firebase init (web/native persistence + popupRedirectResolver)
 src/session.js                # ⭐ Auth user → profile resolve (uid doc → email placeholder adopt → admin auto-active)
+src/activity.js               # Activity log helper: logActivity(user, action, target, detail) → activity/{autoId} (fail-silent)
 src/LanguageContext.js        # ⭐ Global my/en/jp + AsyncStorage persist
 components/AppHeader.js       # ⭐ စာမျက်နှာတိုင်း header (title + lang ၃ ခု + profile pic/name + logout)
 components/AppIcon.js         # Ionicons အစား emoji map (web font tofu fix)
@@ -36,7 +37,8 @@ components/DictionaryScreen.js# အဘိဓာန် (base dict + custom AsyncS
 components/PlannerScreen.js   # Calendar + morning/evening checklist + notes (AsyncStorage, 3-lang)
 components/NotesScreen.js     # Notes CRUD (AsyncStorage, 3-lang chrome)
 components/QAScreen.js        # Quiz + add/edit (Option4 + correct picker, AsyncStorage, 3-lang)
-components/TeacherScreen.js   # ⭐ Admin user table (approve/disable, role-picker modal, delete, tooltips) + bio + share + change-password
+components/TeacherScreen.js   # ⭐ Admin user table (approve/disable, role-picker modal, delete, tooltips) + bio + share + change-password + 📋 activity viewer (latest 50) + horizontal-scroll table (minWidth 660, mobile)
+components/TeachingScreen.js  # 📖 Teaching module MVP: lessons + assignments + submissions/grading (staff CRUD, student submit-once, single-field queries only — no composite index)
 components/dictionaryData/    # ~1330 trilingual words: n5_nouns(274)/n5_verbs(113)/n5_adjectives(100)/n5_others(107)/n4_words(285)/n3(208)/n2(148)/n1(96) + fullDictionary.js (sample 9 w/ images) + index.js (merge/dedupe/normalizeImportEntry). Validated: scripts Temp count_dict.py + dupe_detail.py + dedupe_files.py + sanity_dict.py (0 dupes, readings present) + check_quiz.py.
 # Coverage aligned with standard JLPT lists (ref: OpenJLPT CC BY-SA 4.0 — Myanmar glosses are original, not copied). OpenJLPT totals for reference: N5 662 / N4 632 / N3 1784 / N2 1793 / N1 3463 (8,334 words). Our coverage ≈ N5 88% / N4 45% / N3 12% / N2 8% / N1 3% — N3-N1 gaps remain (bulk import via app Import + teacher Myanmar review).
 # Schema: {id, japanese, reading(kana), myanmar, english, pos, level}. Old rows may use {hiragana}/{icon} — UI handles both.
@@ -60,7 +62,7 @@ components/BotPanel.js    # Offline rule-based bot: dict lookup (~1330w), quiz/s
 # LESSON (2026-10): blank tab = usually missing import (MaterialsScreen used <ScrollView> without importing → ReferenceError → blank). Babel does NOT catch this. Prevention: JSX identifier scan (Temp scan_jsx.py — fix named-import regex false positives) before deploy.
 # Login has NO role picker (removed — self-declared roles were UX friction + privilege risk). Role (admin/teacher/student) resolves purely from Firestore profile via resolveUserProfile; new registrations default student (admin email → teacher); Admin assigns roles in panel.
 # Admin audit trail: approve/disable/role/reset stamp lastActionBy (+lastActionAt) on user docs; Admin column in User Management shows acting admin (email prefix); deletes write banned.by; banned rows show by-line. No extra rules needed (staff update covers).
-# Admin table: Created column (createdAt YYYY-MM-DD, — if missing) + tap-to-sort headers (name/role/status/created, ▲▼). Deferred (token): usage ACTIVITY LOG (needs activity/{autoId} writes + rules + viewer UI) + TEACHING module design (collections: lessons{title,body,level,mediaUrl,by,at} + assignments{title,desc,due,targets[],by,at} + submissions{assignmentId,uid,text,mediaUrl,grade,feedback,at}; teacher composes individual/group, students submit, teacher grades; est. large — next session).
+# Admin table: Created column (createdAt YYYY-MM-DD, — if missing) + tap-to-sort headers (name/role/status/created, ▲▼). Mobile-narrow fix: table wrapped in horizontal ScrollView + minWidth 660 rows (up/down = outer vertical scroll). ✅ BUILT 2026-10-06: usage ACTIVITY LOG (activity/{autoId} via src/activity.js, 8 admin actions hooked, rules append-only + staff-read, viewer in TeacherScreen admin section, 3-lang) + TEACHING module MVP (collections: lessons{title,body,level,mediaUrl,by,byName,at} + assignments{title,desc,level,due,by,byName,at} + submissions{id=assignmentId_uid,assignmentId,uid,name,text,link,grade,feedback,at,gradedBy,gradedAt}; 📖 Class tab for ALL roles (/teaching); staff composes individual assignments (due date text), students submit once (resubmit=update), staff grades per submission; rules deployed via CLI). Next (optional): group-targeted assignments (targets[]), rich media submit, grade stats.
 # User lifecycle (admin-driven credentials): TeacherScreen creates REAL Auth accounts via SECONDARY app instance (initializeApp+name, createUserWithEmailAndPassword, signOut+deleteApp — main admin session untouched) + temp password (expo-crypto MKS-XXXXXXXX, shown ONCE in delivery card, NEVER stored in Firestore) + profile {active, mustChangePassword:true}. Delivery: Copy / mailto: / sms: links (admin sends from own apps; NO server email/SMS — Twilio etc = roadmap). Admin 🔑 reset per row: sendPasswordResetEmail + flag; user-not-found placeholder → offer Auth-create+migrate+credentials. Force gate: App.js renders ForceChangePassword when mustChangePassword && hasPassword(providerData); updatePassword → clear flag → enter; requires-recent-login → logout+relogin path. session.js returns mustChangePassword+hasPassword; AuthScreen payloads carry them. Table 🔑 badge marks flagged users. LIMIT (client SDK): cannot SET another user's password — reset uses Firebase reset email (user sets own), Admin-SDK/Cloud-Function alternative = roadmap.
 # Web Alert.alert() is a NO-OP in react-native-web (static alert(){}) — caused ALL invisible confirms (admin approve etc.). Fix: src/webAlertPolyfill.js (window.confirm map, imported in App.js) as safety net + components/ConfirmModal.js for TeacherScreen approve/disable/delete/role-save/create/password flows. Other screens still rely on polyfill.
 # Community blank root cause: Google.useAuthRequest throws at render when OAuth IDs unconfigured (invariantClientId) — fixed by DriveSection lazy-mount (hook runs only if driveConfigured()) + SectionErrorBoundary.
@@ -161,6 +163,11 @@ firebase deploy --only hosting
 - **Library seed 24→29** (all 5 webfetch alive-checked 2026-10-06): Tadoku free graded readers (LINK ONLY — CC BY-NC-ND) + PracticeJLPT + NihonTorii + JLPTPass (N2 partial/N1 soon — noted in desc) + MinnaNihongo.
 - **Essays 3→5, Songs 4→5**: es04 買い物 (N5, original) + es05 雨の季節 (N4, original, Myanmar rainy season) + sg05 ふるさと verse-1 (PD 1914). もみじ deliberately NOT added (lyricist d.1959 → PD 2029).
 - **Bot small-talk + app-data (uncommitted work finished)**: greeting regex bug (Thai garbage + `history`→hi false-positive) fixed; 9 small-talk intents (နေကောင်း/ဘာလုပ်နေ/ဗိုက်ဆာ/ပင်ပန်း/ရယ်/ချစ်/အသက်/ဘယ်မှာ/ရာသီဥတု) placed before quiz/grammar so never swallowed; fallback now honest (open chat = roadmap, needs AI API); `user` prop wired from QAScreen. LIMIT restated: true free chat impossible offline — pattern-match only.
+
+### 6.8 Teaching module MVP + Activity log (2026-10-06) — BUILT & DEPLOYED
+- **Activity log**: `src/activity.js` (fail-silent) + 8 admin hooks (create/reset/migrate/role/approve-disable/unban/delete) + `activity` rules (create signed-in, read staff, append-only) + viewer in TeacherScreen (latest 50, 3-lang). Rules deployed via CLI (`firebase deploy --only firestore:rules` — compiled OK), so Console manual paste NOT needed this time.
+- **Teaching MVP**: `components/TeachingScreen.js` (~400 lines, my/en/jp) + 📖 Class tab for ALL roles (`/teaching`, icon 📖, tabT 3-lang in App.js). Staff: lessons/assignments CRUD modal (level + mediaUrl/due) + per-submission grade/feedback. Students: read + submit-once (`{assignmentId}_{uid}` merge). Queries single-field only (staff: where assignmentId==; student: where uid== + client filter) — NO composite index needed. logActivity on create/edit/delete/submit/grade.
+- Verify: `expo export` clean (676 modules) → hosting deployed → `https://japanese-mksedu.web.app` (Ctrl+F5). LIMITS: assignments are whole-class only (no per-student/group targets[] yet); submissions text+link only (no file upload — use Drive link in link field); grades are free-text.
 
 ## 7. Lesson Learned (နောင် AI/dev သတိထားရန်)
 

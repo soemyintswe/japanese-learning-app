@@ -130,5 +130,38 @@ service cloud.firestore {
         );
       }
     }
+
+    // 📝 Teaching module (lessons + assignments + submissions)
+    // lessons/assignments: read all signed-in, write staff only
+    match /lessons/{docId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isStaff();
+    }
+    match /assignments/{docId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isStaff();
+    }
+    // submissions: student creates/updates OWN doc (uid must equal caller);
+    // staff can read/grade all; students read own only
+    match /submissions/{docId} {
+      allow get: if isSignedIn() && (isStaff() || resource.data.uid == request.auth.uid);
+      allow list: if isSignedIn() && (isStaff() || resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && (
+        isStaff() || resource.data.uid == request.auth.uid
+      );
+      allow delete: if isSignedIn() && (
+        isStaff() || resource.data.uid == request.auth.uid
+      );
+    }
+
+    // 📋 Activity log (admin audit trail) — write: any signed-in (actions log themselves);
+    // read: staff only; no edits/deletes (append-only)
+    match /activity/{docId} {
+      allow get, list: if isStaff();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
   }
 }

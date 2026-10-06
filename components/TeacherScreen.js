@@ -45,6 +45,7 @@ import {
 import * as Crypto from 'expo-crypto';
 import * as Clipboard from 'expo-clipboard';
 import { useLanguage } from '../src/LanguageContext';
+import { logActivity } from '../src/activity';
 import AppHeader from './AppHeader';
 import ConfirmModal from './ConfirmModal';
 
@@ -99,6 +100,7 @@ const teacherT = {
     bannedTitle: '⛔ ပိတ်ထားသောအကောင့်များ', bannedEmpty: 'ပိတ်ထားတာ မရှိပါ။',
     unbanQ: 'ပြန်ဖွင့်ပေးမလား?', unbanMsg: 'ပိတ်ထားမှုကို ရုပ်သိမ်းပြီး ပြန် register/login ဝင်ခွင့်ပေးမယ်။',
     unbanGo: 'ပြန်ဖွင့်မည်', unbannedOk: 'ပြန်ဖွင့်ပြီးပါပြီ ✅ — အကောင့်အသစ်မှတ်ပုံတင်/ဝင်နိုင်ပြီ။',
+    logTitle: '📋 လှုပ်ရှားမှုမှတ်တမ်း (နောက်ဆုံး ၅၀)', logEmpty: 'မှတ်တမ်းမရှိသေးပါ — action အသစ်လုပ်မှ ပေါ်မယ်။',
     errPwShort: 'Password အနည်းဆုံး ၆ လုံး ဖြစ်ရမယ်။',
     errEmailInvalid: 'Email ပုံစံမှားနေပါတယ်။',
     errExists: 'ဤ Email နဲ့ Auth အကောင့်ရှိပြီးသား — Login ဝင်ခိုင်း သို့မဟုတ် 🔑 Reset သုံးပါ။',
@@ -158,6 +160,7 @@ const teacherT = {
     bannedTitle: '⛔ Banned accounts', bannedEmpty: 'None banned.',
     unbanQ: 'Unban?', unbanMsg: 'Lift the ban — they can register/log in again.',
     unbanGo: 'Unban', unbannedOk: 'Unbanned ✅',
+    logTitle: '📋 Activity log (last 50)', logEmpty: 'No records yet — new actions will appear here.',
     errPwShort: 'Password must be at least 6 characters.',
     errEmailInvalid: 'Invalid email format.',
     errExists: 'Auth account already exists — ask them to log in, or use 🔑 Reset.',
@@ -217,6 +220,7 @@ const teacherT = {
     bannedTitle: '⛔ 停止中', bannedEmpty: 'なし。',
     unbanQ: '解除しますか？', unbanMsg: '再登録可能にします。',
     unbanGo: '解除', unbannedOk: '解除 ✅',
+    logTitle: '📋 操作ログ (最新50)', logEmpty: '記録なし。',
     errPwShort: '6文字以上。',
     errEmailInvalid: '形式エラー。',
     errExists: '既存あり — ログインか🔑リセットを。',
@@ -496,6 +500,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
       setNewTempPw('');
       setNewRole('student');
       setModalVisible(false);
+      logActivity(currentUser, 'user.create', emailLower, 'role=' + newRole);
       fetchUsersFromFirestore(true);
     } catch (error) {
       console.error('Create User Error:', error.code, error.message);
@@ -540,6 +545,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
             name: usr.name || '', email: usr.email || '', phone: usr.phone || '',
             tempPw: '', resetLinkSent: true,
           });
+          logActivity(currentUser, 'user.reset', usr.email || usr.id, usr.name || '');
           fetchUsersFromFirestore(true);
         } catch (error) {
           if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
@@ -594,6 +600,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
         name: old.name || usr.name || '', email: (usr.email || '').trim().toLowerCase(),
         phone: old.phone || '', tempPw, resetLinkSent: false,
       });
+      logActivity(currentUser, 'user.migrate', (usr.email || '').trim().toLowerCase(), 'placeholder ' + usr.id);
       fetchUsersFromFirestore(true);
     } catch (error) {
       if (secApp) {
@@ -646,6 +653,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
       });
       showInfo(t.ok, '"' + (roleTarget.name || t.userWord) + '" ' + t.roleTo + ' ' + ROLE_INFO[rolePick].label);
       setRoleModalVisible(false);
+      logActivity(currentUser, 'user.role', roleTarget.name || roleTarget.id, roleTarget.role + '→' + rolePick);
       setRoleTarget(null);
       fetchUsersFromFirestore(true);
     } catch (error) {
@@ -676,6 +684,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
             lastActionAt: new Date().toISOString(),
           });
           setConfirm({ title: t.ok, message: statusText, info: true });
+          logActivity(currentUser, newStatus === 'active' ? 'user.approve' : 'user.disable', userName || userId, '→' + newStatus);
           fetchUsersFromFirestore(true);
         } catch (error) {
           setConfirm({ title: t.err, message: firestoreErrorMsg(error, t.statusQ), info: true });
@@ -690,6 +699,24 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
   const [bannedList, setBannedList] = useState([]);
   const [showBanned, setShowBanned] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // 📋 Activity log viewer (admin only — latest 50)
+  const [activityList, setActivityList] = useState([]);
+  const [showActivity, setShowActivity] = useState(false);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+  const fetchActivity = async () => {
+    if (!isAdmin) return;
+    setLoadingActivity(true);
+    try {
+      const snap = await getDocs(query(collection(db, 'activity'), orderBy('at', 'desc'), limit(50)));
+      const arr = [];
+      snap.forEach((d) => arr.push({ id: d.id, ...d.data() }));
+      setActivityList(arr);
+    } catch (e) {
+      console.log('fetchActivity:', e?.code || e?.message);
+    } finally {
+      setLoadingActivity(false);
+    }
+  };
 
   // 📥 Admin one-click full backup (DR) — users/chats(last100 msgs, no voice)/materials/settings/banned.
   // Photos (base64) + voice clips omitted for size (note in file).
@@ -793,6 +820,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
         try {
           await deleteDoc(doc(db, 'banned', b.id));
           setConfirm({ title: t.ok, message: t.unbannedOk || '', info: true });
+          logActivity(currentUser, 'user.unban', b.email || b.id, b.name || '');
           fetchBanned();
         } catch (error) {
           setConfirm({ title: t.err, message: firestoreErrorMsg(error, t.delQ), info: true });
@@ -826,6 +854,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
             });
           } catch (e) {}
           setConfirm({ title: t.ok, message: t.deleted, info: true });
+          logActivity(currentUser, 'user.delete', target.email || userId, target.name || userName || '');
           fetchUsersFromFirestore(true);
           fetchBanned();
         } catch (error) {
@@ -901,7 +930,9 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
             </Text>
 
             {/* ဇယားခေါင်းစဉ်တန်း — နှိပ်ရင် sort (▲▼) */}
-            <View style={styles.tableHeaderRow}>
+            {/* ကျဉ်းတဲ့ screen မှာ ဘယ်/ညာ ရွှေ့ကြည့်လို့ရအောင် (အထက်/အောက် = အပြင် vertical ScrollView အတိုင်း) */}
+            <ScrollView horizontal={true} showsHorizontalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 4 }}>
+            <View style={[styles.tableHeaderRow, { minWidth: 660 }]}>
               {[
                 { k: 'name', label: t.thName, flex: 2, align: 'left' },
                 { k: 'role', label: t.thRole, flex: 1, align: 'center' },
@@ -928,7 +959,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                   </Text>
                 </TouchableOpacity>
               ))}
-              <Text style={[styles.thText, { flex: 1.2, textAlign: 'right' }]}>{t.thActions}</Text>
+              <Text style={[styles.thText, { flex: 1.6, textAlign: 'right' }]}>{t.thActions}</Text>
             </View>
 
             {loading && usersList.length === 0 ? (
@@ -945,7 +976,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                 const busy = busyId === usr.id;
 
                 return (
-                  <View key={usr.id} style={[styles.tableRowItem, isMe && { backgroundColor: '#FFF8E1', borderRadius: 6 }]}>
+                  <View key={usr.id} style={[styles.tableRowItem, { minWidth: 660 }, isMe && { backgroundColor: '#FFF8E1', borderRadius: 6 }]}>
                     <View style={{ flex: 2, marginRight: 4 }}>
                       <Text style={styles.studentName}>
                         {usr.name || usr.username || 'No Name'}{isMe ? t.me : ''}{usr.mustChangePassword ? ' 🔑' : ''}
@@ -1012,6 +1043,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                 );
               })
             )}
+            </ScrollView>
 
             {/* ⛔ Banned list + Unban */}
             <TouchableOpacity
@@ -1038,6 +1070,35 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                     >
                       <Text style={styles.addUserBtnText}>{t.unbanGo}</Text>
                     </TouchableOpacity>
+                  </View>
+                ))
+              )
+            )}
+
+            {/* 📋 Activity log viewer (admin only) */}
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}
+              onPress={() => { const v = !showActivity; setShowActivity(v); if (v) fetchActivity(); }}
+            >
+              <Text style={[styles.cardTitle, { color: '#333', marginBottom: 0 }]}>
+                {showActivity ? '▼' : '▶'} {t.logTitle}
+              </Text>
+            </TouchableOpacity>
+            {showActivity && (
+              loadingActivity && activityList.length === 0 ? (
+                <ActivityIndicator size="small" color="#D32F2F" style={{ marginVertical: 12 }} />
+              ) : activityList.length === 0 ? (
+                <Text style={styles.noDataText}>{t.logEmpty}</Text>
+              ) : (
+                activityList.map((a) => (
+                  <View key={a.id} style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F0D0D0' }}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#333' }}>
+                      {a.by || '?'} · {a.action || ''}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#666' }} numberOfLines={2}>
+                      {[a.target, a.detail].filter(Boolean).join(' — ')}
+                    </Text>
+                    <Text style={styles.studentDate}>{(a.at || '').slice(0, 16).replace('T', ' ')}</Text>
                   </View>
                 ))
               )
@@ -1378,7 +1439,7 @@ const styles = StyleSheet.create({
   bgStudent: { backgroundColor: '#1976D2' },
   bgActive: { backgroundColor: '#2E7D32' },
   bgPending: { backgroundColor: '#F57C00' },
-  actionColumn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flex: 1.2 },
+  actionColumn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flex: 1.6 },
   smallBtn: { width: 26, height: 26, borderRadius: 4, marginRight: 4, justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'visible' },
   deleteUserBtn: { width: 26, height: 26, backgroundColor: '#D32F2F', borderRadius: 4, justifyContent: 'center', alignItems: 'center' },
   tooltip: { position: 'absolute', bottom: 30, right: 0, backgroundColor: '#333', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, minWidth: 140, maxWidth: 200, zIndex: 999 },
