@@ -931,7 +931,9 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
 
             {/* ဇယားခေါင်းစဉ်တန်း — နှိပ်ရင် sort (▲▼) */}
             {/* ကျဉ်းတဲ့ screen မှာ ဘယ်/ညာ ရွှေ့ကြည့်လို့ရအောင် (အထက်/အောက် = အပြင် vertical ScrollView အတိုင်း) */}
-            <ScrollView horizontal={true} showsHorizontalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 4 }}>
+            {/* NOTE: horizontal ScrollView children တွေ ဘေးတိုက်စီလို့ — အထဲမှာ wrapper View တစ်ခု မဖြစ်မခံရမယ် */}
+            <ScrollView horizontal={true} showsHorizontalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 4, flexGrow: 1 }}>
+            <View style={{ minWidth: 660 }}>
             <View style={[styles.tableHeaderRow, { minWidth: 660 }]}>
               {[
                 { k: 'name', label: t.thName, flex: 2, align: 'left' },
@@ -1043,6 +1045,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                 );
               })
             )}
+            </View>
             </ScrollView>
 
             {/* ⛔ Banned list + Unban */}
