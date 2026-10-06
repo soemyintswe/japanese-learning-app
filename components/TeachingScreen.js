@@ -7,9 +7,10 @@
 // Rules: lessons/assignments read-all/write-staff; submissions own-or-staff (see firestore.rules).
 // Queries use SINGLE-field filters only (no composite index needed).
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl, Linking, Alert, Modal, Platform } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl, Linking, Alert, Modal, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore';
+import * as ImagePicker from 'expo-image-picker';
 import { db } from '../src/firebase';
 import { logActivity } from '../src/activity';
 import { useLanguage } from '../src/LanguageContext';
@@ -22,6 +23,9 @@ const teachT = {
     add: '➕ အသစ်ထည့်မည်', edit: 'ပြင်မည်', del: 'ဖျက်မည်', save: 'သိမ်းမည်', cancel: 'မလုပ်တော့',
     fTitle: 'ခေါင်းစဉ်:', fBody: 'စာသား:', fLevel: 'Level (N5~N1 / All):', fMedia: 'Media link (YouTube/Drive, optional):',
     fDesc: 'ရှင်းလင်းချက်:', fDue: 'နောက်ဆုံးရက် (ဥပမာ 2026-10-20):',
+    targetLabel: 'ပေးမည့်သူ:', targetAll: 'အားလုံး', targetLevel: 'Level:', targetPick: 'ကျောင်းသားရွေး:',
+    photoAdd: '📷 ပုံတွဲမည်', photoDel: '✕ ပုံဖျက်မည်', photoBig: 'ပုံကြီးလွန်းတယ် (500KB အောက် ရွေးပါ)။',
+    stTitle: '📊 အမှတ်စာရင်း', stSubmitted: 'တင်ပြီး', stGraded: 'အမှတ်ပေး', stAvg: 'ပျမ်းမျှ(ဂဏန်း)', stPending: 'မပေးရသေး',
     submit: 'အဖြေတင်မည်', fAnswer: 'အဖြေ:', fLink: 'Link (optional):', submitted: 'တင်ပြီးပါပြီ ✅',
     grade: 'အမှတ်:', feedback: 'မှတ်ချက်:', gradeSave: 'အမှတ်ပေးမည်',
     noGrade: 'အမှတ်မပေးရသေး', subs: 'တင်ထားသူများ', delQ: 'ဖျက်မှာလား?', yesDel: 'ဖျက်မည်', noDel: 'မလုပ်တော့',
@@ -33,6 +37,9 @@ const teachT = {
     add: '➕ Add new', edit: 'Edit', del: 'Delete', save: 'Save', cancel: 'Cancel',
     fTitle: 'Title:', fBody: 'Body:', fLevel: 'Level (N5~N1 / All):', fMedia: 'Media link (YouTube/Drive, optional):',
     fDesc: 'Description:', fDue: 'Due date (e.g. 2026-10-20):',
+    targetLabel: 'Assign to:', targetAll: 'Everyone', targetLevel: 'Level:', targetPick: 'Pick students:',
+    photoAdd: '📷 Attach photo', photoDel: '✕ Remove photo', photoBig: 'Photo too large (pick under 500KB).',
+    stTitle: '📊 Grade stats', stSubmitted: 'submitted', stGraded: 'graded', stAvg: 'avg (numeric)', stPending: 'pending',
     submit: 'Submit answer', fAnswer: 'Answer:', fLink: 'Link (optional):', submitted: 'Submitted ✅',
     grade: 'Grade:', feedback: 'Feedback:', gradeSave: 'Grade it',
     noGrade: 'Not graded yet', subs: 'Submissions', delQ: 'Delete?', yesDel: 'Delete', noDel: 'Cancel',
@@ -44,6 +51,9 @@ const teachT = {
     add: '➕ 新規', edit: '編集', del: '削除', save: '保存', cancel: 'キャンセル',
     fTitle: 'タイトル:', fBody: '本文:', fLevel: 'レベル (N5~N1 / All):', fMedia: 'メディアリンク (任意):',
     fDesc: '説明:', fDue: '締切 (例 2026-10-20):',
+    targetLabel: '対象:', targetAll: '全員', targetLevel: 'レベル:', targetPick: '学生を選択:',
+    photoAdd: '📷 写真を添付', photoDel: '✕ 写真を外す', photoBig: '写真が大きすぎます (500KB以下)。',
+    stTitle: '📊 成績', stSubmitted: '提出', stGraded: '採点済', stAvg: '平均(数値)', stPending: '未採点',
     submit: '提出する', fAnswer: '回答:', fLink: 'リンク (任意):', submitted: '提出済み ✅',
     grade: '評価:', feedback: 'コメント:', gradeSave: '採点する',
     noGrade: '未採点', subs: '提出一覧', delQ: '削除しますか?', yesDel: '削除', noDel: 'キャンセル',
@@ -74,6 +84,10 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
   const [answerLink, setAnswerLink] = useState('');
   // grading form per submission
   const [gradeMap, setGradeMap] = useState({}); // {subId: {grade, feedback}}
+  // round-2: targets + photo
+  const [myLevel, setMyLevel] = useState('');
+  const [allUsers, setAllUsers] = useState([]);
+  const [photo, setPhoto] = useState(null); // data-uri string for submit attach
 
   const fetchAll = async (silent) => {
     if (!silent) setLoading(true);
@@ -87,6 +101,22 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
       aq.forEach((d) => aa.push({ id: d.id, ...d.data() }));
       setAssigns(aq);
       if (user?.uid) {
+        // own level (for level-targeted assignments) + users directory (staff picker)
+        try {
+          const me = await getDoc(doc(db, 'users', user.uid));
+          if (me.exists()) {
+            const d = me.data();
+            setMyLevel(String(d.jlpt || d.testedLevel || '').toUpperCase());
+          }
+        } catch (e) {}
+        if (isStaff) {
+          try {
+            const uq = await getDocs(collection(db, 'users'));
+            const ua = [];
+            uq.forEach((d) => ua.push({ id: d.id, ...d.data() }));
+            setAllUsers(ua);
+          } catch (e) {}
+        }
         // single-field queries only (no composite index):
         // staff → all subs of open assignment; student → own subs only
         let sq;
@@ -125,6 +155,9 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
       text: item ? (item.body || item.desc || '') : '',
       level: item?.level || 'All',
       extra: item ? (item.mediaUrl || item.due || '') : '',
+      target: item?.target || 'all',
+      targetLevel: item?.targetLevel || 'N5',
+      targetUids: item?.targetUids || [],
     });
   };
 
@@ -143,7 +176,11 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
       };
       const payload = modal.kind === 'lesson'
         ? { ...base, body: modal.text.trim(), mediaUrl: modal.extra.trim() }
-        : { ...base, desc: modal.text.trim(), due: modal.extra.trim() };
+        : {
+            ...base, desc: modal.text.trim(), due: modal.extra.trim(),
+            target: modal.target || 'all', targetLevel: modal.targetLevel || 'N5',
+            targetUids: modal.targetUids || [],
+          };
       await setDoc(doc(db, col, id), payload, { merge: true });
       logActivity(user, modal.kind + (modal.id ? '.edit' : '.create'), modal.title.trim(), '');
       setModal(null);
@@ -175,6 +212,18 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
     ]);
   };
 
+  const pickPhoto = async () => {
+    try {
+      const r = await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.4 });
+      if (r.canceled || !r.assets?.[0]?.base64) return;
+      const b64 = r.assets[0].base64;
+      if (b64.length > 700000) { Alert.alert(t.photoBig); return; }
+      setPhoto('data:image/jpeg;base64,' + b64);
+    } catch (e) {
+      Alert.alert('Error', String(e?.message || e));
+    }
+  };
+
   const submitAnswer = async (assign) => {
     if (!user?.uid || !answer.trim()) { Alert.alert(t.errFill); return; }
     setBusy(true);
@@ -183,11 +232,13 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
       await setDoc(doc(db, 'submissions', sid), {
         assignmentId: assign.id, uid: user.uid, name: user.name || user.email || '',
         text: answer.trim(), link: answerLink.trim(),
+        ...(photo ? { photo } : {}),
         at: new Date().toISOString(),
       }, { merge: true });
-      logActivity(user, 'assign.submit', assign.title || assign.id, '');
+      logActivity(user, 'assign.submit', assign.title || assign.id, photo ? '+photo' : '');
       setAnswer('');
       setAnswerLink('');
+      setPhoto(null);
       Alert.alert(t.submitted);
       fetchAll(true);
     } catch (e) {
@@ -215,7 +266,28 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
     }
   };
 
-  const list = seg === 'lessons' ? lessons : assigns;
+  const rawList = seg === 'lessons' ? lessons : assigns;
+  // students see only assignments targeted at them (old docs without target = everyone)
+  const list = (seg === 'assignments' && !isStaff)
+    ? rawList.filter((a) => {
+        if (!a.target || a.target === 'all') return true;
+        if (a.target === 'level') return !myLevel || (a.targetLevel || 'All') === 'All' || a.targetLevel === myLevel;
+        if (a.target === 'students') return (a.targetUids || []).includes(user?.uid);
+        return true;
+      })
+    : rawList;
+  const targetTag = (x) => {
+    if (!x.target || x.target === 'all') return '';
+    if (x.target === 'level') return ` · 🎯 ${x.targetLevel || ''}`;
+    return ` · 🎯 ${(x.targetUids || []).length}`;
+  };
+  const statsLine = () => {
+    const total = openedSubs.length;
+    const graded = openedSubs.filter((s) => s.grade && String(s.grade).trim());
+    const nums = graded.map((s) => parseFloat(String(s.grade).trim())).filter((n) => !Number.isNaN(n));
+    const avg = nums.length ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(1) : '—';
+    return `${t.stSubmitted} ${total} · ${t.stGraded} ${graded.length} · ${t.stAvg} ${avg} · ${t.stPending} ${total - graded.length}`;
+  };
   const opened = openId ? list.find((x) => x.id === openId) : null;
   const openedSubs = openId ? subs.filter((s) => s.assignmentId === openId) : [];
   const mySub = !isStaff && opened ? openedSubs[0] : null;
@@ -260,7 +332,7 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
             </TouchableOpacity>
             <Text style={styles.itemTitle}>{opened.title}</Text>
             <Text style={styles.meta}>
-              [{opened.level || 'All'}]{opened.byName ? ` · ${t.by} ${opened.byName}` : ''}{opened.due ? ` · ⏰ ${opened.due}` : ''}
+              [{opened.level || 'All'}]{opened.byName ? ` · ${t.by} ${opened.byName}` : ''}{opened.due ? ` · ⏰ ${opened.due}` : ''}{targetTag(opened)}
             </Text>
             <Text style={styles.body}>{opened.body || opened.desc || ''}</Text>
             {!!opened.mediaUrl && (
@@ -292,12 +364,24 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
                 />
                 <Text style={styles.label}>{t.fLink}</Text>
                 <TextInput style={styles.input} value={answerLink} onChangeText={setAnswerLink} placeholder="https://…" placeholderTextColor="#999" />
+                <View style={styles.rowBtns}>
+                  <TouchableOpacity style={[styles.editBtn, { flex: 1 }]} onPress={pickPhoto} disabled={busy}>
+                    <Text style={styles.btnText}>{t.photoAdd}</Text>
+                  </TouchableOpacity>
+                  {!!photo && (
+                    <TouchableOpacity style={[styles.delBtn, { flex: 1 }]} onPress={() => setPhoto(null)}>
+                      <Text style={styles.btnText}>{t.photoDel}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {!!photo && <Image source={{ uri: photo }} style={styles.attachedImg} />}
                 <TouchableOpacity style={styles.saveBtn} onPress={() => submitAnswer(opened)} disabled={busy}>
                   <Text style={styles.btnText}>{t.submit}</Text>
                 </TouchableOpacity>
                 {!!mySub && (
                   <View style={styles.gradedBox}>
                     <Text style={styles.body}>{mySub.text}</Text>
+                    {!!mySub.photo && <Image source={{ uri: mySub.photo }} style={styles.attachedImg} />}
                     <Text style={styles.meta}>
                       {mySub.grade ? `🏅 ${mySub.grade}` : `⏳ ${t.noGrade}`}{mySub.feedback ? ` — ${mySub.feedback}` : ''}
                     </Text>
@@ -309,11 +393,13 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
             {seg === 'assignments' && isStaff && (
               <View style={styles.subBox}>
                 <Text style={styles.label}>{t.subs} ({openedSubs.length})</Text>
+                <Text style={styles.meta}>{t.stTitle}: {statsLine()}</Text>
                 {openedSubs.length === 0 && <Text style={styles.meta}>{t.empty}</Text>}
                 {openedSubs.map((s) => (
                   <View key={s.id} style={styles.gradedBox}>
                     <Text style={styles.itemTitle}>{s.name || s.uid}</Text>
                     <Text style={styles.body}>{s.text || ''}</Text>
+                    {!!s.photo && <Image source={{ uri: s.photo }} style={styles.attachedImg} />}
                     {!!s.link && (
                       <TouchableOpacity onPress={() => Linking.openURL(s.link).catch(() => {})}>
                         <Text style={styles.linkText}>{s.link}</Text>
@@ -350,7 +436,7 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
             <TouchableOpacity key={x.id} style={styles.card} onPress={() => setOpenId(x.id)}>
               <Text style={styles.itemTitle}>{x.title}</Text>
               <Text style={styles.meta}>
-                [{x.level || 'All'}]{x.byName ? ` · ${t.by} ${x.byName}` : ''}{x.due ? ` · ⏰ ${x.due}` : ''}
+                [{x.level || 'All'}]{x.byName ? ` · ${t.by} ${x.byName}` : ''}{x.due ? ` · ⏰ ${x.due}` : ''}{targetTag(x)}
               </Text>
               <Text style={styles.meta} numberOfLines={2}>{x.body || x.desc || ''}</Text>
             </TouchableOpacity>
@@ -374,6 +460,43 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
               <TextInput style={styles.input} value={modal?.level || ''} onChangeText={(v) => setModal((m) => ({ ...m, level: v }))} placeholder="All / N5…" placeholderTextColor="#999" />
               <Text style={styles.label}>{modal?.kind === 'lesson' ? t.fMedia : t.fDue}</Text>
               <TextInput style={styles.input} value={modal?.extra || ''} onChangeText={(v) => setModal((m) => ({ ...m, extra: v }))} placeholder="…" placeholderTextColor="#999" />
+              {modal?.kind === 'assign' && (
+                <View>
+                  <Text style={styles.label}>{t.targetLabel}</Text>
+                  <View style={styles.rowBtns}>
+                    {['all', 'level', 'students'].map((md) => (
+                      <TouchableOpacity key={md} style={[styles.segBtn, { flex: 1, marginRight: 4 }, modal.target === md && styles.segActive]} onPress={() => setModal((m) => ({ ...m, target: md }))}>
+                        <Text style={[styles.segText, modal.target === md && styles.segTextActive]}>{md === 'all' ? t.targetAll : md === 'level' ? t.targetLevel : t.targetPick}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {modal.target === 'level' && (
+                    <View style={[styles.rowBtns, { flexWrap: 'wrap' }]}>
+                      {['N5', 'N4', 'N3', 'N2', 'N1'].map((lv) => (
+                        <TouchableOpacity key={lv} style={[styles.segBtn, { paddingHorizontal: 12, marginRight: 4, marginTop: 4 }, modal.targetLevel === lv && styles.segActive]} onPress={() => setModal((m) => ({ ...m, targetLevel: lv }))}>
+                          <Text style={[styles.segText, modal.targetLevel === lv && styles.segTextActive]}>{lv}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  {modal.target === 'students' && (
+                    <View>
+                      {allUsers.filter((u) => (u.role || '').toLowerCase() === 'student').slice(0, 100).map((u) => {
+                        const on = (modal.targetUids || []).includes(u.id);
+                        return (
+                          <TouchableOpacity key={u.id} style={styles.pickRow} onPress={() => setModal((m) => {
+                            const cur = m.targetUids || [];
+                            return { ...m, targetUids: on ? cur.filter((x) => x !== u.id) : [...cur, u.id] };
+                          })}>
+                            <Text style={styles.pickBox}>{on ? '☑️' : '⬜'}</Text>
+                            <Text style={styles.pickName}>{u.name || u.email}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              )}
               <View style={styles.rowBtns}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setModal(null)}>
                   <Text style={styles.btnText}>{t.cancel}</Text>
@@ -419,6 +542,10 @@ const styles = StyleSheet.create({
   subBox: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#EEE', paddingTop: 8 },
   gradedBox: { backgroundColor: '#F9F9F9', borderRadius: 8, padding: 10, marginTop: 8, borderWidth: 1, borderColor: '#EEE' },
   linkText: { fontSize: 12, color: '#1976D2', marginTop: 4 },
+  attachedImg: { width: '100%', height: 200, borderRadius: 8, marginTop: 8, backgroundColor: '#EEE' },
+  pickRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  pickBox: { fontSize: 14, marginRight: 8 },
+  pickName: { fontSize: 13, color: '#333' },
   overlay: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 20 },
   modalBox: { backgroundColor: '#FFF', borderRadius: 12, padding: 18, maxHeight: '85%' },
 });

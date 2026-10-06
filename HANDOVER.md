@@ -169,6 +169,12 @@ firebase deploy --only hosting
 - **Teaching MVP**: `components/TeachingScreen.js` (~400 lines, my/en/jp) + 📖 Class tab for ALL roles (`/teaching`, icon 📖, tabT 3-lang in App.js). Staff: lessons/assignments CRUD modal (level + mediaUrl/due) + per-submission grade/feedback. Students: read + submit-once (`{assignmentId}_{uid}` merge). Queries single-field only (staff: where assignmentId==; student: where uid== + client filter) — NO composite index needed. logActivity on create/edit/delete/submit/grade.
 - Verify: `expo export` clean (676 modules) → hosting deployed → `https://japanese-mksedu.web.app` (Ctrl+F5). LIMITS: assignments are whole-class only (no per-student/group targets[] yet); submissions text+link only (no file upload — use Drive link in link field); grades are free-text.
 
+### 6.9 Teaching round-2 (2026-10-06) — targets + photo submit + grade stats
+- **Assignment targets** (`target/targetLevel/targetUids` on assignment docs; old docs = all): staff picks whole-class | JLPT level (N5-N1) | specific students (checkbox from users directory, students only, max 100). Student list auto-filters (level read from own profile `jlpt||testedLevel`; unknown level → shown). List + detail show 🎯 tag. No rules change, no composite index (same single-field queries).
+- **Photo submit**: student can attach 1 photo (expo-image-picker, quality 0.4, base64 cap ~500KB → reject with message) stored as `photo` data-uri on submission doc; shown in own view + staff grading view. Same base64-in-Firestore pattern as avatars (cost note P2-9 applies; Storage still Blaze-blocked).
+- **Grade stats** (staff, per assignment): submitted / graded / avg-of-numeric / pending counts, computed client-side.
+- Safety: `git tag pre-round5` before edits (rollback = `git reset --hard pre-round5` + redeploy); export caught 1 brace error pre-deploy, fixed, re-export clean → hosting deployed → pushed. No `firestore.rules` change this round (rules deploy skipped).
+
 ## 7. Lesson Learned (နောင် AI/dev သတိထားရန်)
 
 1. `initializeAuth` on **web** MUST include `popupRedirectResolver: browserPopupRedirectResolver` — မပါရင် popup/redirect = `auth/argument-error` (အစကတည်းက မရခဲ့တာ).
