@@ -54,7 +54,7 @@ const teacherT = {
     adminTitle: '🛡️ ADMIN - User Management', addUser: 'User အသစ်ထည့်မည်',
     sub: 'Register လုပ်ထားသူများကို Approve လုပ်ရန်၊ Role ပြောင်းရန်နှင့် စီမံရန်',
     legend: 'ခလုတ် အဓိပ္ပာယ် — ✅/🔒 = ဖွင့်/ပိတ် (Approve/Disable)\n🔄 = Role ရွေးမယ် (နှိပ်ရင် Student/Teacher/Admin စာရင်း ပေါ်မယ်)\n🗑️ = အကောင့် အပြီးဖျက်\n(Web မှာ ခလုတ်ပေါ် mouse တင်ရင် စာတမ်းပေါ်မယ်၊ ဖုန်းမှာ ဖိထားရင် ရှင်းချက်ပေါ်မယ်)',
-    thName: 'အမည် / Email', thRole: 'Role', thStatus: 'Status', thBy: 'Admin', thActions: 'Actions',
+    thName: 'အမည် / Email', thRole: 'Role', thStatus: 'Status', thBy: 'Admin', thCreated: 'တည်ဆောက်ရက်', thActions: 'Actions',
     empty: 'Firestore တွင် ယခုလက်ရှိ User စာရင်း မရှိသေးပါ။', me: ' (ကိုယ်)',
     statusActive: 'အသုံးပြုခွင့် ဖွင့်ပေးလိုက်ပါပြီ (ACTIVE)။', statusDisabled: 'အသုံးပြုခွင့် ပိတ်လိုက်ပါပြီ (DISABLED)။',
     nonAdminTitle: 'အကောင့် အခြေအနေ', nonAdminBody: 'သင်၏အကောင့်မှာ ကျောင်းသား/ဆရာ အကောင့်ဖြစ်ပါသည်။ Admin လုပ်ဆောင်ချက်များကို ကြည့်ရှုခွင့်မရှိပါ။',
@@ -113,7 +113,7 @@ const teacherT = {
     adminTitle: '🛡️ ADMIN - User Management', addUser: 'Add New User',
     sub: 'Approve registrations, change roles and manage users',
     legend: 'Buttons — ✅/🔒 = Approve/Disable\n🔄 = Pick role (Student/Teacher/Admin list)\n🗑️ = Delete account permanently\n(Web: hover for tips, phone: long-press)',
-    thName: 'Name / Email', thRole: 'Role', thStatus: 'Status', thBy: 'Admin', thActions: 'Actions',
+    thName: 'Name / Email', thRole: 'Role', thStatus: 'Status', thBy: 'Admin', thCreated: 'Created', thActions: 'Actions',
     empty: 'No users in Firestore yet.', me: ' (you)',
     statusActive: 'Access enabled (ACTIVE).', statusDisabled: 'Access disabled (DISABLED).',
     nonAdminTitle: 'Account Status', nonAdminBody: 'Your account is a student/teacher account. Admin features are not visible to you.',
@@ -172,7 +172,7 @@ const teacherT = {
     adminTitle: '🛡️ ADMIN - ユーザー管理', addUser: '新規ユーザー追加',
     sub: '登録の承認、ロールの変更、ユーザー管理',
     legend: 'ボタン — ✅/🔒 = 有効化/無効化\n🔄 = ロール選択（Student/Teacher/Admin)\n🗑️ = アカウント完全削除\n(Web: ホバーで説明、スマホ: 長押し)',
-    thName: '名前 / Email', thRole: 'ロール', thStatus: 'ステータス', thBy: '担当', thActions: '操作',
+    thName: '名前 / Email', thRole: 'ロール', thStatus: 'ステータス', thBy: '担当', thCreated: '作成日', thActions: '操作',
     empty: 'Firestoreにユーザーがまだいません。', me: '（あなた）',
     statusActive: '利用を有効化しました（ACTIVE）。', statusDisabled: '利用を無効化しました（DISABLED）。',
     nonAdminTitle: 'アカウント状態', nonAdminBody: 'あなたのアカウントは学生・先生用です。管理者機能は表示されません。',
@@ -302,6 +302,30 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
 
   // ခလုတ်နှိပ်နေတုန်း (loading) ဘယ်အတန်းလဲ မှတ်ထားရန် — ခလုတ်အလုပ်လုပ်နေမှန်း သိသာအောင်
   const [busyId, setBusyId] = useState(null);
+  // Sorting: header နှိပ် →-same key ဆို asc/desc လှည့်
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState('asc');
+  const sortedUsers = (() => {
+    if (!sortKey) return usersList;
+    const arr = [...usersList];
+    const get = (u) => {
+      if (sortKey === 'name') return (u.name || u.username || '').toLowerCase();
+      if (sortKey === 'role') return (u.role || '').toLowerCase();
+      if (sortKey === 'status') return (u.status || '').toLowerCase();
+      if (sortKey === 'created') return u.createdAt || '';
+      return '';
+    };
+    arr.sort((a, b) => {
+      const r = String(get(a)).localeCompare(String(get(b)));
+      return sortDir === 'asc' ? r : -r;
+    });
+    return arr;
+  })();
+  const shortDate = (iso) => {
+    if (!iso) return '—';
+    const s = String(iso).slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '—';
+  };
 
   // In-app confirm/info dialog (web Alert.alert is NO-OP → custom modal)
   // {title, message, confirmText?, cancelText?, danger?, onConfirm?} — confirmText မပါရင် info mode (OK သက်သက်)
@@ -876,12 +900,34 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
               {t.legend}
             </Text>
 
-            {/* ဇယားခေါင်းစဉ်တန်း */}
+            {/* ဇယားခေါင်းစဉ်တန်း — နှိပ်ရင် sort (▲▼) */}
             <View style={styles.tableHeaderRow}>
-              <Text style={[styles.thText, { flex: 2 }]}>{t.thName}</Text>
-              <Text style={[styles.thText, { flex: 1, textAlign: 'center' }]}>{t.thRole}</Text>
-              <Text style={[styles.thText, { flex: 1, textAlign: 'center' }]}>{t.thStatus}</Text>
-              <Text style={[styles.thText, { flex: 1, textAlign: 'center' }]}>{t.thBy}</Text>
+              {[
+                { k: 'name', label: t.thName, flex: 2, align: 'left' },
+                { k: 'role', label: t.thRole, flex: 1, align: 'center' },
+                { k: 'status', label: t.thStatus, flex: 1, align: 'center' },
+                { k: 'by', label: t.thBy, flex: 1, align: 'center', noSort: true },
+                { k: 'created', label: t.thCreated, flex: 1.1, align: 'center' },
+              ].map((h) => (
+                <TouchableOpacity
+                  key={h.k}
+                  style={{ flex: h.flex, alignItems: h.align === 'center' ? 'center' : 'flex-start' }}
+                  disabled={h.noSort}
+                  onPress={() => {
+                    if (h.noSort) return;
+                    if (sortKey !== h.k) {
+                      setSortKey(h.k);
+                      setSortDir('asc');
+                    } else {
+                      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                    }
+                  }}
+                >
+                  <Text style={[styles.thText, h.align === 'right' && { textAlign: 'right' }]}>
+                    {h.label}{!h.noSort && sortKey === h.k ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+                  </Text>
+                </TouchableOpacity>
+              ))}
               <Text style={[styles.thText, { flex: 1.2, textAlign: 'right' }]}>{t.thActions}</Text>
             </View>
 
@@ -892,7 +938,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                 <Text style={styles.noDataText}>{t.empty}</Text>
               </View>
             ) : (
-              usersList.map((usr) => {
+              sortedUsers.map((usr) => {
                 const status = (usr.status || 'pending').toLowerCase();
                 const role = (usr.role || 'student').toLowerCase();
                 const isMe = (usr.email || '').toLowerCase() === (currentUser?.email || '').toLowerCase();
@@ -923,6 +969,10 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                       <Text style={styles.byText} numberOfLines={1}>
                         {(usr.lastActionBy || usr.createdBy) ? String(usr.lastActionBy || usr.createdBy).split('@')[0] : '—'}
                       </Text>
+                    </View>
+
+                    <View style={{ flex: 1.1, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={styles.byText} numberOfLines={1}>{shortDate(usr.createdAt)}</Text>
                     </View>
 
                     <View style={styles.actionColumn}>
