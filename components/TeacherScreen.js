@@ -54,7 +54,7 @@ const teacherT = {
     adminTitle: '🛡️ ADMIN - User Management', addUser: 'User အသစ်ထည့်မည်',
     sub: 'Register လုပ်ထားသူများကို Approve လုပ်ရန်၊ Role ပြောင်းရန်နှင့် စီမံရန်',
     legend: 'ခလုတ် အဓိပ္ပာယ် — ✅/🔒 = ဖွင့်/ပိတ် (Approve/Disable)\n🔄 = Role ရွေးမယ် (နှိပ်ရင် Student/Teacher/Admin စာရင်း ပေါ်မယ်)\n🗑️ = အကောင့် အပြီးဖျက်\n(Web မှာ ခလုတ်ပေါ် mouse တင်ရင် စာတမ်းပေါ်မယ်၊ ဖုန်းမှာ ဖိထားရင် ရှင်းချက်ပေါ်မယ်)',
-    thName: 'အမည် / Email', thRole: 'Role', thStatus: 'Status', thActions: 'Actions',
+    thName: 'အမည် / Email', thRole: 'Role', thStatus: 'Status', thBy: 'Admin', thActions: 'Actions',
     empty: 'Firestore တွင် ယခုလက်ရှိ User စာရင်း မရှိသေးပါ။', me: ' (ကိုယ်)',
     statusActive: 'အသုံးပြုခွင့် ဖွင့်ပေးလိုက်ပါပြီ (ACTIVE)။', statusDisabled: 'အသုံးပြုခွင့် ပိတ်လိုက်ပါပြီ (DISABLED)။',
     nonAdminTitle: 'အကောင့် အခြေအနေ', nonAdminBody: 'သင်၏အကောင့်မှာ ကျောင်းသား/ဆရာ အကောင့်ဖြစ်ပါသည်။ Admin လုပ်ဆောင်ချက်များကို ကြည့်ရှုခွင့်မရှိပါ။',
@@ -113,7 +113,7 @@ const teacherT = {
     adminTitle: '🛡️ ADMIN - User Management', addUser: 'Add New User',
     sub: 'Approve registrations, change roles and manage users',
     legend: 'Buttons — ✅/🔒 = Approve/Disable\n🔄 = Pick role (Student/Teacher/Admin list)\n🗑️ = Delete account permanently\n(Web: hover for tips, phone: long-press)',
-    thName: 'Name / Email', thRole: 'Role', thStatus: 'Status', thActions: 'Actions',
+    thName: 'Name / Email', thRole: 'Role', thStatus: 'Status', thBy: 'Admin', thActions: 'Actions',
     empty: 'No users in Firestore yet.', me: ' (you)',
     statusActive: 'Access enabled (ACTIVE).', statusDisabled: 'Access disabled (DISABLED).',
     nonAdminTitle: 'Account Status', nonAdminBody: 'Your account is a student/teacher account. Admin features are not visible to you.',
@@ -172,7 +172,7 @@ const teacherT = {
     adminTitle: '🛡️ ADMIN - ユーザー管理', addUser: '新規ユーザー追加',
     sub: '登録の承認、ロールの変更、ユーザー管理',
     legend: 'ボタン — ✅/🔒 = 有効化/無効化\n🔄 = ロール選択（Student/Teacher/Admin)\n🗑️ = アカウント完全削除\n(Web: ホバーで説明、スマホ: 長押し)',
-    thName: '名前 / Email', thRole: 'ロール', thStatus: 'ステータス', thActions: '操作',
+    thName: '名前 / Email', thRole: 'ロール', thStatus: 'ステータス', thBy: '担当', thActions: '操作',
     empty: 'Firestoreにユーザーがまだいません。', me: '（あなた）',
     statusActive: '利用を有効化しました（ACTIVE）。', statusDisabled: '利用を無効化しました（DISABLED）。',
     nonAdminTitle: 'アカウント状態', nonAdminBody: 'あなたのアカウントは学生・先生用です。管理者機能は表示されません。',
@@ -507,7 +507,11 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
         setBusyId(usr.id);
         try {
           await sendPasswordResetEmail(auth, usr.email);
-          await updateDoc(doc(db, 'users', usr.id), { mustChangePassword: true });
+          await updateDoc(doc(db, 'users', usr.id), {
+            mustChangePassword: true,
+            lastActionBy: currentUser?.email || '',
+            lastActionAt: new Date().toISOString(),
+          });
           setCreds({
             name: usr.name || '', email: usr.email || '', phone: usr.phone || '',
             tempPw: '', resetLinkSent: true,
@@ -611,7 +615,11 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
     }
     setBusyId(roleTarget.id);
     try {
-      await updateDoc(doc(db, 'users', roleTarget.id), { role: rolePick });
+      await updateDoc(doc(db, 'users', roleTarget.id), {
+        role: rolePick,
+        lastActionBy: currentUser?.email || '',
+        lastActionAt: new Date().toISOString(),
+      });
       showInfo(t.ok, '"' + (roleTarget.name || t.userWord) + '" ' + t.roleTo + ' ' + ROLE_INFO[rolePick].label);
       setRoleModalVisible(false);
       setRoleTarget(null);
@@ -638,7 +646,11 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
       onConfirm: async () => {
         setBusyId(userId);
         try {
-          await updateDoc(doc(db, 'users', userId), { status: newStatus });
+          await updateDoc(doc(db, 'users', userId), {
+            status: newStatus,
+            lastActionBy: currentUser?.email || '',
+            lastActionAt: new Date().toISOString(),
+          });
           setConfirm({ title: t.ok, message: statusText, info: true });
           fetchUsersFromFirestore(true);
         } catch (error) {
@@ -869,6 +881,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
               <Text style={[styles.thText, { flex: 2 }]}>{t.thName}</Text>
               <Text style={[styles.thText, { flex: 1, textAlign: 'center' }]}>{t.thRole}</Text>
               <Text style={[styles.thText, { flex: 1, textAlign: 'center' }]}>{t.thStatus}</Text>
+              <Text style={[styles.thText, { flex: 1, textAlign: 'center' }]}>{t.thBy}</Text>
               <Text style={[styles.thText, { flex: 1.2, textAlign: 'right' }]}>{t.thActions}</Text>
             </View>
 
@@ -903,6 +916,12 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                       <Text style={[styles.badge, status === 'active' ? styles.bgActive : styles.bgPending]}>
                         {status.toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={styles.byText} numberOfLines={1}>
+                        {usr.lastActionBy ? String(usr.lastActionBy).split('@')[0] : '—'}
                       </Text>
                     </View>
 
@@ -961,7 +980,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                   <View key={b.id} style={[styles.tableRowItem, { backgroundColor: '#F5F5F5', borderRadius: 6, paddingHorizontal: 6 }]}>
                     <View style={{ flex: 2, marginRight: 4 }}>
                       <Text style={styles.studentName}>{b.name || 'No Name'}</Text>
-                      <Text style={styles.studentDate}>{b.email || 'N/A'}</Text>
+                      <Text style={styles.studentDate}>{b.email || 'N/A'}{b.by ? ` · by ${String(b.by).split('@')[0]}` : ''}</Text>
                     </View>
                     <TouchableOpacity
                       style={[styles.addUserBtnHeader, { backgroundColor: '#2E7D32' }]}
@@ -1302,6 +1321,7 @@ const styles = StyleSheet.create({
   addUserBtnText: { color: '#FFF', fontSize: 11, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   studentName: { fontSize: 13, fontWeight: 'bold', color: '#333', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   studentDate: { fontSize: 10, color: '#666', marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  byText: { fontSize: 10, color: '#888', textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   badge: { fontSize: 9, fontWeight: 'bold', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, overflow: 'hidden', color: '#FFF', textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   bgAdmin: { backgroundColor: '#D32F2F' },
   bgTeacher: { backgroundColor: '#E65100' },
