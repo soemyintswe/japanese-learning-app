@@ -921,7 +921,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
 
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                       <Text style={styles.byText} numberOfLines={1}>
-                        {usr.lastActionBy ? String(usr.lastActionBy).split('@')[0] : '—'}
+                        {(usr.lastActionBy || usr.createdBy) ? String(usr.lastActionBy || usr.createdBy).split('@')[0] : '—'}
                       </Text>
                     </View>
 
