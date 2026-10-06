@@ -17,11 +17,9 @@ export const SHARED_FOLDER = 'MKS Materials';
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 export function teacherDriveConfigured() {
-  return !!(
-    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
-    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
-    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
-  );
+  if (Platform.OS === 'android') return !!process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+  if (Platform.OS === 'ios') return !!process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+  return !!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 }
 
 // Same fixed redirect as student backup (Drive UI lives in Community + Materials modal

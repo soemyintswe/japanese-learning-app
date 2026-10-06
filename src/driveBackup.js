@@ -24,12 +24,16 @@ export const BACKUP_KEYS = [
   '@japanese_lang_v1',
 ];
 
+export function driveIdForPlatform() {
+  if (Platform.OS === 'android') return process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+  if (Platform.OS === 'ios') return process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+  return process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+}
+
+// Platform-appropriate ID only — wrong-platform IDs make Google.useAuthRequest THROW at render.
+// (web needs WEB id, native needs its own; missing → setup notice, never a blank screen)
 export function driveConfigured() {
-  return !!(
-    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
-    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
-    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
-  );
+  return !!driveIdForPlatform();
 }
 
 // Web redirect MUST be exact (Google matches exactly):
