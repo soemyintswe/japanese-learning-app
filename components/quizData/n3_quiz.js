@@ -31,4 +31,7 @@ export const n3Quiz = [
   { id: 'n3q29', level: 'N3', skill: 'vocab', question: '「曖昧」の読み方は？', options: ['あいまい', 'あまい', 'まいあい', 'あいみ'], correctIndex: 0, explanation: '曖昧（あいまい）= မရေရာသော' },
   { id: 'n3q30', level: 'N3', skill: 'grammar', question: '説明が ___ で分かりやすい。', options: ['具体的', '抽象的', '消極的', '積極的'], correctIndex: 0, explanation: '具体的（ぐたいてき）= တိတိကျကျဖြစ်သော' },
   { id: 'n3q31', level: 'N3', skill: 'reading', question: '筆者は何が大切だと言っていますか。', passage: '日本語の上達には、毎日少しずつ続けることが大切です。一度にたくさん勉強するより、具体的な目標を決めて続ける方が効果的です。', options: ['一度にたくさん勉強すること', '毎日少しずつ続けること', '目標を決めないこと', '休まず勉強すること'], correctIndex: 1, explanation: '毎日少しずつ続けることが大切' },
+  { id: 'n3q32', level: 'N3', skill: 'vocab', question: '「謙虚」の意味は？', options: ['နှိမ့်ချသော', 'ခေါင်းမာသော', 'လိမ္မာသော', 'ရဲရင့်သော'], correctIndex: 0, explanation: '謙虚（けんきょ）= နှိမ့်ချသော ⇔ 頑固' },
+  { id: 'n3q33', level: 'N3', skill: 'grammar', question: '彼の話は ___ で信じられない。', options: ['曖昧', '明確', '具体', '率直'], correctIndex: 0, explanation: '曖昧（あいまい）= မရေရာသော' },
+  { id: 'n3q34', level: 'N3', skill: 'listening', question: '聞こえた言葉は？', speakText: 'ぐうぜんあいました', options: ['偶然会った', '必然会った', '頻繁会った', '突然会った'], correctIndex: 0, explanation: '偶然（ぐうぜん）= တိုက်ဆိုင်မှု' },
 ];

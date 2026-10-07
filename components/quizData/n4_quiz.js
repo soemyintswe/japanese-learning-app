@@ -35,4 +35,7 @@ export const n4Quiz = [
   { id: 'n4q33', level: 'N4', skill: 'vocab', question: '「診察」の読み方は？', options: ['しんさつ', 'しんさく', 'ちんさつ', 'しんだん'], correctIndex: 0, explanation: '診察（しんさつ）= ဆေးစစ်မှုခံယူခြင်း' },
   { id: 'n4q34', level: 'N4', skill: 'grammar', question: '病気 ___ 会社を休みました。', options: ['が', 'を', 'で', 'に'], correctIndex: 2, explanation: '原因 + で (病気で = နေမကောင်းလို့)' },
   { id: 'n4q35', level: 'N4', skill: 'reading', question: '男の人はなぜ病院へ行きましたか。', passage: '朝から頭が痛かったので、男の人は会社を休んで病院へ行きました。診察の結果、風邪でした。', options: ['頭が痛かったから', '会社が休みだから', '風邪が治ったから', '薬が欲しかったから'], correctIndex: 0, explanation: '朝から頭が痛かったので' },
+  { id: 'n4q36', level: 'N4', skill: 'vocab', question: '「結婚式」の読み方は？', options: ['けっこんしき', 'けっこんし', 'けつこんしき', 'けっこんじき'], correctIndex: 0, explanation: '結婚式（けっこんしき）= မင်္ဂလာဆောင်ပွဲ' },
+  { id: 'n4q37', level: 'N4', skill: 'grammar', question: '会議に ___ してください。', options: ['出席', '欠席', '遅刻', '早退'], correctIndex: 0, explanation: '出席（しゅっせき）してください = တက်ရောက်ပေးပါ' },
+  { id: 'n4q38', level: 'N4', skill: 'listening', question: '聞こえた言葉は？', speakText: 'しゅっちょうにいきます', options: ['旅行に行く', '出張に行く', '転勤する', '残業する'], correctIndex: 1, explanation: '出張（しゅっちょう）= အလုပ်ကိစ္စခရီး' },
 ];

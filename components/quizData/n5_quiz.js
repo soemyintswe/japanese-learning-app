@@ -50,4 +50,7 @@ export const n5Quiz = [
   { id: 'n5q43', level: 'N5', skill: 'vocab', question: '「切手」の読み方は？', options: ['きって', 'きっぷ', 'ふうとう', 'はがき'], correctIndex: 0, explanation: '切手（きって）= တံဆိပ်ခေါင်း' },
   { id: 'n5q44', level: 'N5', skill: 'grammar', question: 'バス ___ 降ります。', options: ['を', 'に', 'で', 'から'], correctIndex: 3, explanation: '起点 + から (バスから降ります = ဘတ်စ်ကားပေါ်ကဆင်းတယ်)' },
   { id: 'n5q45', level: 'N5', skill: 'listening', question: '聞こえた言葉は？', speakText: 'おてらにいきました', options: ['じんじゃに行った', 'お寺に行った', 'こうえんに行った', 'がっこうに行った'], correctIndex: 1, explanation: 'お寺（おてら）= ဘုန်းကြီးကျောင်း' },
+  { id: 'n5q46', level: 'N5', skill: 'vocab', question: '「封筒」の読み方は？', options: ['ふうとう', 'きって', 'てがみ', 'はこ'], correctIndex: 0, explanation: '封筒（ふうとう）= စာအိတ်' },
+  { id: 'n5q47', level: 'N5', skill: 'grammar', question: 'お金を ___。', options: ['払います', '切ります', '開けます', '閉めます'], correctIndex: 0, explanation: 'お金を払います (はらいます = ပေးချေသည်)' },
+  { id: 'n5q48', level: 'N5', skill: 'listening', question: '聞こえた言葉は？', speakText: 'きってをかいました', options: ['きっぷを買った', '切手を買った', 'かばんを買った', 'ほんを買った'], correctIndex: 1, explanation: '切手（きって）を買いました' },
 ];

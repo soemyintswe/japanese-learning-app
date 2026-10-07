@@ -23,4 +23,7 @@ export const n1Quiz = [
   { id: 'n1q21', level: 'N1', skill: 'vocab', question: '「邂逅」の読み方は？', options: ['かいこう', 'かいごう', 'こうかい', 'きかい'], correctIndex: 0, explanation: '邂逅（かいこう）= မမျှော်လင့်ဘဲတွေ့ဆုံမှု' },
   { id: 'n1q22', level: 'N1', skill: 'grammar', question: '混沌 ___ した時代に、新しい思想が生まれた。', options: ['ときわ', 'と化', 'と化した', 'とする'], correctIndex: 2, explanation: '〜と化した = …အဖြစ်သို့ပြောင်းသွားသော (混沌と化した時代)' },
   { id: 'n1q23', level: 'N1', skill: 'reading', question: '筆者の主張は？', passage: '刹那的な快楽を追う生き方は、結局虚無しか残さない。永劫に残る価値を求めるなら、日々の小さな積み重ねこそが、混沌とした時代を生き抜く力になると筆者は論じる。', options: ['快楽だけ追え', '日々の積み重ねが力になる', '価値は求めるな', '時代は変えられない'], correctIndex: 1, explanation: '日々の小さな積み重ねこそが力になる' },
+  { id: 'n1q24', level: 'N1', skill: 'vocab', question: '「黄昏」の読み方は？', options: ['たそがれ', 'れいめい', 'せつな', 'こんとん'], correctIndex: 0, explanation: '黄昏（たそがれ）= ဆည်းဆာချိန်' },
+  { id: 'n1q25', level: 'N1', skill: 'grammar', question: '永劫に残る価値を ___、日々努力する。', options: ['求め', '求めて', '求めつつ', '求めたら'], correctIndex: 1, explanation: '求めて (te-form + 日々努力する)' },
+  { id: 'n1q26', level: 'N1', skill: 'listening', question: '聞こえた言葉は？', speakText: 'かいこうをたのしみにしています', options: ['邂逅を楽しみにしている', '改革を楽しみにしている', '開港を楽しみにしている', '快復を楽しみにしている'], correctIndex: 0, explanation: '邂逅（かいこう）= တွေ့ဆုံမှု' },
 ];

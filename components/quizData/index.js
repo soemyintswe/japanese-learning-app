@@ -21,6 +21,14 @@ export const UNLOCK_SCORE = 70;
 export const PLACE_PASS = 75;
 export const PLACE_Q_PER_LEVEL = 4;
 
+// အမှတ်ပေးစည်းမျဉ်း (scoring rules — QAScreen + Help + prompt 共通)
+export const SCORING = {
+  pointsPerQ: 1, // Q တစ်ပုဒ် = 1 မှတ် (q.points ပါရင် အဲဒါ ဦးစား)
+  roundSize: 10, // practice/random တစ်ပွဲ အရေအတွက်
+  passPractice: 70, // == UNLOCK_SCORE — ဒီရာခိုင်နှုန်းနဲ့ နောက်အဆင့်ပွင့်
+  passPlacement: 75, // == PLACE_PASS — Level Check အောင်မှတ်
+};
+
 export const SKILLS = ['vocab', 'grammar', 'reading', 'listening'];
 
 export function shuffle(arr) {

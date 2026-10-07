@@ -25,4 +25,7 @@ export const n2Quiz = [
   { id: 'n2q23', level: 'N2', skill: 'vocab', question: '「倹約」の意味は？', options: ['ချွေတာမှု', 'ဖြုန်းတီးမှု', 'စုဆောင်းမှု', 'ရင်းနှီးမှုမှု'], correctIndex: 0, explanation: '倹約（けんやく）= ချွေတာမှု ⇔ 浪費' },
   { id: 'n2q24', level: 'N2', skill: 'grammar', question: '話し合いの ___、両社は妥協した。', options: ['すえ', '末に', '末で', '末を'], correctIndex: 1, explanation: '〜末に = …၏အဆုံးတွင် (話し合いの末に)' },
   { id: 'n2q25', level: 'N2', skill: 'reading', question: 'この文章の要点は？', passage: '倹約は大切だが、必要な出費まで削ると逆効果になる。浪費を避けつつ、使うべきところには使うのが賢い家計管理だと筆者は述べる。', options: ['何も買うな', '浪費を避け、使うべき所には使え', '倹約は不要だ', '出費は全て削れ'], correctIndex: 1, explanation: '浪費を避けつつ、使うべきところには使う' },
+  { id: 'n2q26', level: 'N2', skill: 'vocab', question: '「大胆」の反対に近いのは？', options: ['臆病', '賢明', '頑丈', '倹約'], correctIndex: 0, explanation: '大胆（だいたん) ⇔ 臆病（おくびょう)' },
+  { id: 'n2q27', level: 'N2', skill: 'grammar', question: '彼の ___ な判断で会社は救われた。', options: ['賢明', '愚か', '大胆', '臆病'], correctIndex: 0, explanation: '賢明（けんめい）な = ပညာရှိသော' },
+  { id: 'n2q28', level: 'N2', skill: 'listening', question: '聞こえた言葉は？', speakText: 'ろうひはやめましょう', options: ['浪費はやめよう', '倹約しよう', '貯金しよう', '我慢しよう'], correctIndex: 0, explanation: '浪費（ろうひ）= ဖြုန်းတီးမှု' },
 ];

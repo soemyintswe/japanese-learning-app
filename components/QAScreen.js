@@ -19,6 +19,11 @@ const qaT = {
   my: {
     title: '📝 Quiz & Skills', tabQuiz: '📝 Quiz', tabSkills: '🎧 Skills', tabBot: '🤖 Bot',
     chooseLevel: 'အဆင့်ရွေးပြီး Quiz ဖြေပါ', unlockNeed: 'အရင်အဆင့် 70%+ ရမှ ပွင့်မယ် 🔒',
+    rulesLine: 'စည်းမျဉ်း: ၁ ပုဒ်=၁ မှတ် • 70%+ နဲ့ နောက်အဆင့်ပွင့် • Level Check 75% နဲ့ အဆင့်ရ',
+    randomBtn: '🎲 Random 10 လုံး (အဆင့်စုံ)', pickBtn: '✋ ကိုယ်တိုင်ရွေးမည်',
+    pickTitle: 'မေးခွန်းရွေးပါ', pickStart: 'ရွေးထားတာ စဖြေမည်', pickClear: 'ရှင်းမည်',
+    pickedN: 'ရွေးပြီး', pickEmpty: 'Bank + ကိုယ်ပိုင်များ — search/level စစ်ပြီး ✓ ရွေးပါ။',
+    needPick: 'အရင် မေးခွန်းရွေးပါ။',
     best: 'အကောင်းဆုံး', assessed: 'သင့်အဆင့်', notAssessed: 'မစစ်ရသေးပါ',
     placementBtn: '📊 Level Check (အဆင့်စစ်မယ်)', placementDesc: 'N5→N1 တစ်ဆင့် 4 လုံးစီ — အောင်တဲ့ အမြင့်ဆုံးအဆင့် သတ်မှတ်ပေးမယ်',
     start: 'စမည်', retry: 'ပြန်ဖြေမည်', backLevels: '← အဆင့်များ', submit: 'အဖြေစစ်ဆေးမည်',
@@ -55,6 +60,11 @@ const qaT = {
   en: {
     title: '📝 Quiz & Skills', tabQuiz: '📝 Quiz', tabSkills: '🎧 Skills', tabBot: '🤖 Bot',
     chooseLevel: 'Pick a level', unlockNeed: 'Score 70%+ on previous level to unlock 🔒',
+    rulesLine: 'Rules: 1 Q = 1 pt • 70%+ unlocks next • Level Check 75% awards level',
+    randomBtn: '🎲 Random 10 (mixed levels)', pickBtn: '✋ Hand-pick questions',
+    pickTitle: 'Pick questions', pickStart: 'Start picked test', pickClear: 'Clear',
+    pickedN: 'picked', pickEmpty: 'Bank + customs — search/filter, tap ✓ to pick.',
+    needPick: 'Pick at least one question first.',
     best: 'Best', assessed: 'Your level', notAssessed: 'Not tested',
     placementBtn: '📊 Level Check', placementDesc: '4 questions per level N5→N1 — awards your highest passed level',
     start: 'Start', retry: 'Retry', backLevels: '← Levels', submit: 'Submit Answers',
@@ -91,6 +101,11 @@ const qaT = {
   jp: {
     title: '📝 クイズ＆技能', tabQuiz: '📝 クイズ', tabSkills: '🎧 技能', tabBot: '🤖 Bot',
     chooseLevel: 'レベルを選ぶ', unlockNeed: '前のレベルで70%以上で解放 🔒',
+    rulesLine: 'ルール: 1問=1点 • 70%以上で解放 • チェック75%で認定',
+    randomBtn: '🎲 ランダム10問', pickBtn: '✋ 問題を選ぶ',
+    pickTitle: '問題選択', pickStart: '選択テスト開始', pickClear: 'クリア',
+    pickedN: '選択中', pickEmpty: 'Bank＋自作 — 検索して✓で選択。',
+    needPick: '先に問題を選んでください。',
     best: '最高', assessed: 'あなたのレベル', notAssessed: '未測定',
     placementBtn: '📊 レベルチェック', placementDesc: 'N5→N1各4問 — 合格した最高レベルを認定',
     start: '開始', retry: 'もう一度', backLevels: '← レベル', submit: '回答する',
@@ -254,11 +269,15 @@ export default function QAScreen({ user, onLogout, navigation }) {
 
   const handleSubmit = () => {
     const qs = round.questions;
-    let s = 0;
-    qs.forEach((q) => { if (selectedAnswers[q.id] === q.correctIndex) s += 1; });
+    let s = 0, tot = 0;
+    qs.forEach((q) => {
+      const p = q.points || 1;
+      tot += p;
+      if (selectedAnswers[q.id] === q.correctIndex) s += p;
+    });
     setScore(s);
     setSubmitted(true);
-    const pct = qs.length ? Math.round((s / qs.length) * 100) : 0;
+    const pct = tot ? Math.round((s / tot) * 100) : 0;
 
     if (round.kind === 'practice' && round.level) {
       const lv = round.level;
@@ -408,6 +427,35 @@ export default function QAScreen({ user, onLogout, navigation }) {
     ]);
   };
 
+  // ---------- random + hand-pick test modes ----------
+  const [pickIds, setPickIds] = useState({});
+  const [pickLevel, setPickLevel] = useState('All');
+  const [pickQ, setPickQ] = useState('');
+
+  const allBankQuestions = () => {
+    const arr = [];
+    ORDER.forEach((lv) => { (QUIZ_BANK[lv] || []).forEach((q) => arr.push(q)); });
+    customs.forEach((q) => arr.push(q));
+    return arr;
+  };
+
+  const startRandomMixed = () => {
+    const openLevels = ORDER.filter((lv) => isLevelUnlocked(lv, progress));
+    let pool = [];
+    openLevels.forEach((lv) => { pool = pool.concat(levelPool(lv)); });
+    if (pool.length === 0) pool = levelPool('N5');
+    startRound(shuffle(pool).slice(0, 10), { kind: 'random', title: t.randomBtn });
+  };
+
+  const startPicked = () => {
+    const sel = allBankQuestions().filter((q) => pickIds[q.id]);
+    if (sel.length === 0) {
+      Alert.alert('⚠️', t.needPick);
+      return;
+    }
+    startRound(shuffle(sel), { kind: 'picked', title: `${t.pickTitle} (${sel.length})` });
+  };
+
   // ---------- customs Export / Import (bulk via other-AI JSON) ----------
   const [impVisible, setImpVisible] = useState(false);
   const [impText, setImpText] = useState('');
@@ -517,10 +565,55 @@ export default function QAScreen({ user, onLogout, navigation }) {
     }
   };
 
+  const renderPickBrowser = () => {
+    const all = allBankQuestions();
+    const s = pickQ.trim().toLowerCase();
+    const list = all.filter((q) => {
+      if (pickLevel !== 'All' && (q.level || 'N5') !== pickLevel) return false;
+      if (!s) return true;
+      return (q.question || '').toLowerCase().includes(s);
+    });
+    const n = Object.values(pickIds).filter(Boolean).length;
+    return (
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => setQuizView('levels')}>
+            <Text style={styles.backBtnText}>{t.backLevels}</Text>
+          </TouchableOpacity>
+          <Text style={[styles.roundTitle, { flex: 1 }]}>{t.pickTitle} ({n} {t.pickedN})</Text>
+        </View>
+        <TextInput style={styles.input} value={pickQ} onChangeText={setPickQ} placeholder="🔍..." placeholderTextColor="#999" />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginVertical: 8 }}>
+          {['All', ...ORDER].map((lv) => (
+            <TouchableOpacity key={lv} style={[styles.lvlChip, pickLevel === lv && styles.lvlChipActive]} onPress={() => setPickLevel(lv)}>
+              <Text style={[styles.lvlChipText, pickLevel === lv && styles.lvlChipTextActive]}>{lv}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>{t.pickEmpty}</Text>
+        {list.slice(0, 200).map((q) => (
+          <TouchableOpacity key={q.id} style={styles.customRow} onPress={() => setPickIds((p) => ({ ...p, [q.id]: !p[q.id] }))}>
+            <Text style={{ fontSize: 16, marginRight: 8 }}>{pickIds[q.id] ? '☑️' : '⬜'}</Text>
+            <Text style={[styles.customQ, { flex: 1 }]} numberOfLines={2}>[{q.level || 'N5'}] {q.question}</Text>
+          </TouchableOpacity>
+        ))}
+        <View style={{ flexDirection: 'row', marginTop: 10 }}>
+          <TouchableOpacity style={[styles.cancelBtn, { flex: 1, marginRight: 6 }]} onPress={() => setPickIds({})}>
+            <Text style={styles.cancelBtnText}>{t.pickClear}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.saveBtn, { flex: 2 }]} onPress={startPicked}>
+            <Text style={styles.saveBtnText}>{t.pickStart} ({n})</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  };
+
   // ---------- render helpers ----------
   const renderMcqRound = () => {
     const qs = round.questions;
-    const pct = qs.length ? Math.round((score / qs.length) * 100) : 0;
+    const totPts = qs.reduce((a, q) => a + (q.points || 1), 0);
+    const pct = totPts ? Math.round((score / totPts) * 100) : 0;
     return (
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
@@ -537,7 +630,7 @@ export default function QAScreen({ user, onLogout, navigation }) {
           <View style={styles.scoreCard}>
             <Text style={{ fontSize: 35 }}>🏆</Text>
             <Text style={styles.scoreTitle}>{t.score}</Text>
-            <Text style={styles.scoreNumber}>{score} / {qs.length} ({pct}%)</Text>
+            <Text style={styles.scoreNumber}>{score} / {totPts} ({pct}%)</Text>
             {round.kind === 'practice' && pct >= UNLOCK_SCORE && <Text style={styles.unlockText}>{t.unlocked}</Text>}
             {round.kind === 'practice' && pct < UNLOCK_SCORE && <Text style={styles.keepText}>{t.keepGoing} ({UNLOCK_SCORE}%+ → unlock)</Text>}
             {round.kind === 'placement' && (
@@ -633,6 +726,15 @@ export default function QAScreen({ user, onLogout, navigation }) {
       </View>
 
       <Text style={styles.sectionTitle}>{t.chooseLevel}</Text>
+      <Text style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>{t.rulesLine}</Text>
+      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+        <TouchableOpacity style={[styles.placeBtn, { flex: 1, marginRight: 6, backgroundColor: '#6A1B9A' }]} onPress={startRandomMixed}>
+          <Text style={styles.placeBtnText}>{t.randomBtn}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.placeBtn, { flex: 1, backgroundColor: '#455A64' }]} onPress={() => setQuizView('pick')}>
+          <Text style={styles.placeBtnText}>{t.pickBtn}</Text>
+        </TouchableOpacity>
+      </View>
       {ORDER.map((lv) => {
         const unlocked = isLevelUnlocked(lv, progress);
         const best = progress.best[lv] || 0;
@@ -880,7 +982,7 @@ export default function QAScreen({ user, onLogout, navigation }) {
         ))}
       </View>
 
-      {tab === 'quiz' && (quizView === 'levels' || !round ? renderQuizHome() : renderMcqRound())}
+      {tab === 'quiz' && (quizView === 'pick' ? renderPickBrowser() : (quizView === 'levels' || !round ? renderQuizHome() : renderMcqRound()))}
       {tab === 'skills' && (
         skillsView === 'menu' ? renderSkillsMenu()
         : skillsView === 'writing' ? renderWriting()
