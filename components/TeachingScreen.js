@@ -29,6 +29,7 @@ const teachT = {
     targetLabel: 'ပေးမည့်သူ:', targetAll: 'အားလုံး', targetLevel: 'Level:', targetPick: 'ကျောင်းသားရွေး:',
     photoAdd: '📷 ပုံတွဲမည်', photoDel: '✕ ပုံဖျက်မည်', photoBig: 'ပုံကြီးလွန်းတယ် (500KB အောက် ရွေးပါ)။',
     stTitle: '📊 အမှတ်စာရင်း', stSubmitted: 'တင်ပြီး', stGraded: 'အမှတ်ပေး', stAvg: 'ပျမ်းမျှ(ဂဏန်း)', stPending: 'မပေးရသေး',
+    scoreL: 'ရမှတ် (0-100):', lvlL: 'အဆင့်:', resub: 'ပြန်တင်ပြီးပါပြီ ✅ (အမှတ်ပြန်ပေးရန် လိုမယ်)',
     submit: 'အဖြေတင်မည်', fAnswer: 'အဖြေ:', fLink: 'Link (optional):', submitted: 'တင်ပြီးပါပြီ ✅',
     grade: 'အမှတ်:', feedback: 'မှတ်ချက်:', gradeSave: 'အမှတ်ပေးမည်',
     noGrade: 'အမှတ်မပေးရသေး', subs: 'တင်ထားသူများ', delQ: 'ဖျက်မှာလား?', yesDel: 'ဖျက်မည်', noDel: 'မလုပ်တော့',
@@ -47,6 +48,7 @@ const teachT = {
     targetLabel: 'Assign to:', targetAll: 'Everyone', targetLevel: 'Level:', targetPick: 'Pick students:',
     photoAdd: '📷 Attach photo', photoDel: '✕ Remove photo', photoBig: 'Photo too large (pick under 500KB).',
     stTitle: '📊 Grade stats', stSubmitted: 'submitted', stGraded: 'graded', stAvg: 'avg (numeric)', stPending: 'pending',
+    scoreL: 'Score (0-100):', lvlL: 'Level:', resub: 'Resubmitted ✅ (needs re-grade)',
     submit: 'Submit answer', fAnswer: 'Answer:', fLink: 'Link (optional):', submitted: 'Submitted ✅',
     grade: 'Grade:', feedback: 'Feedback:', gradeSave: 'Grade it',
     noGrade: 'Not graded yet', subs: 'Submissions', delQ: 'Delete?', yesDel: 'Delete', noDel: 'Cancel',
@@ -65,6 +67,7 @@ const teachT = {
     targetLabel: '対象:', targetAll: '全員', targetLevel: 'レベル:', targetPick: '学生を選択:',
     photoAdd: '📷 写真を添付', photoDel: '✕ 写真を外す', photoBig: '写真が大きすぎます (500KB以下)。',
     stTitle: '📊 成績', stSubmitted: '提出', stGraded: '採点済', stAvg: '平均(数値)', stPending: '未採点',
+    scoreL: '得点 (0-100):', lvlL: 'レベル:', resub: '再提出 ✅ (再採点が必要)',
     submit: '提出する', fAnswer: '回答:', fLink: 'リンク (任意):', submitted: '提出済み ✅',
     grade: '評価:', feedback: 'コメント:', gradeSave: '採点する',
     noGrade: '未採点', subs: '提出一覧', delQ: '削除しますか?', yesDel: '削除', noDel: 'キャンセル',
@@ -399,7 +402,11 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
         at: new Date().toISOString(),
       };
       const payload = modal.kind === 'lesson'
-        ? { ...base, body: modal.text.trim(), mediaUrl: modal.extra.trim() }
+        ? {
+            ...base, body: modal.text.trim(), mediaUrl: modal.extra.trim(),
+            target: modal.target || 'all', targetLevel: modal.targetLevel || 'N5',
+            targetUids: modal.targetUids || [],
+          }
         : {
             ...base, desc: modal.text.trim(), due: modal.extra.trim(),
             target: modal.target || 'all', targetLevel: modal.targetLevel || 'N5',
@@ -453,17 +460,21 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
     setBusy(true);
     try {
       const sid = `${assign.id}_${user.uid}`;
+      const prev = await getDoc(doc(db, 'submissions', sid));
+      const isResub = prev.exists();
       await setDoc(doc(db, 'submissions', sid), {
         assignmentId: assign.id, uid: user.uid, name: user.name || user.email || '',
         text: answer.trim(), link: answerLink.trim(),
         ...(photo ? { photo } : {}),
+        // ပြန်တင်ရင် အမှတ်/အဆင့် အဟောင်း ပျက် → ဆရာ ပြန်ပေးရန် (stale grade ကာကွယ်)
+        ...(isResub ? { grade: '', feedback: '', score: '', slevel: '' } : {}),
         at: new Date().toISOString(),
       }, { merge: true });
-      logActivity(user, 'assign.submit', assign.title || assign.id, photo ? '+photo' : '');
+      logActivity(user, isResub ? 'assign.resubmit' : 'assign.submit', assign.title || assign.id, photo ? '+photo' : '');
       setAnswer('');
       setAnswerLink('');
       setPhoto(null);
-      Alert.alert(t.submitted);
+      Alert.alert(isResub ? t.resub : t.submitted);
       fetchAll(true);
     } catch (e) {
       Alert.alert('Error', String(e?.code || e?.message));
@@ -477,11 +488,14 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
     const g = gradeMap[sub.id] || {};
     setBusy(true);
     try {
+      const score = String(g.score ?? sub.score ?? '').trim();
       await setDoc(doc(db, 'submissions', sub.id), {
-        grade: (g.grade || '').trim(), feedback: (g.feedback || '').trim(),
+        grade: score, score,
+        slevel: g.slevel ?? sub.slevel ?? '',
+        feedback: ((g.feedback ?? sub.feedback) || '').trim(),
         gradedBy: user?.email || '', gradedAt: new Date().toISOString(),
       }, { merge: true });
-      logActivity(user, 'assign.grade', sub.name || sub.uid, (g.grade || '').trim());
+      logActivity(user, 'assign.grade', sub.name || sub.uid, score + ((g.slevel ?? sub.slevel) ? '/' + (g.slevel ?? sub.slevel) : ''));
       fetchAll(true);
     } catch (e) {
       Alert.alert('Error', String(e?.code || e?.message));
@@ -491,10 +505,10 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
   };
 
   const rawList = seg === 'lessons' ? safeArr(lessons) : safeArr(assigns);
-  // students see only assignments targeted at them (old docs without target = everyone)
-  const list = (seg === 'assignments' && !isStaff)
+  // students see only lessons/assignments targeted at them (old docs without target = everyone)
+  const list = !isStaff
     ? rawList.filter((a) => {
-        if (!a.target || a.target === 'all') return true;
+        if (!a || !a.target || a.target === 'all') return true;
         if (a.target === 'level') return !myLevel || (a.targetLevel || 'All') === 'All' || a.targetLevel === myLevel;
         if (a.target === 'students') return safeArr(a.targetUids).includes(user?.uid);
         return true;
@@ -505,10 +519,12 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
     if (x.target === 'level') return ` · 🎯 ${x.targetLevel || ''}`;
     return ` · 🎯 ${(x.targetUids || []).length}`;
   };
+  const subScore = (s) => String(s.score ?? s.grade ?? '').trim();
+  const subMarked = (s) => !!subScore(s);
   const statsLine = () => {
     const total = openedSubs.length;
-    const graded = openedSubs.filter((s) => s.grade && String(s.grade).trim());
-    const nums = graded.map((s) => parseFloat(String(s.grade).trim())).filter((n) => !Number.isNaN(n));
+    const graded = openedSubs.filter(subMarked);
+    const nums = graded.map((s) => parseFloat(subScore(s))).filter((n) => !Number.isNaN(n));
     const avg = nums.length ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(1) : '—';
     return `${t.stSubmitted} ${total} · ${t.stGraded} ${graded.length} · ${t.stAvg} ${avg} · ${t.stPending} ${total - graded.length}`;
   };
@@ -620,7 +636,7 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
                     <Text style={styles.body}>{mySub.text}</Text>
                     {!!mySub.photo && <Image source={{ uri: mySub.photo }} style={styles.attachedImg} />}
                     <Text style={styles.meta}>
-                      {mySub.grade ? `🏅 ${mySub.grade}` : `⏳ ${t.noGrade}`}{mySub.feedback ? ` — ${mySub.feedback}` : ''}
+                      {subMarked(mySub) ? `🏅 ${subScore(mySub)}${mySub.slevel ? ` [${mySub.slevel}]` : ''}` : `⏳ ${t.noGrade}`}{mySub.feedback ? ` — ${mySub.feedback}` : ''}
                     </Text>
                   </View>
                 )}
@@ -642,19 +658,32 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
                         <Text style={styles.linkText}>{s.link}</Text>
                       </TouchableOpacity>
                     )}
-                    <Text style={styles.label}>{t.grade}</Text>
+                    <Text style={styles.label}>{t.scoreL}</Text>
                     <TextInput
                       style={styles.input}
-                      value={(gradeMap[s.id] || {}).grade ?? s.grade ?? ''}
-                      onChangeText={(v) => setGradeMap((p) => ({ ...p, [s.id]: { ...p[s.id], grade: v, feedback: p[s.id]?.feedback ?? s.feedback ?? '' } }))}
-                      placeholder="A / 85"
+                      value={String((gradeMap[s.id] || {}).score ?? s.score ?? s.grade ?? '')}
+                      onChangeText={(v) => setGradeMap((p) => ({ ...p, [s.id]: { ...p[s.id], score: v.replace(/[^0-9.]/g, ''), slevel: p[s.id]?.slevel ?? s.slevel ?? '', feedback: p[s.id]?.feedback ?? s.feedback ?? '' } }))}
+                      placeholder="0-100"
                       placeholderTextColor="#999"
+                      keyboardType="numeric"
                     />
+                    <Text style={styles.label}>{t.lvlL}</Text>
+                    <View style={[styles.rowBtns, { flexWrap: 'wrap', marginTop: 0 }]}>
+                      {['—', 'N5', 'N4', 'N3', 'N2', 'N1'].map((lv) => {
+                        const cur = (gradeMap[s.id] || {}).slevel ?? s.slevel ?? '';
+                        const norm = lv === '—' ? '' : lv;
+                        return (
+                          <TouchableOpacity key={lv} style={[styles.segBtn, { paddingHorizontal: 10, marginRight: 4, marginTop: 4, flex: 0 }, cur === norm && styles.segActive]} onPress={() => setGradeMap((p) => ({ ...p, [s.id]: { ...p[s.id], score: p[s.id]?.score ?? s.score ?? s.grade ?? '', slevel: norm, feedback: p[s.id]?.feedback ?? s.feedback ?? '' } }))}>
+                            <Text style={[styles.segText, cur === norm && styles.segTextActive]}>{lv}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                     <Text style={styles.label}>{t.feedback}</Text>
                     <TextInput
                       style={styles.input}
                       value={(gradeMap[s.id] || {}).feedback ?? s.feedback ?? ''}
-                      onChangeText={(v) => setGradeMap((p) => ({ ...p, [s.id]: { grade: p[s.id]?.grade ?? s.grade ?? '', feedback: v } }))}
+                      onChangeText={(v) => setGradeMap((p) => ({ ...p, [s.id]: { score: p[s.id]?.score ?? s.score ?? s.grade ?? '', slevel: p[s.id]?.slevel ?? s.slevel ?? '', feedback: v } }))}
                       placeholder="…"
                       placeholderTextColor="#999"
                     />
@@ -705,7 +734,8 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
               <TextInput style={styles.input} value={modal?.level || ''} onChangeText={(v) => setModal((m) => ({ ...m, level: v }))} placeholder="All / N5…" placeholderTextColor="#999" />
               <Text style={styles.label}>{modal?.kind === 'lesson' ? t.fMedia : t.fDue}</Text>
               <TextInput style={styles.input} value={modal?.extra || ''} onChangeText={(v) => setModal((m) => ({ ...m, extra: v }))} placeholder="…" placeholderTextColor="#999" />
-              {modal?.kind === 'assign' && (
+              {/* target picker — lessons + assignments နှစ်မျိုးလုံး (တစ်ဦးချင်း/အုပ်စုခွဲ) */}
+              {(
                 <View>
                   <Text style={styles.label}>{t.targetLabel}</Text>
                   <View style={styles.rowBtns}>

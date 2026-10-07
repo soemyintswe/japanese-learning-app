@@ -46,9 +46,9 @@ SCHEMA D — Essays & songs (output as {"essays":[...]}):
 kind ∈ essay|song ; 5-8 lines per item.
 
 SCHEMA E — Lessons & assignments (output as {"lessons":[],"assignments":[]}):
-lesson: {"title":"…","body":"…","level":"N5","mediaUrl":""}
+lesson: {"title":"…","body":"…","level":"N5","mediaUrl":"","target":"all"}
 assignment: {"title":"…","desc":"…","level":"N5","due":"","target":"all","targetLevel":"N5","targetUids":[]}
-target ∈ all|level|students.
+target ∈ all|level|students. submission grades: staff gives score (0-100) + level (N5-N1) per student answer; resubmit clears old grade.
 
 Now produce: <—ここに欲しいものを書く / ဒီမှာ လိုချင်တာရေး: e.g. "N4 nouns 50, Schema A" —>
 ```

@@ -182,6 +182,12 @@ firebase deploy --only hosting
 - **Samples (staff 🌱 one-tap, fixed IDs, skip-existing)**: `components/teachingSeed.js` — lessons 3 (あ-row + self-intro pattern + te-form作り方, all original) + assignments 3 (seed_a1 all/N5 self-intro ✍️ + seed_a2 N5-level family + seed_a3 N4-level diary). Empty-state မှာ staff only 🌱 button. Seeding logs activity.
 - Verify: export clean (677 modules) → hosting deployed → pushed. Ctrl+F5 ပြီး `/teaching` ပြန်စမ်းရန်။
 
+### 6.12 Teaching round-3 — lesson targets + resubmit + score/level grading (2026-10-06)
+- **Lessons targetable**: editor target picker (all/level/students) + save + student auto-filter + 🎯 tag — assignments နည်းတူ. Old lesson docs (no target) = everyone.
+- **Resubmit**: `{assignmentId}_{uid}` merge already allowed it, but stale grade stayed — now resubmit clears grade/feedback/score/slevel + `assign.resubmit` log + dedicated message (needs re-grade notice).
+- **Score + level**: grading form = numeric score (0-100, numeric keyboard) + level chips (—/N5-N1) + feedback; saved as {score, slevel} (old `grade` text kept as fallback display + stats parse). Student sees `🏅 85 [N4]`. Stats avg uses scores.
+- Prompt Schema E updated (lesson target + grading note). Verify: export clean → hosting deploy → push. Ctrl+F5.
+
 ### 6.11 Export/Import all 5 areas + AI bulk prompt (2026-10-06)
 - **Audit**: Dictionary ✅ (ရှိ) / Quiz customs ❌ / Library ❌ / Essays ❌ / Teaching ❌ → ၄ ခု ထပ်ဆောက်. Pattern = Dictionary flow (web download + native share + clipboard fallback; paste + file pick).
 - **Quiz customs** (QAScreen ✏️ section): 📥📤 buttons + import modal; validate {question, options≥2, correctIndex in range, level}; dedupe question+options; customs auto-merge into level pools (`levelPool`) → import-တာနဲ့ quiz မှာ တန်းပေါ်.
