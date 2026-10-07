@@ -740,24 +740,24 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
                   <Text style={styles.label}>{t.targetLabel}</Text>
                   <View style={styles.rowBtns}>
                     {['all', 'level', 'students'].map((md) => (
-                      <TouchableOpacity key={md} style={[styles.segBtn, { flex: 1, marginRight: 4 }, modal.target === md && styles.segActive]} onPress={() => setModal((m) => ({ ...m, target: md }))}>
-                        <Text style={[styles.segText, modal.target === md && styles.segTextActive]}>{md === 'all' ? t.targetAll : md === 'level' ? t.targetLevel : t.targetPick}</Text>
+                      <TouchableOpacity key={md} style={[styles.segBtn, { flex: 1, marginRight: 4 }, modal?.target === md && styles.segActive]} onPress={() => setModal((m) => ({ ...m, target: md }))}>
+                        <Text style={[styles.segText, modal?.target === md && styles.segTextActive]}>{md === 'all' ? t.targetAll : md === 'level' ? t.targetLevel : t.targetPick}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                  {modal.target === 'level' && (
+                  {modal?.target === 'level' && (
                     <View style={[styles.rowBtns, { flexWrap: 'wrap' }]}>
                       {['N5', 'N4', 'N3', 'N2', 'N1'].map((lv) => (
-                        <TouchableOpacity key={lv} style={[styles.segBtn, { paddingHorizontal: 12, marginRight: 4, marginTop: 4 }, modal.targetLevel === lv && styles.segActive]} onPress={() => setModal((m) => ({ ...m, targetLevel: lv }))}>
-                          <Text style={[styles.segText, modal.targetLevel === lv && styles.segTextActive]}>{lv}</Text>
+                        <TouchableOpacity key={lv} style={[styles.segBtn, { paddingHorizontal: 12, marginRight: 4, marginTop: 4 }, modal?.targetLevel === lv && styles.segActive]} onPress={() => setModal((m) => ({ ...m, targetLevel: lv }))}>
+                          <Text style={[styles.segText, modal?.targetLevel === lv && styles.segTextActive]}>{lv}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   )}
-                  {modal.target === 'students' && (
+                  {modal?.target === 'students' && (
                     <View>
                       {allUsers.filter((u) => (u.role || '').toLowerCase() === 'student').slice(0, 100).map((u) => {
-                        const on = (modal.targetUids || []).includes(u.id);
+                        const on = (modal?.targetUids || []).includes(u.id);
                         return (
                           <TouchableOpacity key={u.id} style={styles.pickRow} onPress={() => setModal((m) => {
                             const cur = m.targetUids || [];

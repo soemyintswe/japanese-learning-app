@@ -193,6 +193,12 @@ firebase deploy --only hosting
 - Fix: `RootErrorBoundary` in App.js (wraps Main) — any screen crash now shows ⚠️ + error text + 🔄 Reload instead of white screen. Next diagnosis = error-text screenshot from user.
 - Verify: export clean → hosting deploy → push. User to Ctrl+F5 and retest; also confirm other tabs OK (distinguishes route crash vs bundle-wide).
 
+### 6.14 Teaching white-screen root cause FOUND (2026-10-06)
+- Boundary caught it: `Cannot read properties of null (reading 'target')`. Cause = round-2 target-picker UI used `modal.target` / `modal.targetUids` / `modal.targetLevel` WITHOUT `?.` — Modal children mount even when `modal=null`, so first render threw immediately (whole app white, all routes).
+- Fix: all render-path modal reads → `modal?.x` (saveItem already guarded by `if (!modal) return`). Grep-audited remaining `modal.` uses — safe (handlers only).
+- LESSON: Modal content ALWAYS renders (even visible=false) — every modal-state read in JSX MUST use `?.`. Same class of bug as 6.10 (blank tab).
+- Verify: export clean (677) → hosting deploy → push. Ctrl+F5 → /teaching.
+
 ### 6.11 Export/Import all 5 areas + AI bulk prompt (2026-10-06)
 - **Audit**: Dictionary ✅ (ရှိ) / Quiz customs ❌ / Library ❌ / Essays ❌ / Teaching ❌ → ၄ ခု ထပ်ဆောက်. Pattern = Dictionary flow (web download + native share + clipboard fallback; paste + file pick).
 - **Quiz customs** (QAScreen ✏️ section): 📥📤 buttons + import modal; validate {question, options≥2, correctIndex in range, level}; dedupe question+options; customs auto-merge into level pools (`levelPool`) → import-တာနဲ့ quiz မှာ တန်းပေါ်.
