@@ -212,6 +212,13 @@ firebase deploy --only hosting
 - Fix: staff-only 🌱 button pinned in seg row (always visible), same `seedSamples` (skip-existing — safe to tap anytime).
 - Verify: export clean → hosting deploy → push. Ctrl+F5 → 🌱 tap → +10 appear.
 
+### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
+- Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
+- Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).
+- `components/MoreScreen.js` (NEW, my/en/jp, role-aware Teacher row) + App.js (More route `/more`, tabT, ☰ icon).
+- Safety: `git tag pre-moremenu` (rollback = reset-hard + redeploy). No data/rules changes.
+- Verify: export clean (679) → hosting deploy → push. Ctrl+F5 → 6-tab bar → ☰ → all reachable.
+
 ### 6.13 Root error boundary (2026-10-06) — /teaching white-screen report
 - Symptom: `/teaching` fully white (no header/tabs) right after round-3 deploy. Static audit of TeachingScreen render path found no throw (empty lists render fine) — cause unconfirmed (possibly stale bundle or transient).
 - Fix: `RootErrorBoundary` in App.js (wraps Main) — any screen crash now shows ⚠️ + error text + 🔄 Reload instead of white screen. Next diagnosis = error-text screenshot from user.

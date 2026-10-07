@@ -58,6 +58,7 @@ const linking = {
       Materials: 'materials',
       Teaching: 'teaching',
       Help: 'help',
+      More: 'more',
       Teacher: 'teacher',
     },
   },
@@ -74,6 +75,7 @@ import CommunityScreen from './components/CommunityScreen';
 import MaterialsScreen from './components/MaterialsScreen';
 import TeachingScreen from './components/TeachingScreen';
 import HelpScreen from './components/HelpScreen';
+import MoreScreen from './components/MoreScreen';
 
 const homeT = {
   my: {
@@ -92,9 +94,9 @@ const homeT = {
 
 // Bottom tab labels — ရွေးထားတဲ့ ဘာသာစကားအလိုက် ပြောင်းမယ်
 const tabT = {
-  my: { Home: 'ပင်မ', Dictionary: 'အဘိဓာန်', Planner: 'အချိန်ဇယား', Notes: 'မှတ်စု', QA: 'မေးခွန်း', Community: 'အဖွဲ့', Materials: 'စာကြည့်', Teaching: 'သင်ခန်း', Help: 'အကူအညီ', Teacher: 'ဆရာ့အပိုင်း' },
-  en: { Home: 'Home', Dictionary: 'Dictionary', Planner: 'Planner', Notes: 'Notes', QA: 'Quiz', Community: 'People', Materials: 'Library', Teaching: 'Class', Help: 'Help', Teacher: 'Teacher' },
-  jp: { Home: 'ホーム', Dictionary: '辞書', Planner: 'プランナー', Notes: 'ノート', QA: 'クイズ', Community: '仲間', Materials: '資料', Teaching: '授業', Help: 'ヘルプ', Teacher: '先生' },
+  my: { Home: 'ပင်မ', Dictionary: 'အဘိဓာန်', Planner: 'အချိန်ဇယား', Notes: 'မှတ်စု', QA: 'မေးခွန်း', Community: 'အဖွဲ့', Materials: 'စာကြည့်', Teaching: 'သင်ခန်း', Help: 'အကူအညီ', More: 'မီနူး', Teacher: 'ဆရာ့အပိုင်း' },
+  en: { Home: 'Home', Dictionary: 'Dictionary', Planner: 'Planner', Notes: 'Notes', QA: 'Quiz', Community: 'People', Materials: 'Library', Teaching: 'Class', Help: 'Help', More: 'More', Teacher: 'Teacher' },
+  jp: { Home: 'ホーム', Dictionary: '辞書', Planner: 'プランナー', Notes: 'ノート', QA: 'クイズ', Community: '仲間', Materials: '資料', Teaching: '授業', Help: 'ヘルプ', More: 'メニュー', Teacher: '先生' },
 };
 
 function HomeScreen({ navigation, user, onLogout }) {
@@ -317,6 +319,7 @@ function Main() {
               else if (route.name === 'Materials') iconSymbol = '📚';
               else if (route.name === 'Teaching') iconSymbol = '📖';
               else if (route.name === 'Help') iconSymbol = '🆘';
+              else if (route.name === 'More') iconSymbol = '☰';
               else if (route.name === 'Teacher') iconSymbol = '🎓';
               return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.6 }}>{iconSymbol}</Text>;
             },
@@ -324,37 +327,43 @@ function Main() {
             tabBarInactiveTintColor: 'gray',
           })}
         >
+          {/* Visible bar (6): Home/Dictionary/Quiz/Class/People/More — rest hidden but navigable */}
           <Tab.Screen name="Home" options={{ title: tt.Home }}>
             {(props) => <HomeScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
           <Tab.Screen name="Dictionary" options={{ title: tt.Dictionary }}>
             {(props) => <DictionaryScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          <Tab.Screen name="Planner" options={{ title: tt.Planner }}>
-            {(props) => <PlannerScreen {...props} user={user} onLogout={handleLogout} />}
-          </Tab.Screen>
-          <Tab.Screen name="Notes" options={{ title: tt.Notes }}>
-            {(props) => <NotesScreen {...props} user={user} onLogout={handleLogout} />}
-          </Tab.Screen>
           <Tab.Screen name="QA" options={{ title: tt.QA }}>
             {(props) => <QAScreen {...props} user={user} onLogout={handleLogout} />}
-          </Tab.Screen>
-          <Tab.Screen name="Community" options={{ title: tt.Community }}>
-            {(props) => <CommunityScreen {...props} user={user} onLogout={handleLogout} />}
-          </Tab.Screen>
-          <Tab.Screen name="Materials" options={{ title: tt.Materials }}>
-            {(props) => <MaterialsScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
           <Tab.Screen name="Teaching" options={{ title: tt.Teaching }}>
             {(props) => <TeachingScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          <Tab.Screen name="Help" options={{ title: tt.Help }}>
+          <Tab.Screen name="Community" options={{ title: tt.Community }}>
+            {(props) => <CommunityScreen {...props} user={user} onLogout={handleLogout} />}
+          </Tab.Screen>
+          <Tab.Screen name="More" options={{ title: tt.More }}>
+            {(props) => <MoreScreen {...props} user={user} onLogout={handleLogout} />}
+          </Tab.Screen>
+
+          {/* Hidden from bar (☰ More menu ထဲက ဝင်) — navigate + deep-link မပျက် */}
+          <Tab.Screen name="Planner" options={{ title: tt.Planner, tabBarButton: () => null }}>
+            {(props) => <PlannerScreen {...props} user={user} onLogout={handleLogout} />}
+          </Tab.Screen>
+          <Tab.Screen name="Notes" options={{ title: tt.Notes, tabBarButton: () => null }}>
+            {(props) => <NotesScreen {...props} user={user} onLogout={handleLogout} />}
+          </Tab.Screen>
+          <Tab.Screen name="Materials" options={{ title: tt.Materials, tabBarButton: () => null }}>
+            {(props) => <MaterialsScreen {...props} user={user} onLogout={handleLogout} />}
+          </Tab.Screen>
+          <Tab.Screen name="Help" options={{ title: tt.Help, tabBarButton: () => null }}>
             {(props) => <HelpScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
 
-          {/* Teacher Tab — teacher + admin (admin role ချိန်းပြီးမှ tab ပျောက်တဲ့ bug fix) */}
+          {/* Teacher — teacher + admin only, bar မှာ မပြ (☰ Menu ထဲက ဝင်) */}
           {(user?.role === 'teacher' || user?.role === 'admin') && (
-            <Tab.Screen name="Teacher" options={{ title: tt.Teacher }}>
+            <Tab.Screen name="Teacher" options={{ title: tt.Teacher, tabBarButton: () => null }}>
               {(props) => <TeacherScreen {...props} currentUser={user} onLogout={handleLogout} />}
             </Tab.Screen>
           )}
