@@ -39,6 +39,7 @@ components/NotesScreen.js     # Notes CRUD (AsyncStorage, 3-lang chrome)
 components/QAScreen.js        # Quiz + add/edit (Option4 + correct picker, AsyncStorage, 3-lang)
 components/TeacherScreen.js   # ⭐ Admin user table (approve/disable, role-picker modal, delete, tooltips) + bio + share + change-password + 📋 activity viewer (latest 50) + horizontal-scroll table (minWidth 660, mobile)
 components/TeachingScreen.js  # 📖 Teaching module MVP: lessons + assignments + submissions/grading (staff CRUD, student submit-once, single-field queries only — no composite index) + TeachErrorBoundary (white-screen guard) + 🌱 samples seed + 📥📤 export/import (staff import)
+components/HelpScreen.js      # 🆘 App usage guide (my/en/jp, 12 sections: login→tips), 🆘 Help tab for all roles (/help)
 AI_CONTENT_PROMPT.md          # ⭐ Other-AI bulk content prompt (copy-paste EN+MM) + 5 JSON schemas (A words / B quiz / C library / D essays / E teaching) + import paths + copyright policy
 components/dictionaryData/    # ~1340 trilingual words: n5_nouns(274)/n5_verbs(113)/n5_adjectives(100)/n5_others(107)/n4_words(285)/n3(213)/n2(153)/n1(96) + fullDictionary.js (sample 9 w/ images) + index.js (merge/dedupe/normalizeImportEntry). Validated: scripts Temp count_dict.py + dupe_detail.py + dedupe_files.py + sanity_dict.py (0 dupes, readings present) + check_quiz.py.
 # Coverage aligned with standard JLPT lists (ref: OpenJLPT CC BY-SA 4.0 — Myanmar glosses are original, not copied). OpenJLPT totals for reference: N5 662 / N4 632 / N3 1784 / N2 1793 / N1 3463 (8,334 words). Our coverage ≈ N5 88% / N4 45% / N3 12% / N2 8% / N1 3% — N3-N1 gaps remain (bulk import via app Import + teacher Myanmar review).
@@ -187,6 +188,11 @@ firebase deploy --only hosting
 - **Resubmit**: `{assignmentId}_{uid}` merge already allowed it, but stale grade stayed — now resubmit clears grade/feedback/score/slevel + `assign.resubmit` log + dedicated message (needs re-grade notice).
 - **Score + level**: grading form = numeric score (0-100, numeric keyboard) + level chips (—/N5-N1) + feedback; saved as {score, slevel} (old `grade` text kept as fallback display + stats parse). Student sees `🏅 85 [N4]`. Stats avg uses scores.
 - Prompt Schema E updated (lesson target + grading note). Verify: export clean → hosting deploy → push. Ctrl+F5.
+
+### 6.15 Samples +6 + Help tab (2026-10-06)
+- **Teaching seeds 3+3→6+6** (fixed IDs, skip-existing): lessons +3 (カタカナ/N5 + Numbers&counters/N5 + 〜たい/N4) + assignments +3 (コンビニ katakana hunt/all + 値段 reading/N5-level + 〜たい作文/N4-level). 🌱 label updated; log text updated.
+- **HelpScreen + 🆘 Help tab** (all roles, `/help`, my/en/jp): 12 sections — login/roles, language, Home, Dictionary, Planner, Notes, Quiz, People, Library, Class, Teacher/Admin, Tips. Static (no Firestore, no new deps).
+- Verify: export clean (677) → hosting deploy → push. Ctrl+F5.
 
 ### 6.13 Root error boundary (2026-10-06) — /teaching white-screen report
 - Symptom: `/teaching` fully white (no header/tabs) right after round-3 deploy. Static audit of TeachingScreen render path found no throw (empty lists render fine) — cause unconfirmed (possibly stale bundle or transient).

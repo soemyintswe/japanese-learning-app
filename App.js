@@ -56,6 +56,7 @@ const linking = {
       Community: 'community',
       Materials: 'materials',
       Teaching: 'teaching',
+      Help: 'help',
       Teacher: 'teacher',
     },
   },
@@ -71,6 +72,7 @@ import QAScreen from './components/QAScreen';
 import CommunityScreen from './components/CommunityScreen';
 import MaterialsScreen from './components/MaterialsScreen';
 import TeachingScreen from './components/TeachingScreen';
+import HelpScreen from './components/HelpScreen';
 
 const homeT = {
   my: {
@@ -89,9 +91,9 @@ const homeT = {
 
 // Bottom tab labels — ရွေးထားတဲ့ ဘာသာစကားအလိုက် ပြောင်းမယ်
 const tabT = {
-  my: { Home: 'ပင်မ', Dictionary: 'အဘိဓာန်', Planner: 'အချိန်ဇယား', Notes: 'မှတ်စု', QA: 'မေးခွန်း', Community: 'အဖွဲ့', Materials: 'စာကြည့်', Teaching: 'သင်ခန်း', Teacher: 'ဆရာ့အပိုင်း' },
-  en: { Home: 'Home', Dictionary: 'Dictionary', Planner: 'Planner', Notes: 'Notes', QA: 'Quiz', Community: 'People', Materials: 'Library', Teaching: 'Class', Teacher: 'Teacher' },
-  jp: { Home: 'ホーム', Dictionary: '辞書', Planner: 'プランナー', Notes: 'ノート', QA: 'クイズ', Community: '仲間', Materials: '資料', Teaching: '授業', Teacher: '先生' },
+  my: { Home: 'ပင်မ', Dictionary: 'အဘိဓာန်', Planner: 'အချိန်ဇယား', Notes: 'မှတ်စု', QA: 'မေးခွန်း', Community: 'အဖွဲ့', Materials: 'စာကြည့်', Teaching: 'သင်ခန်း', Help: 'အကူအညီ', Teacher: 'ဆရာ့အပိုင်း' },
+  en: { Home: 'Home', Dictionary: 'Dictionary', Planner: 'Planner', Notes: 'Notes', QA: 'Quiz', Community: 'People', Materials: 'Library', Teaching: 'Class', Help: 'Help', Teacher: 'Teacher' },
+  jp: { Home: 'ホーム', Dictionary: '辞書', Planner: 'プランナー', Notes: 'ノート', QA: 'クイズ', Community: '仲間', Materials: '資料', Teaching: '授業', Help: 'ヘルプ', Teacher: '先生' },
 };
 
 function HomeScreen({ navigation, user, onLogout }) {
@@ -306,6 +308,7 @@ function Main() {
               else if (route.name === 'Community') iconSymbol = '👥';
               else if (route.name === 'Materials') iconSymbol = '📚';
               else if (route.name === 'Teaching') iconSymbol = '📖';
+              else if (route.name === 'Help') iconSymbol = '🆘';
               else if (route.name === 'Teacher') iconSymbol = '🎓';
               return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.6 }}>{iconSymbol}</Text>;
             },
@@ -336,6 +339,9 @@ function Main() {
           </Tab.Screen>
           <Tab.Screen name="Teaching" options={{ title: tt.Teaching }}>
             {(props) => <TeachingScreen {...props} user={user} onLogout={handleLogout} />}
+          </Tab.Screen>
+          <Tab.Screen name="Help" options={{ title: tt.Help }}>
+            {(props) => <HelpScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
 
           {/* Teacher Tab — teacher + admin (admin role ချိန်းပြီးမှ tab ပျောက်တဲ့ bug fix) */}
