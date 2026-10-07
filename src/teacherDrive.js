@@ -92,7 +92,25 @@ export function useTeacherDrive() {
     return folderId;
   };
 
-  // file bytes → base64 (RN FileReader) → multipart upload
+  // file bytes → blob (XHR — base64 33% overhead မရှိ, ဖိုင်ကြီးအတွက်)
+  const readAsBlob = (uri) =>
+    new Promise((resolve, reject) => {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.responseType = 'blob';
+        xhr.onload = () => {
+          if (xhr.response) resolve(xhr.response);
+          else reject(new Error('fetch-fail'));
+        };
+        xhr.onerror = () => reject(new Error('fetch-fail'));
+        xhr.open('GET', uri, true);
+        xhr.send(null);
+      } catch (e) {
+        reject(e);
+      }
+    });
+
+  // file bytes → base64 (RN FileReader) → multipart upload (≤5MB only!)
   const readAsBase64 = (uri) =>
     new Promise((resolve, reject) => {
       try {
@@ -120,44 +138,83 @@ export function useTeacherDrive() {
       }
     });
 
+  const shareFileAnyone = async (fileId) => {
+    // Anyone-with-link on the file itself (bulletproof even if folder share changes)
+    await api(`/drive/v3/files/${fileId}/permissions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    }).catch(() => {});
+  };
+
+  const multipartUpload = async (meta, uri) => {
+    const b64 = await readAsBase64(uri);
+    if (!b64) return { error: 'read-fail' };
+    const boundary = '-------mks_upload_' + Date.now();
+    const body =
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+      JSON.stringify(meta) +
+      `\r\n--${boundary}\r\nContent-Type: ${meta.mimeType}\r\nContent-Transfer-Encoding: base64\r\n\r\n` +
+      b64 +
+      `\r\n--${boundary}--`;
+    const up = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink,size', {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body,
+    });
+    if (up.status === 401) {
+      disconnect();
+      return { expired: true };
+    }
+    if (!up.ok) return { error: 'drive-up-' + up.status };
+    return { ok: true, file: await up.json() };
+  };
+
+  // Resumable upload (>5MB — multipart က Google limit 5MB, ကျော်ရင် "Invalid upload request")
+  const resumableUpload = async (meta, uri) => {
+    const init = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,webViewLink,size', {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': 'application/json; charset=UTF-8' },
+      body: JSON.stringify(meta),
+    });
+    if (init.status === 401) {
+      disconnect();
+      return { expired: true };
+    }
+    if (!init.ok) return { error: 'drive-up-' + init.status };
+    const sessionUri = init.headers.get('location');
+    if (!sessionUri) return { error: 'no-session' };
+    const blob = await readAsBlob(uri);
+    const put = await fetch(sessionUri, {
+      method: 'PUT',
+      headers: { ...headers() },
+      body: blob,
+    });
+    if (put.status === 401) {
+      disconnect();
+      return { expired: true };
+    }
+    if (!(put.status === 200 || put.status === 201)) return { error: 'drive-up-' + put.status };
+    return { ok: true, file: await put.json() };
+  };
+
   const uploadPicked = async (picked /* {uri,name,mimeType,size} */) => {
     if (!token) return { needAuth: true };
     if (picked.size && picked.size > MAX_UPLOAD_BYTES) return { error: 'too-big' };
     setBusy(true);
     try {
       const folderId = await ensureFolder();
-      const b64 = await readAsBase64(picked.uri);
-      if (!b64) return { error: 'read-fail' };
       const meta = {
         name: picked.name || 'material',
         parents: [folderId],
         mimeType: picked.mime || 'application/octet-stream',
       };
-      const boundary = '-------mks_upload_' + Date.now();
-      const body =
-        `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
-        JSON.stringify(meta) +
-        `\r\n--${boundary}\r\nContent-Type: ${meta.mimeType}\r\nContent-Transfer-Encoding: base64\r\n\r\n` +
-        b64 +
-        `\r\n--${boundary}--`;
-      const up = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink,size', {
-        method: 'POST',
-        headers: { ...headers(), 'Content-Type': `multipart/related; boundary=${boundary}` },
-        body,
-      });
-      if (up.status === 401) {
-        disconnect();
-        return { expired: true };
-      }
-      if (!up.ok) return { error: 'drive-up-' + up.status };
-      const file = await up.json();
-      // Anyone-with-link on the file itself (bulletproof even if folder share changes)
-      await api(`/drive/v3/files/${file.id}/permissions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'reader', type: 'anyone' }),
-      }).catch(() => {});
-      return { ok: true, file };
+      // 5MB+ → resumable (multipart rejects with "Invalid upload request")
+      const big = picked.size && picked.size > 5 * 1024 * 1024;
+      const r = big ? await resumableUpload(meta, picked.uri) : await multipartUpload(meta, picked.uri);
+      if (!r.ok) return r;
+      await shareFileAnyone(r.file.id);
+      return { ok: true, file: r.file };
     } catch (e) {
       return { error: String((e && e.message) || e) };
     } finally {
