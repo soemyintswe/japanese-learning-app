@@ -356,9 +356,44 @@ function Main() {
 export default function App() {
   return (
     <LanguageProvider>
-      <Main />
+      <RootErrorBoundary>
+        <Main />
+      </RootErrorBoundary>
     </LanguageProvider>
   );
+}
+
+// App-level safety net — ဘယ် screen crash ဖြစ်ဖြစ် white screen မပြဘဲ
+// error စာသား + reload ပြမယ် (diagnosis အတွက် screenshot ပို့ခိုင်း)
+class RootErrorBoundary extends React.Component {
+  constructor(p) { super(p); this.state = { err: null }; }
+  static getDerivedStateFromError(e) { return { err: String((e && e.message) || e) }; }
+  render() {
+    if (this.state.err) {
+      return (
+        <SafeAreaProvider>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#FFF' }}>
+            <Text style={{ fontSize: 48 }}>⚠️</Text>
+            <Text style={{ marginTop: 12, fontWeight: 'bold', color: '#C62828', textAlign: 'center' }}>App error / အမှားတစ်ခု ဖြစ်နေပါတယ်</Text>
+            <Text style={{ marginTop: 8, color: '#555', textAlign: 'center' }}>{this.state.err}</Text>
+            <Text style={{ marginTop: 8, color: '#555', textAlign: 'center' }}>ဒီ screen ကို screenshot ရိုက်ပို့ပေးပါ 🙏</Text>
+            <TouchableOpacity
+              style={{ marginTop: 16, backgroundColor: '#D32F2F', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 12 }}
+              onPress={() => {
+                this.setState({ err: null });
+                try {
+                  if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.reload();
+                } catch (e) {}
+              }}
+            >
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>🔄 Reload</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaProvider>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 const styles = StyleSheet.create({

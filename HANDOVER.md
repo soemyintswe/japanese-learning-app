@@ -188,6 +188,11 @@ firebase deploy --only hosting
 - **Score + level**: grading form = numeric score (0-100, numeric keyboard) + level chips (—/N5-N1) + feedback; saved as {score, slevel} (old `grade` text kept as fallback display + stats parse). Student sees `🏅 85 [N4]`. Stats avg uses scores.
 - Prompt Schema E updated (lesson target + grading note). Verify: export clean → hosting deploy → push. Ctrl+F5.
 
+### 6.13 Root error boundary (2026-10-06) — /teaching white-screen report
+- Symptom: `/teaching` fully white (no header/tabs) right after round-3 deploy. Static audit of TeachingScreen render path found no throw (empty lists render fine) — cause unconfirmed (possibly stale bundle or transient).
+- Fix: `RootErrorBoundary` in App.js (wraps Main) — any screen crash now shows ⚠️ + error text + 🔄 Reload instead of white screen. Next diagnosis = error-text screenshot from user.
+- Verify: export clean → hosting deploy → push. User to Ctrl+F5 and retest; also confirm other tabs OK (distinguishes route crash vs bundle-wide).
+
 ### 6.11 Export/Import all 5 areas + AI bulk prompt (2026-10-06)
 - **Audit**: Dictionary ✅ (ရှိ) / Quiz customs ❌ / Library ❌ / Essays ❌ / Teaching ❌ → ၄ ခု ထပ်ဆောက်. Pattern = Dictionary flow (web download + native share + clipboard fallback; paste + file pick).
 - **Quiz customs** (QAScreen ✏️ section): 📥📤 buttons + import modal; validate {question, options≥2, correctIndex in range, level}; dedupe question+options; customs auto-merge into level pools (`levelPool`) → import-တာနဲ့ quiz မှာ တန်းပေါ်.
