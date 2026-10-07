@@ -207,6 +207,11 @@ firebase deploy --only hosting
 - Lessons +5 (あいさつ/N5 + これそれあれどれ/N5 + ないで・なくてもいい/N4 + ことができる/N4 + ようになる/N3) + assignments +5 (あいさつ日記/all + これ探し/N5 + ない作文/N4 + できる紹介/N4 + ようになった/N3). All original, cross-linked (Seed L↔A). Fixed IDs (skip-existing — old seeds untouched). 🌱 label 11+11.
 - Verify: export clean (678) → hosting deploy → push. Ctrl+F5 → 📖 Class → 🌱.
 
+### 6.18 Seed button visibility fix (2026-10-06)
+- Bug: 🌱 seed button rendered ONLY in empty state (`list.length===0`) — after first seed (3+3), new seeds (→11+11) had no way in (skip-existing logic was fine, button unreachable).
+- Fix: staff-only 🌱 button pinned in seg row (always visible), same `seedSamples` (skip-existing — safe to tap anytime).
+- Verify: export clean → hosting deploy → push. Ctrl+F5 → 🌱 tap → +10 appear.
+
 ### 6.13 Root error boundary (2026-10-06) — /teaching white-screen report
 - Symptom: `/teaching` fully white (no header/tabs) right after round-3 deploy. Static audit of TeachingScreen render path found no throw (empty lists render fine) — cause unconfirmed (possibly stale bundle or transient).
 - Fix: `RootErrorBoundary` in App.js (wraps Main) — any screen crash now shows ⚠️ + error text + 🔄 Reload instead of white screen. Next diagnosis = error-text screenshot from user.

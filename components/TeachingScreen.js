@@ -569,6 +569,15 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
             </Text>
           </TouchableOpacity>
         ))}
+        {isStaff && (
+          <TouchableOpacity
+            style={[styles.segBtn, { flex: 0, paddingHorizontal: 12, marginLeft: 6 }]}
+            onPress={seedSamples}
+            disabled={busy}
+          >
+            <Text style={styles.segText}>🌱</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
