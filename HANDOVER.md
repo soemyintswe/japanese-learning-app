@@ -203,6 +203,10 @@ firebase deploy --only hosting
 - Files: src/notifications.js (rewrite), NotificationPanel.js (5 sections + 3-lang), TeacherScreen (form+keys+addDoc), App.js (useRef guard), firestore.rules (notices).
 - Verify: export clean (678) → rules deploy (compiled OK) → hosting deploy → push. Ctrl+F5. First bell appears on next event (open panel once to baseline read-marks).
 
+### 6.17 Seeds +10 → 11+11 (2026-10-06)
+- Lessons +5 (あいさつ/N5 + これそれあれどれ/N5 + ないで・なくてもいい/N4 + ことができる/N4 + ようになる/N3) + assignments +5 (あいさつ日記/all + これ探し/N5 + ない作文/N4 + できる紹介/N4 + ようになった/N3). All original, cross-linked (Seed L↔A). Fixed IDs (skip-existing — old seeds untouched). 🌱 label 11+11.
+- Verify: export clean (678) → hosting deploy → push. Ctrl+F5 → 📖 Class → 🌱.
+
 ### 6.13 Root error boundary (2026-10-06) — /teaching white-screen report
 - Symptom: `/teaching` fully white (no header/tabs) right after round-3 deploy. Static audit of TeachingScreen render path found no throw (empty lists render fine) — cause unconfirmed (possibly stale bundle or transient).
 - Fix: `RootErrorBoundary` in App.js (wraps Main) — any screen crash now shows ⚠️ + error text + 🔄 Reload instead of white screen. Next diagnosis = error-text screenshot from user.

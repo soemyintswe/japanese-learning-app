@@ -34,7 +34,7 @@ const teachT = {
     grade: 'အမှတ်:', feedback: 'မှတ်ချက်:', gradeSave: 'အမှတ်ပေးမည်',
     noGrade: 'အမှတ်မပေးရသေး', subs: 'တင်ထားသူများ', delQ: 'ဖျက်မှာလား?', yesDel: 'ဖျက်မည်', noDel: 'မလုပ်တော့',
     errFill: 'ခေါင်းစဉ်ဖြည့်ပါ။', back: '◀ ပြန်သွားမည်',
-    seedBtn: '🌱 နမူနာထည့်မည် (၆+၆)', seeded: 'နမူနာ ထည့်ပြီးပါပြီ ✅',
+    seedBtn: '🌱 နမူနာထည့်မည် (၁၁+၁၁)', seeded: 'နမူနာ ထည့်ပြီးပါပြီ ✅',
     impTitle: '📥 Lessons/Assignments Import', impHelp: 'JSON paste (သို့) file ရွေး — {lessons:[], assignments:[]} ပုံစံ။ id တူရင် skip.',
     impDo: 'ထည့်သွင်းမည်', impOk: 'Import ပြီးပါပြီ ✅', impNone: 'အသစ်မတွေ့ပါ။', impInvalid: 'JSON ပုံစံမှားနေပါတယ်။',
     expDone: 'Export ပြီးပါပြီ ✅',
@@ -53,7 +53,7 @@ const teachT = {
     grade: 'Grade:', feedback: 'Feedback:', gradeSave: 'Grade it',
     noGrade: 'Not graded yet', subs: 'Submissions', delQ: 'Delete?', yesDel: 'Delete', noDel: 'Cancel',
     errFill: 'Title is required.', back: '◀ Back',
-    seedBtn: '🌱 Add samples (6+6)', seeded: 'Samples added ✅',
+    seedBtn: '🌱 Add samples (11+11)', seeded: 'Samples added ✅',
     impTitle: '📥 Import Lessons/Assignments', impHelp: 'Paste JSON or pick a file — {lessons:[], assignments:[]} shape. Same id = skip.',
     impDo: 'Import', impOk: 'Import done ✅', impNone: 'Nothing new.', impInvalid: 'Invalid JSON shape.',
     expDone: 'Export done ✅',
@@ -72,7 +72,7 @@ const teachT = {
     grade: '評価:', feedback: 'コメント:', gradeSave: '採点する',
     noGrade: '未採点', subs: '提出一覧', delQ: '削除しますか?', yesDel: '削除', noDel: 'キャンセル',
     errFill: 'タイトルを入力してください。', back: '◀ 戻る',
-    seedBtn: '🌱 見本を入れる (6+6)', seeded: '見本を追加しました ✅',
+    seedBtn: '🌱 見本を入れる (11+11)', seeded: '見本を追加しました ✅',
     impTitle: '📥 インポート', impHelp: 'JSONを貼付/選択 — {lessons:[], assignments:[]}。同idはスキップ。',
     impDo: '取込', impOk: '取込完了 ✅', impNone: '新規なし。', impInvalid: 'JSON形式エラー。',
     expDone: '書出完了 ✅',
@@ -364,7 +364,7 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
           });
         }
       }
-      logActivity(user, 'teaching.seed', '6 lessons + 6 assignments', '');
+      logActivity(user, 'teaching.seed', '11 lessons + 11 assignments', '');
       Alert.alert(t.seeded);
       fetchAll(true);
     } catch (e) {
