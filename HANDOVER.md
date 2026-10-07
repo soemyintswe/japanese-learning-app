@@ -219,6 +219,10 @@ firebase deploy --only hosting
 - Safety: `git tag pre-moremenu` (rollback = reset-hard + redeploy). No data/rules changes.
 - Verify: export clean (679) → hosting deploy → push. Ctrl+F5 → 6-tab bar → ☰ → all reachable.
 
+### 6.20 Home Quick Access — all menus (2026-10-06)
+- Home showed only Dictionary/Planner/Notes/Quiz (+Teacher). Added: People/Library/Class/Help cards (2-col rows) + full-width ☰ More card (hidden-tabs gateway). homeT +5 keys × 3 langs.
+- Verify: export clean → hosting deploy → push. Ctrl+F5 → Home.
+
 ### 6.13 Root error boundary (2026-10-06) — /teaching white-screen report
 - Symptom: `/teaching` fully white (no header/tabs) right after round-3 deploy. Static audit of TeachingScreen render path found no throw (empty lists render fine) — cause unconfirmed (possibly stale bundle or transient).
 - Fix: `RootErrorBoundary` in App.js (wraps Main) — any screen crash now shows ⚠️ + error text + 🔄 Reload instead of white screen. Next diagnosis = error-text screenshot from user.

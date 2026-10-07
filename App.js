@@ -81,14 +81,17 @@ const homeT = {
   my: {
     progress: 'ယနေ့ လေ့လာမှု တိုးတက်မှု', done: 'ပြီးမြောက်ပြီး', quick: 'အမြန်ဝင်ရောက်ရန် နေရာများ',
     dict: 'အဘိဓာန်', planner: 'အချိန်ဇယား', notes: 'မှတ်စုများ', qa: 'မေးခွန်းဖြေရန်', teacher: 'ဆရာ့အပိုင်းနှင့် အက်ဒမင်',
+    people: 'အဖွဲ့', library: 'စာကြည့်', klass: 'သင်ခန်း', help: 'အကူအညီ', more: 'မီနူး',
   },
   en: {
     progress: "Today's Study Progress", done: 'Completed', quick: 'Quick Access',
     dict: 'Dictionary', planner: 'Planner', notes: 'Notes', qa: 'Quiz', teacher: 'Teacher & Admin',
+    people: 'People', library: 'Library', klass: 'Class', help: 'Help', more: 'More',
   },
   jp: {
     progress: '今日の学習進捗', done: '完了', quick: 'クイックアクセス',
     dict: '辞書', planner: 'プランナー', notes: 'ノート', qa: 'クイズ', teacher: '先生・管理者',
+    people: '仲間', library: '資料', klass: '授業', help: 'ヘルプ', more: 'メニュー',
   },
 };
 
@@ -175,6 +178,30 @@ function HomeScreen({ navigation, user, onLogout }) {
               </TouchableOpacity>
             </View>
 
+            <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
+              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Community')}>
+                <Text style={{fontSize: 24}}>👥</Text>
+                <Text style={styles.quickCardText}>{t.people}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Materials')}>
+                <Text style={{fontSize: 24}}>📚</Text>
+                <Text style={styles.quickCardText}>{t.library}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
+              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Teaching')}>
+                <Text style={{fontSize: 24}}>📖</Text>
+                <Text style={styles.quickCardText}>{t.klass}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Help')}>
+                <Text style={{fontSize: 24}}>🆘</Text>
+                <Text style={styles.quickCardText}>{t.help}</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Teacher Section Link (teacher + admin — admin အမြင့်ဆုံး, tab ပျောက်မသွားအောင်) */}
             {(user?.role === 'teacher' || user?.role === 'admin') && (
               <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
@@ -184,6 +211,14 @@ function HomeScreen({ navigation, user, onLogout }) {
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* More menu — hidden tabs (Planner/Notes/Library/Help/Teacher) gateway */}
+            <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
+              <TouchableOpacity style={[styles.quickCard, { width: '100%' }]} onPress={() => navigation.navigate('More')}>
+                <Text style={{fontSize: 24}}>☰</Text>
+                <Text style={styles.quickCardText}>{t.more}</Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </SafeAreaView>
       </View>
