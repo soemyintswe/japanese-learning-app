@@ -163,5 +163,11 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update, delete: if false;
     }
+
+    // 📣 Broadcast notices (staff announcements + app-update notes) — read all, write staff
+    match /notices/{docId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isStaff();
+    }
   }
 }

@@ -7,18 +7,21 @@ import { useNotifications } from '../src/notifications';
 const nT = {
   my: {
     title: '🔔 Notifications', chats: '💬 စာအသစ်များ', pending: '👤 Approve စောင့်နေသူများ',
+    notices: '📣 ကြေညာချက်များ', teaching: '📖 သင်ခန်းစာ/Assignment အသစ်', subs: '📝 အဖြေတင်ထားသူများ', graded: '🏅 အမှတ်ထွက်ပြီ', due: '⏰ ရက်နီးနေသော Assignment',
     emptyAll: 'အသစ်ဘာမှမရှိပါ ✅', emptyChats: '—', view: 'ကြည့်မည် →',
     approve: '✅ Approve', disable: '🚫 Disable', done: 'ပြီးပါပြီ ✅', fail: 'မအောင်မြင်ပါ',
     close: 'ပိတ်မည်',
   },
   en: {
     title: '🔔 Notifications', chats: '💬 New messages', pending: '👤 Pending approvals',
+    notices: '📣 Announcements', teaching: '📖 New lessons/assignments', subs: '📝 New submissions', graded: '🏅 Graded', due: '⏰ Due soon',
     emptyAll: 'All caught up ✅', emptyChats: '—', view: 'Open →',
     approve: '✅ Approve', disable: '🚫 Disable', done: 'Done ✅', fail: 'Failed',
     close: 'Close',
   },
   jp: {
     title: '🔔 通知', chats: '💬 新着', pending: '👤 承認待ち',
+    notices: '📣 お知らせ', teaching: '📖 新レッスン/課題', subs: '📝 新提出', graded: '🏅 採点済', due: '⏰ 締切間近',
     emptyAll: 'なし ✅', emptyChats: '—', view: '開く →',
     approve: '✅ 承認', disable: '🚫 無効', done: '完了 ✅', fail: '失敗',
     close: '閉じる',
@@ -33,7 +36,11 @@ export default function NotificationPanel() {
   const [doneId, setDoneId] = useState(null);
 
   if (!notif) return null;
-  const { unread, pending, isAdmin, panelOpen, setPanelOpen, openChat, approveUser, disableUser } = notif;
+  const { unread, pending, isAdmin, isStaff, panelOpen, setPanelOpen, openChat, openTeaching,
+    approveUser, disableUser, newNotices, newAssigns, newSubs, graded, dueSoon, assignTitle } = notif;
+  const allEmpty = unread.length === 0 && pending.length === 0
+    && newNotices.length === 0 && newAssigns.length === 0
+    && newSubs.length === 0 && graded.length === 0 && dueSoon.length === 0;
 
   const act = async (uid, fn) => {
     setBusyId(uid);
@@ -103,11 +110,85 @@ export default function NotificationPanel() {
               </>
             )}
 
-            {!isAdmin && unread.length === 0 && (
+            {!isAdmin && unread.length === 0 && allEmpty && (
               <Text style={[styles.empty, { marginTop: 12 }]}>{t.emptyAll}</Text>
             )}
-            {isAdmin && unread.length === 0 && pending.length === 0 && (
+            {isAdmin && allEmpty && (
               <Text style={[styles.empty, { marginTop: 12 }]}>{t.emptyAll}</Text>
+            )}
+
+            {newNotices.length > 0 && (
+              <>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.notices} ({newNotices.length})</Text>
+                {newNotices.map((n) => (
+                  <View key={n.id} style={styles.row}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>📣 {n.title}</Text>
+                      {!!n.preview && <Text style={styles.rowSub} numberOfLines={2}>{n.preview}</Text>}
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+
+            {newAssigns.length > 0 && (
+              <>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.teaching} ({newAssigns.length})</Text>
+                {newAssigns.map((a) => (
+                  <TouchableOpacity key={a.id} style={styles.row} onPress={openTeaching}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>📖 {a.title}</Text>
+                      {!!a.preview && <Text style={styles.rowSub} numberOfLines={1}>{a.preview}</Text>}
+                    </View>
+                    <Text style={styles.viewText}>{t.view}</Text>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+
+            {isStaff && newSubs.length > 0 && (
+              <>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.subs} ({newSubs.length})</Text>
+                {newSubs.map((s) => (
+                  <TouchableOpacity key={s.id} style={styles.row} onPress={openTeaching}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>📝 {s.title}</Text>
+                      <Text style={styles.rowSub} numberOfLines={1}>{assignTitle(s.assignmentId)}{s.preview ? ` — ${s.preview}` : ''}</Text>
+                    </View>
+                    <Text style={styles.viewText}>{t.view}</Text>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+
+            {!isStaff && graded.length > 0 && (
+              <>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.graded} ({graded.length})</Text>
+                {graded.map((g) => (
+                  <TouchableOpacity key={g.id} style={styles.row} onPress={openTeaching}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>🏅 {g.title}</Text>
+                      {!!g.preview && <Text style={styles.rowSub} numberOfLines={1}>{g.preview}</Text>}
+                    </View>
+                    <Text style={styles.viewText}>{t.view}</Text>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+
+            {!isStaff && dueSoon.length > 0 && (
+              <>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.due} ({dueSoon.length})</Text>
+                {dueSoon.map((d) => (
+                  <TouchableOpacity key={'due' + d.id} style={styles.row} onPress={openTeaching}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>⏰ {d.title}</Text>
+                      {!!d.preview && <Text style={styles.rowSub} numberOfLines={1}>{d.preview}</Text>}
+                    </View>
+                    <Text style={styles.viewText}>{t.view}</Text>
+                  </TouchableOpacity>
+                ))}
+              </>
             )}
           </ScrollView>
 

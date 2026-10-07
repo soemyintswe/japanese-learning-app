@@ -35,7 +35,7 @@ function firestoreErrorMsg(error, actionName) {
 
 // Firebase ချိတ်ဆက်မှု
 import { db, auth, firebaseConfig } from '../src/firebase';
-import { collection, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, addDoc, query, orderBy, limit } from 'firebase/firestore';
 import * as ExpoSharing from 'expo-sharing';
 import { initializeApp, deleteApp } from 'firebase/app';
 import {
@@ -101,6 +101,7 @@ const teacherT = {
     unbanQ: 'ပြန်ဖွင့်ပေးမလား?', unbanMsg: 'ပိတ်ထားမှုကို ရုပ်သိမ်းပြီး ပြန် register/login ဝင်ခွင့်ပေးမယ်။',
     unbanGo: 'ပြန်ဖွင့်မည်', unbannedOk: 'ပြန်ဖွင့်ပြီးပါပြီ ✅ — အကောင့်အသစ်မှတ်ပုံတင်/ဝင်နိုင်ပြီ။',
     logTitle: '📋 လှုပ်ရှားမှုမှတ်တမ်း (နောက်ဆုံး ၅၀)', logEmpty: 'မှတ်တမ်းမရှိသေးပါ — action အသစ်လုပ်မှ ပေါ်မယ်။',
+    bcTitle: 'ကြေညာခေါင်းစဉ်…', bcBody: 'အကြောင်းအရာ…', bcSend: 'ပို့မည်', bcDone: 'ကြေညာပို့ပြီးပါပြီ ✅ (bell တက်မယ်)', bcEmpty: 'ခေါင်းစဉ်ဖြည့်ပါ။',
     errPwShort: 'Password အနည်းဆုံး ၆ လုံး ဖြစ်ရမယ်။',
     errEmailInvalid: 'Email ပုံစံမှားနေပါတယ်။',
     errExists: 'ဤ Email နဲ့ Auth အကောင့်ရှိပြီးသား — Login ဝင်ခိုင်း သို့မဟုတ် 🔑 Reset သုံးပါ။',
@@ -161,6 +162,7 @@ const teacherT = {
     unbanQ: 'Unban?', unbanMsg: 'Lift the ban — they can register/log in again.',
     unbanGo: 'Unban', unbannedOk: 'Unbanned ✅',
     logTitle: '📋 Activity log (last 50)', logEmpty: 'No records yet — new actions will appear here.',
+    bcTitle: 'Announcement title…', bcBody: 'Details…', bcSend: 'Send', bcDone: 'Broadcast sent ✅ (bell rings)', bcEmpty: 'Title required.',
     errPwShort: 'Password must be at least 6 characters.',
     errEmailInvalid: 'Invalid email format.',
     errExists: 'Auth account already exists — ask them to log in, or use 🔑 Reset.',
@@ -221,6 +223,7 @@ const teacherT = {
     unbanQ: '解除しますか？', unbanMsg: '再登録可能にします。',
     unbanGo: '解除', unbannedOk: '解除 ✅',
     logTitle: '📋 操作ログ (最新50)', logEmpty: '記録なし。',
+    bcTitle: 'お知らせタイトル…', bcBody: '内容…', bcSend: '送信', bcDone: '送信 ✅', bcEmpty: 'タイトル必須。',
     errPwShort: '6文字以上。',
     errEmailInvalid: '形式エラー。',
     errExists: '既存あり — ログインか🔑リセットを。',
@@ -699,6 +702,32 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
   const [bannedList, setBannedList] = useState([]);
   const [showBanned, setShowBanned] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // 📣 Broadcast notice (staff → all users bell)
+  const [bcTitle, setBcTitle] = useState('');
+  const [bcBody, setBcBody] = useState('');
+  const [bcBusy, setBcBusy] = useState(false);
+  const sendBroadcast = async () => {
+    if (!isAdmin || bcBusy) return;
+    if (!bcTitle.trim()) {
+      showInfo(t.err, t.bcEmpty || 'Title required');
+      return;
+    }
+    setBcBusy(true);
+    try {
+      await addDoc(collection(db, 'notices'), {
+        title: bcTitle.trim(), body: bcBody.trim(),
+        by: currentUser?.email || '', at: new Date().toISOString(),
+      });
+      logActivity(currentUser, 'notice.broadcast', bcTitle.trim(), '');
+      setBcTitle('');
+      setBcBody('');
+      showInfo(t.ok, t.bcDone || 'Sent');
+    } catch (e) {
+      showInfo(t.err, firestoreErrorMsg(e, 'Broadcast'));
+    } finally {
+      setBcBusy(false);
+    }
+  };
   // 📋 Activity log viewer (admin only — latest 50)
   const [activityList, setActivityList] = useState([]);
   const [showActivity, setShowActivity] = useState(false);
@@ -928,6 +957,31 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
             <Text style={[styles.subText, { marginTop: -8, backgroundColor: '#FFF', padding: 8, borderRadius: 6 }]}>
               {t.legend}
             </Text>
+
+            {/* 📣 Broadcast — admin → users အားလုံး bell */}
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: '#FFF', marginBottom: 6 }]}
+              value={bcTitle}
+              onChangeText={setBcTitle}
+              placeholder={t.bcTitle}
+              placeholderTextColor="#999"
+            />
+            <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: '#FFF', flex: 1, marginBottom: 0, marginRight: 6 }]}
+                value={bcBody}
+                onChangeText={setBcBody}
+                placeholder={t.bcBody}
+                placeholderTextColor="#999"
+              />
+              <TouchableOpacity
+                style={[styles.addUserBtnHeader, { backgroundColor: '#6A1B9A' }]}
+                onPress={sendBroadcast}
+                disabled={bcBusy}
+              >
+                <Text style={styles.addUserBtnText}>{bcBusy ? '…' : `📣 ${t.bcSend}`}</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* ဇယားခေါင်းစဉ်တန်း — နှိပ်ရင် sort (▲▼) */}
             {/* ကျဉ်းတဲ့ screen မှာ ဘယ်/ညာ ရွှေ့ကြည့်လို့ရအောင် (အထက်/အောက် = အပြင် vertical ScrollView အတိုင်း) */}

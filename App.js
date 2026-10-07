@@ -1,5 +1,5 @@
 import './src/webAlertPolyfill';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, RefreshControl, ImageBackground, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer, useFocusEffect } from '@react-navigation/native';
@@ -7,6 +7,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './src/firebase';
 import { resolveUserProfile } from './src/session';
+import { logActivity } from './src/activity';
 import { LanguageProvider, useLanguage } from './src/LanguageContext';
 import { usePresence, markActiveNow } from './src/presence';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -194,6 +195,7 @@ function Main() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [notice, setNotice] = useState('');
+  const loggedRef = useRef(null); // login event — session တစ်ခုကို ၁ ခါ log (activity viewer)
   const { lang } = useLanguage();
   const tt = tabT[lang] || tabT.my;
 
@@ -227,6 +229,11 @@ function Main() {
           return;
         }
         setUser({ name: p.name, role: p.role, email: fbUser.email, uid: fbUser.uid, photoURL: p.photoURL || null, mustChangePassword: !!p.mustChangePassword, hasPassword: !!p.hasPassword });
+        // login event (bell မတီး — activity viewer မှာ admin ကြည့်)
+        if (loggedRef.current !== fbUser.uid) {
+          loggedRef.current = fbUser.uid;
+          logActivity({ uid: fbUser.uid, email: fbUser.email, name: p.name }, 'user.login', fbUser.email || '', '');
+        }
       } finally {
         setAuthLoading(false);
       }
@@ -239,6 +246,7 @@ function Main() {
     try {
       await signOut(auth);
     } catch (e) {}
+    loggedRef.current = null;
     setUser(null);
     setNotice('');
   };
