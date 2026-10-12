@@ -68,9 +68,17 @@ service cloud.firestore {
     // Banned/deleted accounts — true delete without Admin SDK:
     // delete flow writes banned/{uid}; login checks it first and refuses.
     // Email re-register with same address is ALSO blocked (email check).
+    // 2-tier: allowRejoin==true → user may register again (approve needed);
+    //   rejoin ban docs are self-deleted on successful re-login (delete below).
+    //   Missing flag (old docs) = permanent block.
     match /banned/{docId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdminRole();
+      allow create, update: if isAdminRole();
+      allow delete: if isAdminRole() || (isSignedIn()
+        && resource.data.allowRejoin == true
+        && (resource.data.uid == request.auth.uid
+          || (request.auth.token.email != null
+            && resource.data.email.lower() == request.auth.token.email.lower())));
     }
 
     // Shared teacher materials (teacher's Drive links) — read all signed-in, write staff

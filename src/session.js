@@ -79,20 +79,35 @@ export async function resolveUserProfile(fbUser, defaultName) {
   const email = fbUser.email || '';
   const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
-  // Banned/deleted account? (uid OR email match) — refuse before anything else
+  // Banned/deleted account? (uid OR email match) — refuse before anything else.
+  // 2-tier: allowRejoin==true docs do NOT block (re-register → PENDING → approve);
+  //   they are self-cleaned after successful profile resolve (rules allow own delete).
+  //   ANY ban doc without the flag = permanent block.
+  let rejoinRefs = [];
   try {
-    const bDirect = await getDoc(doc(db, 'banned', fbUser.uid));
-    let banned = bDirect.exists();
-    if (!banned && email) {
-      const be = await getDocs(query(collection(db, 'banned'), where('email', '==', email)));
-      banned = !be.empty;
+    const found = [];
+    const bDirect = await withRetry(() => getDoc(doc(db, 'banned', fbUser.uid)), 'banUid');
+    if (bDirect.exists()) found.push({ ref: bDirect.ref, data: bDirect.data() });
+    if (email) {
+      for (const v of [email, email.toLowerCase()]) {
+        const be = await withRetry(
+          () => getDocs(query(collection(db, 'banned'), where('email', '==', v))),
+          'banEmail'
+        );
+        be.forEach((d) => {
+          if (!found.some((f) => f.ref.id === d.id)) found.push({ ref: d.ref, data: d.data() });
+        });
+      }
     }
-    if (banned) {
-      return { banned: true, isAdmin: false, firestoreOk: true, name: '', role: '', status: '', photoURL: null, hasPassword: false, mustChangePassword: false };
+    if (found.some((f) => (f.data || {}).allowRejoin !== true)) {
+      return { banned: true, isAdmin: false, firestoreOk: true, firestoreError: '', name: '', role: '', status: '', photoURL: null, hasPassword: false, mustChangePassword: false };
     }
+    rejoinRefs = found.map((f) => f.ref);
   } catch (e) {
-    // check failed (offline/rules) → do NOT block login on uncertainty; continue normal resolve
+    if (e && e.code === 'permission-denied') throw e;
+    // transient ban-check failure → do NOT block login on uncertainty; continue normal resolve
     console.log('Ban check skipped:', e.message);
+    rejoinRefs = [];
   }
   let profile = {
     name: defaultName || fbUser.displayName || (email.includes('@') ? email.split('@')[0] : 'User'),
@@ -161,6 +176,15 @@ export async function resolveUserProfile(fbUser, defaultName) {
             console.log('Cleanup placeholder failed:', e.message);
           }
         }
+      }
+    }
+    // Rejoin-allowed ban docs → self-clean now that profile exists (fresh slate;
+    // next delete without flag = permanent). Best-effort: rules allow own delete.
+    for (const r of rejoinRefs) {
+      try {
+        await deleteDoc(r);
+      } catch (e) {
+        console.log('Rejoin cleanup skipped:', e.code || e.message);
       }
     }
     // Admin email ဆို ACTIVE အမြဲ (အရင် version PENDING ကျန်ခဲ့တာ auto-ပြင်)

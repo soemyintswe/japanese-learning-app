@@ -231,6 +231,13 @@ firebase deploy --only hosting
 - Built (token-light): login screen new link under Google button (3-lang `gwWantPw`): Google user types email → taps → reset email → sets OWN password → Email+Password login works alongside Google. Existing 🔑 reset + mustChange gate + approval mail text already cover the rest — verified, no changes needed there.
 - Verify: export clean (679) → hosting deploy → push. Ctrl+F5. Test: Google account → link → reset mail → set password → login with it.
 
+### 6.25 Delete 2-tier: rejoin vs permanent ban (2026-10-06)
+- Problem: EVERY delete wrote a hard ban (uid+email) → deleted users could NEVER re-register. Requested: re-register allowed (PENDING → approve → login), plus optional never-allow.
+- **Delete flow**: 🗑️ → confirm → policy choice: `✅ ဖျက် (ပြန်ဝင်ခွင့်ပြု)` sets `banned.allowRejoin=true` / `⛔ ဖျက် (အပြီးပိတ်)` omits flag (=permanent, old docs stay permanent). ConfirmModal `onCancel` now wired through (was silently swallowed — permanent path needed it). Banned list shows ↩️/⛔ per row. Audit: `user.delete-rejoin` vs `user.delete-ban`.
+- **session**: ban check collects uid+email(case×2) ban docs → ANY doc without flag = hard block; all-flagged = proceed + self-delete own rejoin docs after profile resolve (best-effort).
+- **Rules** (`banned` delete): admin OR (signed-in + `allowRejoin==true` + own-uid OR own-email-lower-match). CLI-deployed (compiled OK) — Console paste NOT needed. No other rule touched.
+- Verify: export clean (678) → rules deploy → hosting deploy → push. Ctrl+F5. Test: delete(JV Two, allow) → same email register → PENDING → approve → login ✅; delete(ban) → register → ⛔ stays.
+
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
 - Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).

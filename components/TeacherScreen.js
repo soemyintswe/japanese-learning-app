@@ -84,6 +84,7 @@ const teacherT = {
     roleQ: 'Role ပြောင်းလဲရန်', roleTo: '၏ Role ကို', roleChangedTo: 'သို့ ပြောင်းမည်မှာ သေချာပါသလား?', noDo: 'မလုပ်ပါ', yesSave: 'သိမ်းမည်',
     statusQ: 'အသုံးပြုခွင့် (Status) ပြောင်းလဲရန်', statusConfirm: 'အတည်ပြုမည်',
     delQ: 'သတိပေးချက် ⚠️️', delConfirm: 'အကောင့်ကို စနစ်ထဲမှ လုံးဝ ဖျက်ပစ်ရန် သေချာပါသလား?', noDel: 'မဖျက်ပါ', yesDel: 'ဖျက်မည်', deleted: 'User အကောင့်ကို ဖျက်ပစ်ပြီးပါပြီ။',
+    delPolicy: 'ဖျက်ပြီးနောက် ဒီ Email နဲ့ ပြန် register ခွင့်ပြုမလား? (ခွင့်ပြုရင် PENDING → approve မှ ဝင်ရ)', delAllow: '✅ ဖျက် (ပြန်ဝင်ခွင့်ပြု)', delForever: '⛔ ဖျက် (အပြီးပိတ်)',
     pwShort: 'Password အသစ်ကို အနည်းဆုံး ၆ လုံး ဖြည့်ပါ။', pwLoginFirst: 'Google/Email နဲ့ Login ဝင်ထားမှ Password ပြောင်းလို့ရပါတယ်။',
     pwDone: 'သင်၏ Password ကို Firebase မှာ တကယ်ပြောင်းပြီးပါပြီ။', pwRecent: 'လုံခြုံရေးအရ Logout လုပ်ပြီး Login ပြန်ဝင်ပြီးမှ ပြောင်းပါ။', pwFail: 'မအောင်မြင်ပါ',
     okBtn: 'အိုကေ',
@@ -146,6 +147,7 @@ const teacherT = {
     roleQ: 'Change Role', roleTo: "'s role to", roleChangedTo: '?', noDo: 'Cancel', yesSave: 'Save',
     statusQ: 'Change Access Status', statusConfirm: 'Confirm',
     delQ: 'Warning ⚠️️', delConfirm: 'Permanently delete this account from the system?', noDel: 'No', yesDel: 'Delete', deleted: 'User account deleted.',
+    delPolicy: 'After delete, allow re-register with this email? (If allowed: PENDING → needs approve)', delAllow: '✅ Delete (allow rejoin)', delForever: '⛔ Delete (ban forever)',
     pwShort: 'New password must be at least 6 characters.', pwLoginFirst: 'Please log in with Google/Email first.',
     pwDone: 'Your password has been changed in Firebase.', pwRecent: 'For security, log out and log in again first.', pwFail: 'Failed',
     okBtn: 'OK',
@@ -208,6 +210,7 @@ const teacherT = {
     roleQ: 'ロール変更', roleTo: 'のロールを', roleChangedTo: 'にしますか？', noDo: 'やめる', yesSave: '保存',
     statusQ: '利用状態の変更', statusConfirm: '確定',
     delQ: '警告 ⚠️️', delConfirm: 'このアカウントをシステムから完全に削除しますか？', noDel: 'やめる', yesDel: '削除', deleted: 'ユーザーアカウントを削除しました。',
+    delPolicy: '削除後、このメールでの再登録を許可しますか？(許可→PENDING→承認が必要)', delAllow: '✅ 削除 (再登録可)', delForever: '⛔ 削除 (永久禁止)',
     pwShort: '新しいパスワードは6文字以上にしてください。', pwLoginFirst: 'Google/Emailでログインしてから変更してください。',
     pwDone: 'Firebaseでパスワードを変更しました。', pwRecent: 'セキュリティのため再ログインしてください。', pwFail: '失敗',
     okBtn: 'OK',
@@ -872,6 +875,34 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
     });
   };
 
+  const doDeleteUser = async (userId, userName, allowRejoin) => {
+    setBusyId(userId);
+    try {
+      // profile doc + ban record (Auth account cannot be deleted client-side).
+      // allowRejoin=true → user may register again (PENDING → approve); else permanent block.
+      const target = usersList.find((u) => u.id === userId) || {};
+      await deleteDoc(doc(db, 'users', userId));
+      try {
+        await setDoc(doc(db, 'banned', userId), {
+          uid: userId,
+          name: target.name || userName || '',
+          email: (target.email || '').toLowerCase(),
+          allowRejoin: allowRejoin === true,
+          at: new Date().toISOString(),
+          by: currentUser?.email || '',
+        });
+      } catch (e) {}
+      setConfirm({ title: t.ok, message: t.deleted, info: true });
+      logActivity(currentUser, allowRejoin ? 'user.delete-rejoin' : 'user.delete-ban', target.email || userId, target.name || userName || '');
+      fetchUsersFromFirestore(true);
+      fetchBanned();
+    } catch (error) {
+      setConfirm({ title: t.err, message: firestoreErrorMsg(error, t.delQ), info: true });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleDeleteUser = (userId, userName) => {
     if (!isAdmin) return;
     setConfirm({
@@ -880,31 +911,17 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
       confirmText: t.yesDel,
       cancelText: t.noDel,
       danger: true,
+      // step 2 — policy choice (both delete; differ on re-register):
       onConfirm: async () => {
-        setBusyId(userId);
-        try {
-          // profile doc + ban record (Auth account cannot be deleted client-side —
-          // ban blocks re-login AND re-register with same email)
-          const target = usersList.find((u) => u.id === userId) || {};
-          await deleteDoc(doc(db, 'users', userId));
-          try {
-            await setDoc(doc(db, 'banned', userId), {
-              uid: userId,
-              name: target.name || userName || '',
-              email: (target.email || '').toLowerCase(),
-              at: new Date().toISOString(),
-              by: currentUser?.email || '',
-            });
-          } catch (e) {}
-          setConfirm({ title: t.ok, message: t.deleted, info: true });
-          logActivity(currentUser, 'user.delete', target.email || userId, target.name || userName || '');
-          fetchUsersFromFirestore(true);
-          fetchBanned();
-        } catch (error) {
-          setConfirm({ title: t.err, message: firestoreErrorMsg(error, t.delQ), info: true });
-        } finally {
-          setBusyId(null);
-        }
+        setConfirm({
+          title: t.delQ,
+          message: '"' + (userName || t.userWord) + '" — ' + (t.delPolicy || ''),
+          confirmText: t.delAllow || t.yesDel,
+          cancelText: t.delForever || t.noDel,
+          danger: false,
+          onConfirm: async () => { await doDeleteUser(userId, userName, true); },
+          onCancel: async () => { await doDeleteUser(userId, userName, false); },
+        });
       },
     });
   };
@@ -1133,7 +1150,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                   <View key={b.id} style={[styles.tableRowItem, { backgroundColor: '#F5F5F5', borderRadius: 6, paddingHorizontal: 6 }]}>
                     <View style={{ flex: 2, marginRight: 4 }}>
                       <Text style={styles.studentName}>{b.name || 'No Name'}</Text>
-                      <Text style={styles.studentDate}>{b.email || 'N/A'}{b.by ? ` · by ${String(b.by).split('@')[0]}` : ''}</Text>
+                      <Text style={styles.studentDate}>{b.email || 'N/A'}{b.by ? ` · by ${String(b.by).split('@')[0]}` : ''} {b.allowRejoin === true ? '· ↩️' : '· ⛔'}</Text>
                     </View>
                     <TouchableOpacity
                       style={[styles.addUserBtnHeader, { backgroundColor: '#2E7D32' }]}
@@ -1424,7 +1441,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
         danger={!!confirm?.danger}
         busy={!!busyId}
         onConfirm={async () => { if (confirm?.onConfirm) await confirm.onConfirm(); }}
-        onCancel={() => { if (!busyId) setConfirm(null); }}
+        onCancel={async () => { if (busyId) return; if (confirm?.onCancel) await confirm.onCancel(); else setConfirm(null); }}
       />
 
       {/* 📨 Login credentials delivery card (copy / Email app / SMS) */}
