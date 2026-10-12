@@ -220,6 +220,11 @@ firebase deploy --only hosting
 - **Google-register flow (verified, no code needed)**: approve → 🔑 reset sends Firebase email → user sets OWN password via link → `mustChangePassword` flag → force-change gate on entry (hasPassword now true). Admin CANNOT set another user's password (Firebase client-SDK hard limit — reset-email IS the mechanism). Keeping the assigned password without changing: allowed (gate only forces a screen, user may reuse? — gate requires updatePassword call; reusing same string technically passes. Noted, no change).
 - Verify: export clean (679) → hosting deploy → push. Ctrl+F5. Test: airplane-mode login → network message (not rules); new register → pending → approve → creds card → mailto → same-password login.
 
+### 6.23 Google-approve email gap (2026-10-06)
+- Report: Google-registered user approved, but NO confirmation email arrived. Re-checked: TWO gaps — (1) bell-panel one-tap Approve never surfaced any mail step (table ✅ approve already opens delivery card since 6.22); (2) approved text only covered Email-register (wrong for Google users: they need the Google button, no password).
+- Fix (no backend email possible on free tier — stated honestly): panel pending rows gained ✉️ button (mailto with trilingual approval body: Email→own password / Google→Google button + login link); table `credApproved` corrected to cover BOTH register kinds.
+- Verify: export clean → hosting deploy → push. Ctrl+F5. Flow: Google register → pending → Admin approve (table card OR panel + ✉️) → user gets approval mail → Google-button login, no password needed.
+
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
 - Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).

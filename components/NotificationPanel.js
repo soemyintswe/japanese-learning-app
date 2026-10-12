@@ -1,6 +1,6 @@
 // components/NotificationPanel.js — 🔔 panel: unread chats + pending approvals (one-tap)
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Modal, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Modal, ScrollView, ActivityIndicator, Platform, Linking } from 'react-native';
 import { useLanguage } from '../src/LanguageContext';
 import { useNotifications } from '../src/notifications';
 
@@ -10,6 +10,7 @@ const nT = {
     notices: '📣 ကြေညာချက်များ', teaching: '📖 သင်ခန်းစာ/Assignment အသစ်', subs: '📝 အဖြေတင်ထားသူများ', graded: '🏅 အမှတ်ထွက်ပြီ', due: '⏰ ရက်နီးနေသော Assignment',
     emptyAll: 'အသစ်ဘာမှမရှိပါ ✅', emptyChats: '—', view: 'ကြည့်မည် →',
     approve: '✅ Approve', disable: '🚫 Disable', done: 'ပြီးပါပြီ ✅', fail: 'မအောင်မြင်ပါ',
+    mailBody: 'Japanese Study Planner — အတည်ပြုပြီးပါပြီ ✅\nLink: https://japanese-mksedu.web.app\n• Email register → ကိုယ့် password အတိုင်း ဝင် (ပြောင်းစရာမလို)\n• Google register → Google ခလုတ်နဲ့ ဝင် (password မလို)',
     close: 'ပိတ်မည်',
   },
   en: {
@@ -17,6 +18,7 @@ const nT = {
     notices: '📣 Announcements', teaching: '📖 New lessons/assignments', subs: '📝 New submissions', graded: '🏅 Graded', due: '⏰ Due soon',
     emptyAll: 'All caught up ✅', emptyChats: '—', view: 'Open →',
     approve: '✅ Approve', disable: '🚫 Disable', done: 'Done ✅', fail: 'Failed',
+    mailBody: 'Japanese Study Planner — approved ✅\nLink: https://japanese-mksedu.web.app\n• Email signup → log in with your password (no change needed)\n• Google signup → use the Google button (no password needed)',
     close: 'Close',
   },
   jp: {
@@ -24,6 +26,7 @@ const nT = {
     notices: '📣 お知らせ', teaching: '📖 新レッスン/課題', subs: '📝 新提出', graded: '🏅 採点済', due: '⏰ 締切間近',
     emptyAll: 'なし ✅', emptyChats: '—', view: '開く →',
     approve: '✅ 承認', disable: '🚫 無効', done: '完了 ✅', fail: '失敗',
+    mailBody: 'Japanese Study Planner — 承認 ✅\nLink: https://japanese-mksedu.web.app\n• メール登録 → パスワードでログイン\n• Google登録 → Googleボタンでログイン',
     close: '閉じる',
   },
 };
@@ -103,6 +106,15 @@ export default function NotificationPanel() {
                         onPress={() => act(u.id, disableUser)}
                       >
                         <Text style={styles.actText}>{t.disable}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actBtn, { backgroundColor: '#1976D2', marginLeft: 6 }]}
+                        onPress={() => {
+                          const url = `mailto:${encodeURIComponent(u.email || '')}?subject=${encodeURIComponent('Japanese Study Planner — Approved ✅')}&body=${encodeURIComponent(t.mailBody)}`;
+                          Linking.openURL(url).catch(() => {});
+                        }}
+                      >
+                        <Text style={styles.actText}>✉️</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
