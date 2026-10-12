@@ -27,7 +27,7 @@ firestore.rules               # ⭐ Firestore Security Rules — Console မှ�
 .firebaserc                   # default project = japanese-mksedu
 .env.example                  # Firebase env template (.env ဖန်တီးသုံးရန်, .env က gitignore)
 src/firebase.js               # Firebase init (web/native persistence + popupRedirectResolver)
-src/session.js                # ⭐ Auth user → profile resolve (uid doc → email placeholder adopt → admin auto-active)
+src/session.js                # ⭐ Auth user → profile resolve (uid doc → email placeholder adopt → admin auto-active) + withRetry (transient 3× backoff; permission-denied fail-fast) + classifyResolveError (rules vs network)
 src/activity.js               # Activity log helper: logActivity(user, action, target, detail) → activity/{autoId} (fail-silent)
 src/LanguageContext.js        # ⭐ Global my/en/jp + AsyncStorage persist
 components/AppHeader.js       # ⭐ စာမျက်နှာတိုင်း header (title + lang ၃ ခု + profile pic/name + logout)
@@ -211,6 +211,14 @@ firebase deploy --only hosting
 - Bug: 🌱 seed button rendered ONLY in empty state (`list.length===0`) — after first seed (3+3), new seeds (→11+11) had no way in (skip-existing logic was fine, button unreachable).
 - Fix: staff-only 🌱 button pinned in seg row (always visible), same `seedSamples` (skip-existing — safe to tap anytime).
 - Verify: export clean → hosting deploy → push. Ctrl+F5 → 🌱 tap → +10 appear.
+
+### 6.22 Auth reliability + approve-notify (2026-10-06)
+- **Root cause of false "Firestore Rules" error**: `resolveUserProfile` collapsed EVERY exception (incl. flaky-mobile network timeouts) into one `firestoreOk=false` → UI always blamed Rules. Rules were fine (CLI-deployed, compiled OK).
+- **Fix** (no rules change): `withRetry` (transient codes + offline/fetch/timeout msgs, 3 tries, 800ms backoff; `permission-denied` fail-fast) on uid-get/email-query/uid-create + `firestoreError` passthrough + `classifyResolveError` → UI shows **network-retry message** vs **true rules guidance** (AuthScreen login/register/Google + App.js restore). Register path now checks `firestoreOk` explicitly (was: success message even when profile write failed → un-approvable ghost).
+- **Register email lowercased** (rules `email==token.email` case-sensitive compare hardening; login untouched to protect old mixed-case accounts).
+- **Approve → notify card**: ✅ approve opens delivery card (`approved` mode: copy/mailto/sms with login link). Client CANNOT send email server-side (no SMTP/Functions on free tier) — admin forwards from own mail app (Copy/Email/SMS buttons). User keeps THEIR registered password (mustChangePassword NOT set on this path — no forced change, as requested).
+- **Google-register flow (verified, no code needed)**: approve → 🔑 reset sends Firebase email → user sets OWN password via link → `mustChangePassword` flag → force-change gate on entry (hasPassword now true). Admin CANNOT set another user's password (Firebase client-SDK hard limit — reset-email IS the mechanism). Keeping the assigned password without changing: allowed (gate only forces a screen, user may reuse? — gate requires updatePassword call; reusing same string technically passes. Noted, no change).
+- Verify: export clean (679) → hosting deploy → push. Ctrl+F5. Test: airplane-mode login → network message (not rules); new register → pending → approve → creds card → mailto → same-password login.
 
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).

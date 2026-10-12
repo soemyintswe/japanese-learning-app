@@ -90,6 +90,7 @@ const teacherT = {
     phoneLabel: 'ဖုန်း (SMS ပို့ရန်, optional):', tempPwLabel: 'ကနဦး Password (6+ လုံး, 🎲 နှိပ် auto):',
     credTitle: '📨 Login အချက်အလက် ပို့ရန်', credLink: 'Link', credFirst: 'ပထမ login မှာ password ပြောင်းရမယ်',
     credResetNote: 'Password reset link ပို့ပြီးပြီ — user က link ကနေ password သတ်မှတ်ပြီး ဝင်ရင် ထပ်ပြောင်းရမယ်',
+    credApproved: '✅ Approve ပြီးပြီ — user က မှတ်ပုံတင်ထားတဲ့ Email + Password အတိုင်း login link ကနေ တန်းဝင်လို့ရပြီ (ပြောင်းစရာမလို)',
     credHint: 'Copy / Email app / SMS နဲ့ user ထံ ပို့ပါ (temp password ကို ဒီမှာပဲ မြင်ရမယ် — နောက်မပြတော့ဘူး)',
     credCopy: 'ကူးမယ်', credCopied: 'ကူးပြီးပါပြီ ✅',
     resetTitle: '🔑 Password Reset', resetConfirm: 'အတွက် password reset လုပ်မလား? (reset email ပို့ + နောက် login မှာ password ပြောင်းခိုင်းမယ်)',
@@ -151,6 +152,7 @@ const teacherT = {
     phoneLabel: 'Phone (for SMS, optional):', tempPwLabel: 'Initial password (6+, 🎲 auto):',
     credTitle: '📨 Send Login Info', credLink: 'Link', credFirst: 'must change password on first login',
     credResetNote: 'Reset email sent — user sets password via link, then must change again on entry',
+    credApproved: '✅ Approved — user can now log in at the link with their registered Email + Password (no change needed)',
     credHint: 'Send via Copy / Email app / SMS (temp password shown only here)',
     credCopy: 'Copy', credCopied: 'Copied ✅',
     resetTitle: '🔑 Password Reset', resetConfirm: 'Reset password? (sends reset email + forces change on next login)',
@@ -212,6 +214,7 @@ const teacherT = {
     phoneLabel: '電話（SMS用、任意）:', tempPwLabel: '初期パスワード（6文字以上、🎲自動）:',
     credTitle: '📨 ログイン情報送信', credLink: 'リンク', credFirst: '初回ログイン時に変更必須',
     credResetNote: 'リセットメール送信済み — リンクで設定後、入場時に再変更',
+    credApproved: '✅ 承認済み — 登録メール+パスワードでログイン可 (変更不要)',
     credHint: 'コピー/メール/SMSで送信（仮パスはここでのみ表示）',
     credCopy: 'コピー', credCopied: 'コピー ✅',
     resetTitle: '🔑 リセット', resetConfirm: 'リセットしますか？',
@@ -277,7 +280,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
 
   const credText = (c) => (
     `Japanese Study Planner — Login\n${t.credLink || 'Link'}: ${APP_LOGIN_URL}\nEmail: ${c.email}\n` +
-    (c.tempPw ? `Password: ${c.tempPw}\n(${t.credFirst || ''})` : `${t.credResetNote || ''}`)
+    (c.tempPw ? `Password: ${c.tempPw}\n(${t.credFirst || ''})` : (c.approved ? `${t.credApproved || ''}` : `${t.credResetNote || ''}`))
   );
 
   const copyCreds = async () => {
@@ -686,8 +689,19 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
             lastActionBy: currentUser?.email || '',
             lastActionAt: new Date().toISOString(),
           });
-          setConfirm({ title: t.ok, message: statusText, info: true });
+          setConfirm(null);
           logActivity(currentUser, newStatus === 'active' ? 'user.approve' : 'user.disable', userName || userId, '→' + newStatus);
+          // approve → approval-notice card (mailto/sms/copy — client cannot send email itself,
+          // so admin forwards from own mail app; user keeps THEIR registered password, no change needed)
+          if (newStatus === 'active') {
+            const target = usersList.find((u) => u.id === userId) || {};
+            setCreds({
+              name: target.name || userName || '', email: target.email || '',
+              phone: target.phone || '', tempPw: '', resetLinkSent: false, approved: true,
+            });
+          } else {
+            setConfirm({ title: t.ok, message: statusText, info: true });
+          }
           fetchUsersFromFirestore(true);
         } catch (error) {
           setConfirm({ title: t.err, message: firestoreErrorMsg(error, t.statusQ), info: true });
@@ -1429,6 +1443,9 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                   )}
                   {!!creds.resetLinkSent && (
                     <Text style={styles.credNote}>{t.credResetNote}</Text>
+                  )}
+                  {!!creds.approved && (
+                    <Text style={[styles.credNote, { color: '#2E7D32', fontWeight: 'bold' }]}>{t.credApproved}</Text>
                   )}
                 </View>
                 <Text style={styles.credHint}>{t.credHint}</Text>

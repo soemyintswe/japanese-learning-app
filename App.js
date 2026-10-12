@@ -6,7 +6,7 @@ import { NavigationContainer, useFocusEffect } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './src/firebase';
-import { resolveUserProfile } from './src/session';
+import { resolveUserProfile, classifyResolveError } from './src/session';
 import { logActivity } from './src/activity';
 import { LanguageProvider, useLanguage } from './src/LanguageContext';
 import { usePresence, markActiveNow } from './src/presence';
@@ -261,7 +261,9 @@ function Main() {
           setNotice(
             p.firestoreOk
               ? 'သင်၏အကောင့်ကို Admin အတည်ပြုရန် စောင့်နေပါတယ် ⏳ (ACTIVE ဖြစ်မှ ဝင်လို့ရမယ်)'
-              : 'Firestore Rules ကြောင့် profile ဖတ်မရပါ။ Firebase Console > Firestore > Rules မှာ firestore.rules file အတိုင်း ထည့်ပေးပါ။'
+              : (classifyResolveError(p) === 'rules'
+                ? 'Firestore Rules ကြောင့် profile ဖတ်မရပါ။ Firebase Console > Firestore > Rules မှာ firestore.rules file အတိုင်း ထည့်ပေးပါ။'
+                : 'အင်တာနက် မကောင်းလို့ profile ဖတ်မရပါ။ WiFi/Data စစ်ပြီး App ပြန်ဖွင့်ပါ။')
           );
           return;
         }

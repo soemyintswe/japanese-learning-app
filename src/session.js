@@ -28,12 +28,51 @@ async function findProfilesByEmail(email) {
   for (const v of [email, email.toLowerCase()]) {
     if (tried.has(v)) continue;
     tried.add(v);
-    const snap = await getDocs(query(collection(db, 'users'), where('email', '==', v)));
+    const snap = await withRetry(
+      () => getDocs(query(collection(db, 'users'), where('email', '==', v))),
+      'findProfilesByEmail'
+    );
     snap.forEach((d) => {
       if (!out.some((u) => u.id === d.id)) out.push({ id: d.id, ...d.data() });
     });
   }
   return out;
+}
+
+// Transient (network/offline) errors → retry; permission-denied → fail fast.
+// (Old code collapsed EVERYTHING into "rules error" — flaky mobile networks
+// showed the rules message even when rules were fine.)
+const RETRY_CODES = ['unavailable', 'deadline-exceeded', 'aborted', 'internal'];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function isTransientErr(e) {
+  if (!e) return false;
+  if (RETRY_CODES.includes(e.code)) return true;
+  const m = String(e.message || '').toLowerCase();
+  return /failed to fetch|networkerror|network request failed|offline|timeout|connection/.test(m);
+}
+async function withRetry(fn, label) {
+  let last;
+  for (let i = 0; i < 3; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      last = e;
+      if (e && e.code === 'permission-denied') throw e;
+      if (!isTransientErr(e) || i === 2) throw e;
+      console.log(`retry ${label} (${i + 1}/3):`, e.code || e.message);
+      await sleep(800 * (i + 1));
+    }
+  }
+  throw last;
+}
+
+// UI helper (AuthScreen + App.js share): true rules/config problem vs retry-able network.
+// Returns 'rules' | 'network' — caller picks the message.
+export function classifyResolveError(p) {
+  if (p && p.firestoreOk !== false) return null;
+  const c = String((p && p.firestoreError) || '').toLowerCase();
+  if (c.includes('permission-denied') || c.includes('permission')) return 'rules';
+  return 'network';
 }
 
 export async function resolveUserProfile(fbUser, defaultName) {
@@ -67,7 +106,7 @@ export async function resolveUserProfile(fbUser, defaultName) {
 
   try {
     const ref = doc(db, 'users', fbUser.uid);
-    const snap = await getDoc(ref);
+    const snap = await withRetry(() => getDoc(ref), 'uidDoc');
     if (snap.exists()) {
       const d = snap.data();
       profile = {
@@ -100,7 +139,7 @@ export async function resolveUserProfile(fbUser, defaultName) {
         });
       }
       if (fbUser.photoURL && !extras.photoURL) extras.photoURL = fbUser.photoURL;
-      await setDoc(ref, {
+      await withRetry(() => setDoc(ref, {
         uid: fbUser.uid,
         name: profile.name,
         email,
@@ -109,7 +148,7 @@ export async function resolveUserProfile(fbUser, defaultName) {
         createdAt: new Date().toISOString(),
         ...extras,
         ...(placeholder ? { migratedFrom: placeholder.id } : {}),
-      }, { merge: true });
+      }, { merge: true }), 'uidCreate');
       // နာမည်တူ placeholder အဟောင်း (user_*) တွေ ရှင်းမယ် — admin list ထပ်မပေါ်အောင်
       if (placeholder) {
         const olds = (await findProfilesByEmail(email)).filter(
@@ -137,7 +176,8 @@ export async function resolveUserProfile(fbUser, defaultName) {
   } catch (e) {
     console.error('resolveUserProfile error:', e.code || e.message);
     firestoreOk = false;
+    return { ...profile, isAdmin, firestoreOk, firestoreError: e.code || e.message, photoURL: fbUser.photoURL || null, hasPassword };
   }
 
-  return { ...profile, isAdmin, firestoreOk, photoURL: fbUser.photoURL || null, hasPassword };
+  return { ...profile, isAdmin, firestoreOk, firestoreError: '', photoURL: fbUser.photoURL || null, hasPassword };
 }

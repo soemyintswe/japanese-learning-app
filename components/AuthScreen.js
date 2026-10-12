@@ -13,7 +13,7 @@ import {
   signOut,
 } from 'firebase/auth';
 import { auth } from '../src/firebase';
-import { resolveUserProfile } from '../src/session';
+import { resolveUserProfile, classifyResolveError } from '../src/session';
 import { useLanguage } from '../src/LanguageContext';
 import { POLICY } from '../src/privacyPolicy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -131,6 +131,12 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
     setInfoMsg('');
   };
 
+  // resolveUserProfile ပျက်ရင်: rules-အစစ် vs network-ခဏ — စာသား ခွဲပြ
+  // (အရင် code က အမှားမှန်သမျှ "Rules" လို့ ပြလို့ mobile-network ချို့ယွင်းမှုပါ rules-မှားထင်နေတာ)
+  const RULES_MSG = 'Firestore Rules ကြောင့် profile ဖတ်မရပါ (permission-denied)။ Firebase Console > Firestore > Rules မှာ firestore.rules file အတိုင်း Publish လုပ်ပေးပါ။';
+  const NET_MSG = 'အင်တာနက်/ဆာဗာ ချိတ်ဆက်မှု မကောင်းလို့ profile ဖတ်မရပါ။ WiFi/Data စစ်ပြီး Login/Register ပြန်နှိပ်ပါ (အကောင့်/data မပျက်)။';
+  const resolveFailMsg = (p) => (classifyResolveError(p) === 'rules' ? RULES_MSG : NET_MSG);
+
   // Google redirect နဲ့ ပြန်လာရင် (popup block ခံရသူတွေ) ဒီမှာ ရလဒ် ဖမ်းမယ်
   useEffect(() => {
     (async () => {
@@ -210,7 +216,7 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
         showInfo(
           p.firestoreOk
             ? 'ခွင့်ပြုချက် စောင့်ဆိုင်းဆဲ ⏳ — သင်၏အကောင့်ကို Admin မှ အတည်ပြုပေးရန် (Active လုပ်ရန်) လိုအပ်နေပါသေးသည်။'
-            : 'Firestore Rules ကြောင့် profile ဖတ်မရပါ။ Firebase Console > Firestore > Rules မှာ firestore.rules file အတိုင်း ထည့်ပေးပါ။'
+            : resolveFailMsg(p)
         );
         return;
       }
@@ -287,7 +293,7 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
   const handleEmailRegister = async () => {
     if (needConsent()) return;
     const name = regName.trim();
-    const rEmail = regEmail.trim();
+    const rEmail = regEmail.trim().toLowerCase(); // Rules email-compare တိကျအောင် lowercase အမြဲ
     if (!name) {
       showError('အမည် (Name) ဖြည့်ပါ။');
       return;
@@ -317,9 +323,15 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
         return;
       }
 
+      if (!p.firestoreOk) {
+        await signOut(auth);
+        showError('❌ ' + resolveFailMsg(p));
+        return;
+      }
+
       if (!p.isAdmin && p.status !== 'active') {
         await signOut(auth);
-        showInfo('Register အောင်မြင်ပါပြီ ✅ — Admin အတည်ပြုရန် (Active လုပ်ရန်) စောင့်နေပါတယ် ⏳။ Approve ပြီးရင် Login ဝင်လို့ရပြီ။');
+        showInfo('Register အောင်မြင်ပါပြီ ✅ — Admin အတည်ပြုရန် (Active လုပ်ရန်) စောင့်နေပါတယ် ⏳။ Approve ပြီးရင် မှတ်ပုံတင်ထားတဲ့ Email + Password အတိုင်း Login ဝင်လို့ရပြီ (ပြောင်းစရာမလို)။');
         setRegName('');
         setRegEmail('');
         setRegPassword('');
@@ -366,7 +378,7 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
       showInfo(
         p.firestoreOk
           ? 'ခွင့်ပြုချက် စောင့်ဆိုင်းဆဲ ⏳ — သင်၏အကောင့်ကို Admin မှ အတည်ပြုပေးရန် (Active လုပ်ရန်) လိုအပ်နေပါသေးသည်။ ကျေးဇူးပြု၍ ခေတ္တစောင့်ဆိုင်းပါ။'
-          : 'Firestore Rules ကြောင့် profile ဖတ်မရပါ။ Firebase Console > Firestore > Rules မှာ firestore.rules file အတိုင်း ထည့်ပေးပါ။'
+          : resolveFailMsg(p)
       );
       return;
     }
