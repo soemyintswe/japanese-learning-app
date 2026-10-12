@@ -33,6 +33,7 @@ const translations = {
     phone: 'ဖုန်းနံပါတ် (Phone Number):',
     loginBtn: 'ဝင်ရောက်မည် (Login)',
     googleRegisterBtn: 'Google အကောင့်ဖြင့် Register လုပ်မည်',
+    gwWantPw: 'Google နဲ့ဖွင့်ထားပြီး Email+Password နဲ့ပါ ဝင်ချင်လား? (အပေါ် Email ရိုက်ပြီး နှိပ်ပါ — link ကနေ ကိုယ့် password ကိုယ်သတ်)',
     noAccount: 'အကောင့်မရှိသေးဘူးလား? အသစ်စာရင်းသွင်းရန်',
     hasAccount: 'အကောင့်ရှိပြီးသားလား? Login သို့ ပြန်သွားရန်',
   },
@@ -48,6 +49,7 @@ const translations = {
     phone: 'Phone Number:',
     loginBtn: 'Login',
     googleRegisterBtn: 'Register with Google',
+    gwWantPw: 'Google account but want Email+Password too? (type email above, tap — set your own password via link)',
     noAccount: "Don't have an account? Sign Up",
     hasAccount: 'Already have an account? Sign In',
   },
@@ -63,6 +65,7 @@ const translations = {
     phone: '電話番号:',
     loginBtn: 'ログインする',
     googleRegisterBtn: 'Googleで登録',
+    gwWantPw: 'Google登録済みでメール+パスワードも使いたい? (上欄に入力してタップ — リンクで設定)',
     noAccount: 'アカウントをお持ちではありませんか？',
     hasAccount: 'すでにアカウントをお持ちですか？',
   }
@@ -552,6 +555,14 @@ export default function AuthScreen({ onLoginSuccess, notice }) {
                       <Text style={styles.googleButtonText}>Google အကောင့်ဖြင့် ဝင်မည် / Register လုပ်မည်</Text>
                     </>
                   )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handlePasswordReset}
+                  disabled={resetSending}
+                  style={{ marginTop: 10, alignItems: 'center' }}
+                >
+                  <Text style={styles.switchText}>{t.gwWantPw}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => setStep('register')} style={{ marginTop: 15, alignItems: 'center' }}>

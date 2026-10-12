@@ -225,6 +225,12 @@ firebase deploy --only hosting
 - Fix (no backend email possible on free tier — stated honestly): panel pending rows gained ✉️ button (mailto with trilingual approval body: Email→own password / Google→Google button + login link); table `credApproved` corrected to cover BOTH register kinds.
 - Verify: export clean → hosting deploy → push. Ctrl+F5. Flow: Google register → pending → Admin approve (table card OR panel + ✉️) → user gets approval mail → Google-button login, no password needed.
 
+### 6.24 Google→password choice link (2026-10-06)
+- Request: ask Google-approved users (Google-direct vs Email+Password?) + user-chosen password + admin reset/auto-generate + email.
+- Honest limits: (1) Admin CANNOT generate/set another user's password (Firebase client-SDK hard limit — no exception). "Auto-generate + email" by admin = impossible; the mechanism IS Firebase reset email (auto-sent, user picks OWN password via link — also works for Google-only accounts, adding the password provider). (2) No server email (free tier) — mailto pattern as before.
+- Built (token-light): login screen new link under Google button (3-lang `gwWantPw`): Google user types email → taps → reset email → sets OWN password → Email+Password login works alongside Google. Existing 🔑 reset + mustChange gate + approval mail text already cover the rest — verified, no changes needed there.
+- Verify: export clean (679) → hosting deploy → push. Ctrl+F5. Test: Google account → link → reset mail → set password → login with it.
+
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
 - Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).
