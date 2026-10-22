@@ -15,6 +15,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Planner storage key (PlannerScreen နဲ့ အတူတူ) + subject slots (မနက် 5 + ည 5)
 const PLANNER_KEY = '@japanese_planner_v1';
 const PLANNER_SLOTS = 10;
+// 🎮 Guest mode flag (login မလို — local features ပဲ; server 0 read)
+const GUEST_KEY = '@japanese_guest_v1';
+const GUEST_USER = { uid: null, name: 'Guest', role: 'guest', isGuest: true, email: '', photoURL: null };
 
 // တကယ့် data ကနေ ယနေ့ တိုးတက်မှု တွက် — data မရှိရင် 0% (အတုမပြ)
 async function computeTodayProgress() {
@@ -82,16 +85,22 @@ const homeT = {
     progress: 'ယနေ့ လေ့လာမှု တိုးတက်မှု', done: 'ပြီးမြောက်ပြီး', quick: 'အမြန်ဝင်ရောက်ရန် နေရာများ',
     dict: 'အဘိဓာန်', planner: 'အချိန်ဇယား', notes: 'မှတ်စုများ', qa: 'မေးခွန်းဖြေရန်', teacher: 'ဆရာ့အပိုင်းနှင့် အက်ဒမင်',
     people: 'အဖွဲ့', library: 'စာကြည့်', klass: 'သင်ခန်း', help: 'အကူအညီ', more: 'မီနူး',
+    guestNote: 'Login မလိုဘဲ လေ့လာနေပါတယ်',
+    guestNote2: 'Chat · Class · People သုံးချင်ရင် အပေါ်က 🚪 ကနေထွက်ပြီး account ဖြင့် Login ပါ (Admin approve လိုအပ်ပါတယ်)။',
   },
   en: {
     progress: "Today's Study Progress", done: 'Completed', quick: 'Quick Access',
     dict: 'Dictionary', planner: 'Planner', notes: 'Notes', qa: 'Quiz', teacher: 'Teacher & Admin',
     people: 'People', library: 'Library', klass: 'Class', help: 'Help', more: 'More',
+    guestNote: 'Studying as Guest — no login',
+    guestNote2: 'To use Chat · Class · People, tap 🚪 above to log out and sign in (Admin approval required).',
   },
   jp: {
     progress: '今日の学習進捗', done: '完了', quick: 'クイックアクセス',
     dict: '辞書', planner: 'プランナー', notes: 'ノート', qa: 'クイズ', teacher: '先生・管理者',
     people: '仲間', library: '資料', klass: '授業', help: 'ヘルプ', more: 'メニュー',
+    guestNote: 'ゲストとして学習中 — ログイン不要',
+    guestNote2: 'チャット・授業・仲間を使うには 🚪 からログアウトしてログインしてください（管理者承認必要）。',
   },
 };
 
@@ -151,6 +160,14 @@ function HomeScreen({ navigation, user, onLogout }) {
               </View>
             </View>
 
+            {/* 🎮 Guest banner — login လုပ်ရင် Chat/Class ရမယ် */}
+            {user?.isGuest && (
+              <View style={[styles.glassCard, { backgroundColor: '#E3F2FD', borderColor: '#90CAF9' }]}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#1565C0' }}>🎮 Guest Mode — {t.guestNote}</Text>
+                <Text style={{ fontSize: 11, color: '#546E7A', marginTop: 4 }}>{t.guestNote2}</Text>
+              </View>
+            )}
+
             <Text style={styles.sectionTitle}>{t.quick}</Text>
 
             {/* Quick Links Grid */}
@@ -178,29 +195,41 @@ function HomeScreen({ navigation, user, onLogout }) {
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
-              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Community')}>
-                <Text style={{fontSize: 24}}>👥</Text>
-                <Text style={styles.quickCardText}>{t.people}</Text>
-              </TouchableOpacity>
+            {!user?.isGuest && (
+              <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
+                <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Community')}>
+                  <Text style={{fontSize: 24}}>👥</Text>
+                  <Text style={styles.quickCardText}>{t.people}</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Materials')}>
-                <Text style={{fontSize: 24}}>📚</Text>
-                <Text style={styles.quickCardText}>{t.library}</Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Materials')}>
+                  <Text style={{fontSize: 24}}>📚</Text>
+                  <Text style={styles.quickCardText}>{t.library}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-            <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
-              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Teaching')}>
-                <Text style={{fontSize: 24}}>📖</Text>
-                <Text style={styles.quickCardText}>{t.klass}</Text>
-              </TouchableOpacity>
+            {!user?.isGuest && (
+              <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
+                <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Teaching')}>
+                  <Text style={{fontSize: 24}}>📖</Text>
+                  <Text style={styles.quickCardText}>{t.klass}</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Help')}>
-                <Text style={{fontSize: 24}}>🆘</Text>
-                <Text style={styles.quickCardText}>{t.help}</Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Help')}>
+                  <Text style={{fontSize: 24}}>🆘</Text>
+                  <Text style={styles.quickCardText}>{t.help}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {user?.isGuest && (
+              <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
+                <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Help')}>
+                  <Text style={{fontSize: 24}}>🆘</Text>
+                  <Text style={styles.quickCardText}>{t.help}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Teacher Section Link (teacher + admin — admin အမြင့်ဆုံး, tab ပျောက်မသွားအောင်) */}
             {(user?.role === 'teacher' || user?.role === 'admin') && (
@@ -233,10 +262,24 @@ function Main() {
   const [authLoading, setAuthLoading] = useState(true);
   const [notice, setNotice] = useState('');
   const loggedRef = useRef(null); // login event — session တစ်ခုကို ၁ ခါ log (activity viewer)
+  const guestRef = useRef(false); // guest mode on? (auth null callback က setUser(null) မလုပ်အောင်)
   const { lang } = useLanguage();
   const tt = tabT[lang] || tabT.my;
 
-  // Presence heartbeat (Active/idle/offline) — login ဝင်ထားမှ အလုပ်လုပ်မယ်
+  // 🎮 restore guest flag (app refresh မှာ guest အဖြစ် ပြန်ဝင်)
+  useEffect(() => {
+    (async () => {
+      try {
+        const g = await AsyncStorage.getItem(GUEST_KEY);
+        if (g === '1') {
+          guestRef.current = true;
+          setUser(GUEST_USER);
+        }
+      } catch (e) {}
+    })();
+  }, []);
+
+  // Presence heartbeat (Active/idle/offline) — login ဝင်ထားမှ အလုပ်လုပ်မယ် (guest: uid null → skip)
   usePresence(user);
 
   // Refresh နှိပ်လည်း Firebase session ကျန်နေရင် အလိုအလျောက် ပြန်ဝင်မယ် —
@@ -245,8 +288,14 @@ function Main() {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       try {
         if (!fbUser) {
-          setUser(null);
+          // guest mode ဖွင့်ထားရင် null ကို setUser(null) မလုပ် — GUEST_USER ကျန်ခဲ့အောင်
+          if (!guestRef.current) setUser(null);
           return;
+        }
+        // real login ဝင်လာရင် guest mode ပိတ်
+        if (guestRef.current) {
+          guestRef.current = false;
+          try { await AsyncStorage.removeItem(GUEST_KEY); } catch (e) {}
         }
         const p = await resolveUserProfile(fbUser);
         if (p.banned) {
@@ -282,12 +331,28 @@ function Main() {
 
   // Logout နှိပ်ရင် Firebase session ကိုပါ အပြီးဖြတ်မယ် (မဟုတ်ရင် auto-restore က ပြန်ဝင်သွားမယ်)
   const handleLogout = async () => {
+    if (guestRef.current) {
+      // guest → login screen ပြန်
+      guestRef.current = false;
+      try { await AsyncStorage.removeItem(GUEST_KEY); } catch (e) {}
+      setUser(null);
+      setNotice('');
+      return;
+    }
     try {
       await signOut(auth);
     } catch (e) {}
     loggedRef.current = null;
     setUser(null);
     setNotice('');
+  };
+
+  // 🎮 AuthScreen "Guest" ခလုတ် — Firebase မချိတ်ဘဲ local features ပဲ
+  const handleGuest = async () => {
+    try { await AsyncStorage.setItem(GUEST_KEY, '1'); } catch (e) {}
+    guestRef.current = true;
+    setNotice('');
+    setUser(GUEST_USER);
   };
 
   // Public privacy page (login မလို — Google OAuth branding အတွက်)
@@ -318,10 +383,13 @@ function Main() {
         <AuthScreen
           notice={notice}
           onLoginSuccess={(userData) => { setNotice(''); setUser(userData); }}
+          onGuest={handleGuest}
         />
       </SafeAreaProvider>
     );
   }
+
+  const isGuest = !!user.isGuest;
 
   // 🔑 Force password change gate — ကနဦး password နဲ့ ဝင်လာသူ (password provider ရှိမှ)
   if (user.mustChangePassword && user.hasPassword !== false) {
@@ -364,7 +432,7 @@ function Main() {
             tabBarInactiveTintColor: 'gray',
           })}
         >
-          {/* Visible bar (6): Home/Dictionary/Quiz/Class/People/More — rest hidden but navigable */}
+          {/* Visible bar: Home/Dictionary/Quiz/Class/People/More — guest က local 4 tab ပဲ */}
           <Tab.Screen name="Home" options={{ title: tt.Home }}>
             {(props) => <HomeScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
@@ -374,12 +442,16 @@ function Main() {
           <Tab.Screen name="QA" options={{ title: tt.QA }}>
             {(props) => <QAScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          <Tab.Screen name="Teaching" options={{ title: tt.Teaching }}>
-            {(props) => <TeachingScreen {...props} user={user} onLogout={handleLogout} />}
-          </Tab.Screen>
-          <Tab.Screen name="Community" options={{ title: tt.Community }}>
-            {(props) => <CommunityScreen {...props} user={user} onLogout={handleLogout} />}
-          </Tab.Screen>
+          {!isGuest && (
+            <Tab.Screen name="Teaching" options={{ title: tt.Teaching }}>
+              {(props) => <TeachingScreen {...props} user={user} onLogout={handleLogout} />}
+            </Tab.Screen>
+          )}
+          {!isGuest && (
+            <Tab.Screen name="Community" options={{ title: tt.Community }}>
+              {(props) => <CommunityScreen {...props} user={user} onLogout={handleLogout} />}
+            </Tab.Screen>
+          )}
           <Tab.Screen name="More" options={{ title: tt.More }}>
             {(props) => <MoreScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
@@ -391,9 +463,11 @@ function Main() {
           <Tab.Screen name="Notes" options={{ title: tt.Notes, tabBarButton: () => null }}>
             {(props) => <NotesScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
-          <Tab.Screen name="Materials" options={{ title: tt.Materials, tabBarButton: () => null }}>
-            {(props) => <MaterialsScreen {...props} user={user} onLogout={handleLogout} />}
-          </Tab.Screen>
+          {!isGuest && (
+            <Tab.Screen name="Materials" options={{ title: tt.Materials, tabBarButton: () => null }}>
+              {(props) => <MaterialsScreen {...props} user={user} onLogout={handleLogout} />}
+            </Tab.Screen>
+          )}
           <Tab.Screen name="Help" options={{ title: tt.Help, tabBarButton: () => null }}>
             {(props) => <HelpScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>

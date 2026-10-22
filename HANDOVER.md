@@ -244,6 +244,11 @@ firebase deploy --only hosting
 - `notifications.js` chats/notices/assigns listeners left as-is (per-user chats small; notices/assigns few docs).
 - Verify: export clean → hosting deploy → push. Ctrl+F5. People tab: 🔄 refresh + presence dots still work (≤5min stale OK).
 
+### 6.27 Guest mode + offline cache (B+A, 2026-10-06)
+- **Guest**: AuthScreen "🎮 Continue as Guest" → `GUEST_KEY` AsyncStorage + `GUEST_USER {uid:null,isGuest:true}`. Tabs: Home/Dictionary/Quiz/More(+Planner/Notes/Help) only — Teaching/Community/Materials screens မပါ. Home banner explains login လိုတဲ့ feature. 🚪 = guest ထွက် → login screen. Real login ဝင်ရင် guest flag auto-clear. Refresh မှာ guest ပြန်ဝင် (flag). Server reads = 0 (presence/notif listeners skip uid-null).
+- **Offline cache (A)**: `initializeFirestore(..., { localCache: persistentLocalCache() })` — web=IndexedDB, RN=AsyncStorage-based (firebase v12). ဖတ်ဖူးတဲ့ data cache → offline ဖတ်ရင် cache ကနေ; writes က online ပြန်ရောက်မှ sync. Fallback = default memory cache.
+- Verify: export clean (679) → hosting deploy → push. Ctrl+F5. Test: logout → Guest → quiz/dict/planner/notes အကုန် work; 🚪 → login → full tabs ပြန်ပေါ်.
+
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
 - Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).

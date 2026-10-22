@@ -7,7 +7,7 @@ import {
   browserLocalPersistence,
   browserPopupRedirectResolver
 } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, getFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
@@ -52,7 +52,16 @@ if (Platform.OS === 'web') {
   }
 }
 
-// Initialize Firestore (db)
-const db = getFirestore(app);
+// Initialize Firestore (db) — offline cache (Option A):
+// ဖတ်ဖူးတဲ့ data ကို device ထဲ cache သိမ်း → internet ပြတ်ရင် cache ကနေ ဖတ်လို့ရ
+// (web = IndexedDB multi-tab / RN = AsyncStorage-based, firebase v12 ထောက်ပံ့)
+// writes ကတော့ online ပြန်ရောက်မှ sync — guest/local features အတွက် အဓိက အကျိုးပြု
+let db;
+try {
+  db = initializeFirestore(app, { localCache: persistentLocalCache() });
+} catch (e) {
+  // unsupported platform/version → default (memory cache, current behavior)
+  db = getFirestore(app);
+}
 
 export { app, auth, db };

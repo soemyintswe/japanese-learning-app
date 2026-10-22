@@ -41,13 +41,14 @@ export default function MoreScreen({ user, onLogout, navigation }) {
   const t = moreT[lang] || moreT.my;
   const goProfile = () => { try { navigation.navigate('Community', { seg: 'profile' }); } catch (e) {} };
   const isStaff = user?.role === 'teacher' || user?.role === 'admin';
+  const isGuest = !!user?.isGuest;
 
   const items = [
     { name: 'Planner', title: t.planner, desc: t.plannerD },
     { name: 'Notes', title: t.notes, desc: t.notesD },
-    { name: 'Library', title: t.library, desc: t.libraryD },
-    { name: 'Help', title: t.help, desc: t.helpD },
   ];
+  if (!isGuest) items.push({ name: 'Library', title: t.library, desc: t.libraryD });
+  items.push({ name: 'Help', title: t.help, desc: t.helpD });
   if (isStaff) items.push({ name: 'Teacher', title: t.teacher, desc: t.teacherD });
 
   return (
