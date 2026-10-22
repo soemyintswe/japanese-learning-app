@@ -269,6 +269,12 @@ firebase deploy --only hosting
 - Data က bundled (network 0, offline/guest OK). Bundle 2.8→2.9MB.
 - Verify: export clean → hosting deploy → push `d54fdc6`+1. Ctrl+F5 → ☰ More → あ Kana → あ ရွေး → ✍ → strokes အစဉ်လိုက်ပေါ်, ▶ replay, カタカナ toggle မှာပါ အလုပ်လုပ်.
 
+### 6.31 Home Quick Access + Kana, header mobile parity, logout icon (2026-10-06)
+- **Quick Access (App.js HomeScreen)**: Kana ထည့် + rows ပြန်ချိန် — အားလုံး: [Dictionary|あ Kana], [Planner|Notes], [Quiz|Help]; non-guest: [People|Library], [Class full]; staff: [Teacher full]; အားလုံး: [More full]. Guest ၆ card / login ၉ card (role-ပေါ်သာ ကွာ — mobile/desktop တူညီ). `homeT.kana` ×3.
+- **AppHeader mobile/desktop parity**: header `flexWrap: 'wrap'` + title `minWidth: 110` — narrow screen မှာ lang/bell/profile/logout ခလုတ်တွေ off-screen မကျ (wrap လာမယ်); desktop တစ်ကြောင်းအတိုင်းပဲ (layout မပြောင်း).
+- **Logout icon**: `⏻` (U+23FB — font fallback မှာ လေးဒေါင့်/tilted ပေါ်) → `🚪` (guest banner text နဲ့ တူညီ, emoji font everywhere OK).
+- Verify: export clean → hosting deploy → push. Ctrl+F5 → Home: Kana card ပေါ်; mobile width ချုံ့ → header ခလုတ်အပြည့်; logout icon 🚪 ပုံမှန်.
+
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
 - Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).

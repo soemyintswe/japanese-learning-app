@@ -86,6 +86,7 @@ const homeT = {
   my: {
     progress: 'ယနေ့ လေ့လာမှု တိုးတက်မှု', done: 'ပြီးမြောက်ပြီး', quick: 'အမြန်ဝင်ရောက်ရန် နေရာများ',
     dict: 'အဘိဓာန်', planner: 'အချိန်ဇယား', notes: 'မှတ်စုများ', qa: 'မေးခွန်းဖြေရန်', teacher: 'ဆရာ့အပိုင်းနှင့် အက်ဒမင်',
+    kana: 'あ ဂျပန်အက္ခရာ',
     people: 'အဖွဲ့', library: 'စာကြည့်', klass: 'သင်ခန်း', help: 'အကူအညီ', more: 'မီနူး',
     guestNote: 'Login မလိုဘဲ လေ့လာနေပါတယ်',
     guestNote2: 'Chat · Class · People သုံးချင်ရင် အပေါ်က 🚪 ကနေထွက်ပြီး account ဖြင့် Login ပါ (Admin approve လိုအပ်ပါတယ်)။',
@@ -93,6 +94,7 @@ const homeT = {
   en: {
     progress: "Today's Study Progress", done: 'Completed', quick: 'Quick Access',
     dict: 'Dictionary', planner: 'Planner', notes: 'Notes', qa: 'Quiz', teacher: 'Teacher & Admin',
+    kana: 'あ Kana',
     people: 'People', library: 'Library', klass: 'Class', help: 'Help', more: 'More',
     guestNote: 'Studying as Guest — no login',
     guestNote2: 'To use Chat · Class · People, tap 🚪 above to log out and sign in (Admin approval required).',
@@ -100,6 +102,7 @@ const homeT = {
   jp: {
     progress: '今日の学習進捗', done: '完了', quick: 'クイックアクセス',
     dict: '辞書', planner: 'プランナー', notes: 'ノート', qa: 'クイズ', teacher: '先生・管理者',
+    kana: 'あ 五十音',
     people: '仲間', library: '資料', klass: '授業', help: 'ヘルプ', more: 'メニュー',
     guestNote: 'ゲストとして学習中 — ログイン不要',
     guestNote2: 'チャット・授業・仲間を使うには 🚪 からログアウトしてログインしてください（管理者承認必要）。',
@@ -172,28 +175,40 @@ function HomeScreen({ navigation, user, onLogout }) {
 
             <Text style={styles.sectionTitle}>{t.quick}</Text>
 
-            {/* Quick Links Grid */}
+            {/* Quick Links Grid — role ပေါ်မူတည် (mobile/desktop တူညီစွာ ပေါ်မယ်) */}
             <View style={styles.quickLinksRow}>
               <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Dictionary')}>
                 <Text style={{fontSize: 24}}>📚</Text>
                 <Text style={styles.quickCardText}>{t.dict}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Planner')}>
-                <Text style={{fontSize: 24}}>📅</Text>
-                <Text style={styles.quickCardText}>{t.planner}</Text>
+              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Kana')}>
+                <Text style={{fontSize: 24}}>あ</Text>
+                <Text style={styles.quickCardText}>{t.kana}</Text>
               </TouchableOpacity>
             </View>
 
             <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
+              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Planner')}>
+                <Text style={{fontSize: 24}}>📅</Text>
+                <Text style={styles.quickCardText}>{t.planner}</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Notes')}>
                 <Text style={{fontSize: 24}}>📝</Text>
                 <Text style={styles.quickCardText}>{t.notes}</Text>
               </TouchableOpacity>
+            </View>
 
+            <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
               <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('QA')}>
                 <Text style={{fontSize: 24}}>❓</Text>
                 <Text style={styles.quickCardText}>{t.qa}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Help')}>
+                <Text style={{fontSize: 24}}>🆘</Text>
+                <Text style={styles.quickCardText}>{t.help}</Text>
               </TouchableOpacity>
             </View>
 
@@ -210,25 +225,11 @@ function HomeScreen({ navigation, user, onLogout }) {
                 </TouchableOpacity>
               </View>
             )}
-
             {!user?.isGuest && (
               <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
-                <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Teaching')}>
+                <TouchableOpacity style={[styles.quickCard, { width: '100%' }]} onPress={() => navigation.navigate('Teaching')}>
                   <Text style={{fontSize: 24}}>📖</Text>
                   <Text style={styles.quickCardText}>{t.klass}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Help')}>
-                  <Text style={{fontSize: 24}}>🆘</Text>
-                  <Text style={styles.quickCardText}>{t.help}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            {user?.isGuest && (
-              <View style={[styles.quickLinksRow, { marginTop: 10 }]}>
-                <TouchableOpacity style={styles.quickCard} onPress={() => navigation.navigate('Help')}>
-                  <Text style={{fontSize: 24}}>🆘</Text>
-                  <Text style={styles.quickCardText}>{t.help}</Text>
                 </TouchableOpacity>
               </View>
             )}

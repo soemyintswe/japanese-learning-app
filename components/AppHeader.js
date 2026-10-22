@@ -84,7 +84,7 @@ export default function AppHeader({ title, user, onLogout, onProfilePress, actio
           accessibilityLabel={LOGOUT_LABEL[lang] || 'Logout'}
           accessibilityRole="button"
         >
-          <Text style={{ fontSize: 14, color: '#C62828', marginRight: 4 }}>⏻</Text>
+          <Text style={{ fontSize: 13, color: '#C62828', marginRight: 4 }}>🚪</Text>
           <Text style={styles.logoutText}>{LOGOUT_LABEL[lang] || 'Logout'}</Text>
         </TouchableOpacity>
       )}
@@ -101,10 +101,13 @@ const styles = StyleSheet.create({
     borderBottomColor: '#EFEFEF',
     flexDirection: 'row',
     alignItems: 'center',
+    // Mobile မှာ ခလုတ်တွေ အကုန်မပျောက်အောင် လိုအပ်ရင် wrap (desktop က တစ်ကြောင်းတည်း)
+    flexWrap: 'wrap',
   },
   title: {
     flex: 1,
     flexShrink: 1,
+    minWidth: 110,
     fontSize: 13,
     fontWeight: 'bold',
     color: '#333',
