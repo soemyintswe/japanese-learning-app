@@ -1,11 +1,13 @@
 // components/KanaScreen.js — あ 五十音表 (Hiragana/Katakana) + tap-to-hear TTS
 // Local data only (guest/offline OK). Katakana = hiragana +0x60 code conversion.
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
+import Svg, { Path } from 'react-native-svg';
 import AppHeader from './AppHeader';
 import { useLanguage } from '../src/LanguageContext';
+import STROKES from './kanaStrokes.json';
 
 const tX = {
   my: {
@@ -13,18 +15,27 @@ const tX = {
     base: 'အခြေခံ (あ行〜ら行)', daku: 'သံတိုး (が〜ぱ行)', youon: 'ပေါင်းထုတ် (ゃゅょ)', spec: 'အထူးစာလုံး',
     hint: 'စာလုံး နှိပ် → 🔊 အသံထွက် နားထောင်ပါ · a=အ i=ိ u=ု e=ေ o=ော',
     tap: 'စာလုံး ရွေးပြီး နှိပ်ပါ', speakAll: '🔊 တစ်ကြောင်းလုံး နားထောင်',
+    stroke: '✍ ရေးပုံ (書き順)', replay: '▶ ပြန်ကြည့်', strokes: 'အဆင့်',
+    strokeHint: 'လက်နဲ့ လိုက်ရေးကြည့်ပါ — အနီရောင် = ရေးပြီး, မီးခိုးရောင် = ရေးရန်',
+    attrib: 'Stroke data: KanjiVG (CC BY-SA 3.0) — kanjivg.tagaini.net',
   },
   en: {
     title: 'あ Kana Chart (Gojuon)',
     base: 'Basic (a〜ra)', daku: 'Voiced (ga〜pa)', youon: 'Combos (ゃゅょ)', spec: 'Special',
     hint: 'Tap a kana → 🔊 hear it · a/i/u/e/o vowels',
     tap: 'Select a kana', speakAll: '🔊 Hear whole row',
+    stroke: '✍ Stroke order', replay: '▶ Replay', strokes: 'step',
+    strokeHint: 'Trace along — red = drawn, grey = next',
+    attrib: 'Stroke data: KanjiVG (CC BY-SA 3.0) — kanjivg.tagaini.net',
   },
   jp: {
     title: 'あ 五十音表',
     base: '基本 (あ行〜ら行)', daku: '濁音 (が〜ぱ行)', youon: '拗音 (ゃゅょ)', spec: '特殊文字',
     hint: '文字をタップ → 🔊 発音を聞く',
     tap: '文字を選んでタップ', speakAll: '🔊 行をまとめて聞く',
+    stroke: '✍ 書き順', replay: '▶ やり直し', strokes: 'ステップ',
+    strokeHint: '赤=書いた stroke, 灰=次の stroke',
+    attrib: 'Stroke data: KanjiVG (CC BY-SA 3.0) — kanjivg.tagaini.net',
   },
 };
 
@@ -73,11 +84,34 @@ const speak = (word) => {
   try { Speech.speak(word, { language: 'ja', rate: 0.8 }); } catch (e) {}
 };
 
+// きゃ (combo) → main kana き; ー etc → null (button hidden)
+const strokesFor = (ch) => (!ch ? null : STROKES[ch] || STROKES[ch[0]] || null);
+
 export default function KanaScreen({ user, onLogout }) {
   const { lang } = useLanguage();
   const t = tX[lang] || tX.my;
   const [kata, setKata] = useState(false);
   const [sel, setSel] = useState(null);
+  const [strokeOpen, setStrokeOpen] = useState(false);
+  const [step, setStep] = useState(0);
+  const [playKey, setPlayKey] = useState(0);
+
+  const strokes = strokesFor(sel?.k || '');
+  const total = strokes ? strokes.length : 0;
+
+  // sequential stroke reveal: advance every 650ms until done
+  useEffect(() => {
+    if (!strokeOpen) return undefined;
+    setStep(total > 0 ? 1 : 0);
+    if (total <= 1) return undefined;
+    const iv = setInterval(() => {
+      setStep((s) => {
+        if (s >= total) { clearInterval(iv); return s; }
+        return s + 1;
+      });
+    }, 650);
+    return () => clearInterval(iv);
+  }, [strokeOpen, sel, total, playKey]);
 
   const show = (ch) => (kata ? toKata(ch) : ch);
   const pick = (k, r, mm) => { const it = { k: show(k), r, mm }; setSel(it); speak(it.k); };
@@ -137,6 +171,11 @@ export default function KanaScreen({ user, onLogout }) {
               <TouchableOpacity style={styles.speakBtn} onPress={() => speak(sel.k)}>
                 <Text style={styles.speakText}>🔊 {sel.k}</Text>
               </TouchableOpacity>
+              {!!strokes && (
+                <TouchableOpacity style={styles.strokeBtn} onPress={() => setStrokeOpen(true)}>
+                  <Text style={styles.strokeBtnText}>{t.stroke}</Text>
+                </TouchableOpacity>
+              )}
             </>
           ) : (
             <Text style={styles.selEmpty}>{t.tap}</Text>
@@ -181,6 +220,47 @@ export default function KanaScreen({ user, onLogout }) {
           ))}
         </Section>
       </ScrollView>
+
+      {/* 書き順 stroke-order modal — KanjiVG data, sequential reveal */}
+      <Modal visible={strokeOpen} transparent animationType="fade" onRequestClose={() => setStrokeOpen(false)}>
+        <View style={styles.modalBack}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalKana}>{sel ? sel.k : ''}</Text>
+            <View style={styles.svgBox}>
+              <Svg viewBox="0 0 109 109" width={230} height={230}>
+                {(strokes || []).map((d, i) => (
+                  <Path
+                    key={i}
+                    d={d}
+                    stroke={i < step ? '#D32F2F' : '#E0E0E0'}
+                    strokeWidth={i === step - 1 ? 5 : 3.5}
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ))}
+              </Svg>
+            </View>
+            <Text style={styles.stepText}>{t.strokes} {step}/{total}</Text>
+            <Text style={styles.strokeHint}>{t.strokeHint}</Text>
+            <View style={styles.modalBtns}>
+              <TouchableOpacity style={styles.speakBtn} onPress={() => speak(sel ? sel.k : '')}>
+                <Text style={styles.speakText}>🔊</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.replayBtn}
+                onPress={() => { setStep(total > 0 ? 1 : 0); setPlayKey((k) => k + 1); }}
+              >
+                <Text style={styles.replayText}>{t.replay}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.closeBtn} onPress={() => setStrokeOpen(false)}>
+                <Text style={styles.closeText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.attrib}>{t.attrib}</Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -211,6 +291,20 @@ const styles = StyleSheet.create({
   mm: { fontSize: 11, color: '#2E7D32' },
   rowSpeak: { alignSelf: 'center', marginBottom: 3 },
   rowSpeakText: { fontSize: 11, color: '#1976D2' },
+  strokeBtn: { marginTop: 8, backgroundColor: '#FFF3E0', borderWidth: 1, borderColor: '#FF9800', paddingHorizontal: 18, paddingVertical: 7, borderRadius: 8 },
+  strokeBtnText: { color: '#E65100', fontWeight: 'bold', fontSize: 13 },
+  modalBack: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  modalCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, alignItems: 'center', width: '100%', maxWidth: 360 },
+  modalKana: { fontSize: 44, fontWeight: 'bold', color: '#333', marginBottom: 8 },
+  svgBox: { backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: '#EEE', borderRadius: 10, padding: 6 },
+  stepText: { fontSize: 14, fontWeight: 'bold', color: '#D32F2F', marginTop: 8 },
+  strokeHint: { fontSize: 11, color: '#777', marginTop: 4, textAlign: 'center' },
+  modalBtns: { flexDirection: 'row', marginTop: 12, alignItems: 'center' },
+  replayBtn: { backgroundColor: '#1976D2', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, marginLeft: 8 },
+  replayText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
+  closeBtn: { backgroundColor: '#EEE', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginLeft: 8 },
+  closeText: { color: '#333', fontWeight: 'bold', fontSize: 13 },
+  attrib: { fontSize: 9, color: '#999', marginTop: 12, textAlign: 'center' },
   specRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 8, borderWidth: 1, borderColor: '#EEE', padding: 10, marginBottom: 6 },
   specKana: { fontSize: 34, color: '#333', width: 56, textAlign: 'center', marginRight: 8 },
   specSpeak: { fontSize: 18 },

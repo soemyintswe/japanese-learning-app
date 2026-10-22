@@ -40,7 +40,8 @@ components/QAScreen.js        # Quiz + add/edit (Option4 + correct picker, Async
 components/TeacherScreen.js   # ⭐ Admin user table (approve/disable, role-picker modal, delete, tooltips) + bio + share + change-password + 📋 activity viewer (latest 50) + horizontal-scroll table (minWidth 660, mobile)
 components/TeachingScreen.js  # 📖 Teaching module MVP: lessons + assignments + submissions/grading (staff CRUD, student submit-once, single-field queries only — no composite index) + TeachErrorBoundary (white-screen guard) + 🌱 samples seed + 📥📤 export/import (staff import)
 components/HelpScreen.js      # 🆘 App usage guide (my/en/jp, 12 sections: login→tips), 🆘 Help tab for all roles (/help)
-components/KanaScreen.js      # あ 五十音表 (base46 + 濁音25 + 拗音24 + っ/ん/ー), tap→🔊 TTS+romaji+mm gloss, ひらがな⇄カタカナ toggle, offline/guest, hidden tab /kana (☰ More ထဲက)
+components/KanaScreen.js      # あ 五十音表 (base46 + 濁音25 + 拗音24 + っ/ん/ー), tap→🔊 TTS+romaji+mm gloss, ひらがな⇄カタカナ toggle, ✍書き順 stroke-order modal (sequential reveal, KanjiVG), offline/guest, hidden tab /kana (☰ More ထဲက)
+components/kanaStrokes.json   # 150 kana stroke paths (hiragana+katakana incl 小書き/濁音) from KanjiVG, CC BY-SA 3.0 — kanjivg.tagaini.net (attribution in screen footer). Regen: Temp opencode fetch_kana_strokes.js (jsDelivr, lowercase hex)
 AI_CONTENT_PROMPT.md          # ⭐ Other-AI bulk content prompt (copy-paste EN+MM) + 5 JSON schemas (A words / B quiz / C library / D essays / E teaching) + import paths + copyright policy
 components/dictionaryData/    # ~1340 trilingual words: n5_nouns(274)/n5_verbs(113)/n5_adjectives(100)/n5_others(107)/n4_words(285)/n3(213)/n2(153)/n1(96) + fullDictionary.js (sample 9 w/ images) + index.js (merge/dedupe/normalizeImportEntry). Validated: scripts Temp count_dict.py + dupe_detail.py + dedupe_files.py + sanity_dict.py (0 dupes, readings present) + check_quiz.py.
 # Coverage aligned with standard JLPT lists (ref: OpenJLPT CC BY-SA 4.0 — Myanmar glosses are original, not copied). OpenJLPT totals for reference: N5 662 / N4 632 / N3 1784 / N2 1793 / N1 3463 (8,334 words). Our coverage ≈ N5 88% / N4 45% / N3 12% / N2 8% / N1 3% — N3-N1 gaps remain (bulk import via app Import + teacher Myanmar review).
@@ -261,6 +262,12 @@ firebase deploy --only hosting
 - **App.js**: hidden tab `Kana` (`tabBarButton: () => null`, `/kana` deep-link), tabT Kana labels, guest ပါ ဝင်နိုင်. **MoreScreen**: "あ ဂျပန်အက္ခရာ" menu item (menu ထိပ်ဆုံး, all roles/guest).
 - **teachingSeed**: lesson seed ၂ ခု ထည့် — `seed_l12` っ・ん・ー (sokuon/nasal/long vowel), `seed_l13` ゃゅょ 拗音 + ち/つ/ふ အသံ (my/en/jp ရှင်းလင်း).
 - Verify: export clean → hosting deploy → push. Ctrl+F5 → ☰ More → あ Kana → cell နှိပ် အသံထွက်, toggle ပြောင်း, lesson ၂ ခု Teaching ထဲ ပေါ် (staff 🌱 seed).
+
+### 6.30 書き順 stroke-order animation (Option 2) (2026-10-06)
+- **Deps**: `react-native-svg` 15.15.4 (expo install). **NEW `components/kanaStrokes.json`** (7.7KB): KanjiVG stroke paths 150 kana (あ〜ん/ア〜ン + ゃゅょ/っ + 濁音/半濁音) — script `Temp\opencode\fetch_kana_strokes.js` (jsDelivr CDN, lowercase hex; PS Invoke-WebRequest က slow/rate-limit ကြောင့် node fetch ပြောင်း).
+- **KanaScreen stroke modal**: detail card ထဲ "✍ ရေးပုံ (書き順)" button (data ရှိမှ ပေါ်) → Modal: 109×109 SVG, stroke အဆင့်ဆင့် reveal 650ms/step (အနီ = ရေးပြီး, အပြာနီလေး = လက်ရှိ, မီးခိုး = ရေးရန်), step counter, 🔊, ▶ replay (playKey effect restart), ✕ close, KanjiVG CC BY-SA attribution footer. Combo (きゃ) → main kana (き); ー → no data → button hidden.
+- Data က bundled (network 0, offline/guest OK). Bundle 2.8→2.9MB.
+- Verify: export clean → hosting deploy → push `d54fdc6`+1. Ctrl+F5 → ☰ More → あ Kana → あ ရွေး → ✍ → strokes အစဉ်လိုက်ပေါ်, ▶ replay, カタカナ toggle မှာပါ အလုပ်လုပ်.
 
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
