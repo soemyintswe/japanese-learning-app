@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, FlatList, TouchableOpacity, Modal, Alert, Image, Platform, ScrollView, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, deleteField, doc, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, deleteField, doc, onSnapshot, orderBy, limitToLast } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { File, Paths } from 'expo-file-system';
@@ -348,15 +348,21 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
     return () => clearInterval(timer);
   }, []);
 
-  // users realtime (presence အတွက် auto-refresh)
-  useEffect(() => {
+  // users — one-time fetch + 5min refresh + manual 🔄 (quota: realtime listener
+  // re-reads ALL user docs on every presence heartbeat → 100 users = read explosion)
+  const fetchUsers = async () => {
     if (!user?.uid) return;
-    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+    try {
+      const snap = await getDocs(collection(db, 'users'));
       const arr = [];
       snap.forEach((d) => arr.push({ id: d.id, ...d.data() }));
       setUsers(arr);
-    }, () => {});
-    return unsub;
+    } catch (e) {}
+  };
+  useEffect(() => {
+    fetchUsers();
+    const timer = setInterval(fetchUsers, 5 * 60 * 1000);
+    return () => clearInterval(timer);
   }, [user?.uid]);
 
   // my chats realtime
@@ -383,7 +389,7 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
       }).catch(() => {});
     }
     const unsubMsg = onSnapshot(
-      query(collection(db, 'chats', activeChat.id, 'messages'), orderBy('at', 'asc')),
+      query(collection(db, 'chats', activeChat.id, 'messages'), orderBy('at', 'asc'), limitToLast(100)),
       (snap) => {
         const arr = [];
         snap.forEach((d) => arr.push({ id: d.id, ...d.data() }));
@@ -1047,6 +1053,9 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
           <View style={styles.searchRow}>
             <Text style={{ fontSize: 16, marginRight: 6 }}>🔍</Text>
             <TextInput style={styles.searchInput} placeholder={t.searchPh} placeholderTextColor="#999" value={q} onChangeText={setQ} />
+            <TouchableOpacity onPress={fetchUsers} style={{ paddingHorizontal: 6, paddingVertical: 4 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ fontSize: 16 }}>🔄</Text>
+            </TouchableOpacity>
             <Text style={styles.countText}>{counts.active}🟢 {t.totalUsers} {users.length}</Text>
           </View>
           <FlatList

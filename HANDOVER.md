@@ -238,6 +238,12 @@ firebase deploy --only hosting
 - **Rules** (`banned` delete): admin OR (signed-in + `allowRejoin==true` + own-uid OR own-email-lower-match). CLI-deployed (compiled OK) — Console paste NOT needed. No other rule touched.
 - Verify: export clean (678) → rules deploy → hosting deploy → push. Ctrl+F5. Test: delete(JV Two, allow) → same email register → PENDING → approve → login ✅; delete(ban) → register → ⛔ stays.
 
+### 6.26 Quota/perf: users snapshot + messages limit (2026-10-06)
+- `CommunityScreen`: `onSnapshot(collection(users))` → **one-time `getDocs` + 5min interval + 🔄 button** in search row. (Realtime listener re-read ALL 100 user docs on every presence heartbeat → read explosion on Spark 50K/day.)
+- Messages listener: added `limitToLast(100)` (was loading entire chat history then client-slicing).
+- `notifications.js` chats/notices/assigns listeners left as-is (per-user chats small; notices/assigns few docs).
+- Verify: export clean → hosting deploy → push. Ctrl+F5. People tab: 🔄 refresh + presence dots still work (≤5min stale OK).
+
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
 - Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).
