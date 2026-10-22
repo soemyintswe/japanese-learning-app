@@ -14,6 +14,7 @@ const moreT = {
     notes: 'မှတ်စု', notesD: 'ကိုယ်ပိုင်မှတ်စုများ',
     library: 'စာကြည့်', libraryD: 'Teacher Drive + Essays',
     help: 'အကူအညီ', helpD: 'အသုံးပြုနည်း လမ်းညွှန်',
+    kana: 'あ ဂျပန်အက္ခရာ', kanaD: '五十音表 + အသံထွက် (offline)',
     teacher: 'ဆရာ့အပိုင်း', teacherD: 'User စီမံခန့်ခွဲမှု (staff)',
   },
   en: {
@@ -22,6 +23,7 @@ const moreT = {
     notes: 'Notes', notesD: 'Personal memos',
     library: 'Library', libraryD: 'Teacher Drive + Essays',
     help: 'Help', helpD: 'How-to guide',
+    kana: 'あ Kana', kanaD: 'Gojuon chart + pronunciation (offline)',
     teacher: 'Teacher', teacherD: 'User management (staff)',
   },
   jp: {
@@ -30,11 +32,12 @@ const moreT = {
     notes: 'ノート', notesD: 'メモ',
     library: '資料', libraryD: 'Drive＋作文',
     help: 'ヘルプ', helpD: '使い方',
+    kana: 'あ 五十音', kanaD: '五十音表＋発音 (offline)',
     teacher: '先生', teacherD: '管理 (staff)',
   },
 };
 
-const ICONS = { Planner: '📅', Notes: '📝', Library: '📚', Help: '🆘', Teacher: '🎓' };
+const ICONS = { Planner: '📅', Notes: '📝', Library: '📚', Help: '🆘', Kana: 'あ', Teacher: '🎓' };
 
 export default function MoreScreen({ user, onLogout, navigation }) {
   const { lang } = useLanguage();
@@ -44,6 +47,7 @@ export default function MoreScreen({ user, onLogout, navigation }) {
   const isGuest = !!user?.isGuest;
 
   const items = [
+    { name: 'Kana', title: t.kana, desc: t.kanaD },
     { name: 'Planner', title: t.planner, desc: t.plannerD },
     { name: 'Notes', title: t.notes, desc: t.notesD },
   ];

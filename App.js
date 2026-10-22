@@ -63,6 +63,7 @@ const linking = {
       Help: 'help',
       More: 'more',
       Teacher: 'teacher',
+      Kana: 'kana',
     },
   },
 };
@@ -79,6 +80,7 @@ import MaterialsScreen from './components/MaterialsScreen';
 import TeachingScreen from './components/TeachingScreen';
 import HelpScreen from './components/HelpScreen';
 import MoreScreen from './components/MoreScreen';
+import KanaScreen from './components/KanaScreen';
 
 const homeT = {
   my: {
@@ -106,9 +108,9 @@ const homeT = {
 
 // Bottom tab labels — ရွေးထားတဲ့ ဘာသာစကားအလိုက် ပြောင်းမယ်
 const tabT = {
-  my: { Home: 'ပင်မ', Dictionary: 'အဘိဓာန်', Planner: 'အချိန်ဇယား', Notes: 'မှတ်စု', QA: 'မေးခွန်း', Community: 'အဖွဲ့', Materials: 'စာကြည့်', Teaching: 'သင်ခန်း', Help: 'အကူအညီ', More: 'မီနူး', Teacher: 'ဆရာ့အပိုင်း' },
-  en: { Home: 'Home', Dictionary: 'Dictionary', Planner: 'Planner', Notes: 'Notes', QA: 'Quiz', Community: 'People', Materials: 'Library', Teaching: 'Class', Help: 'Help', More: 'More', Teacher: 'Teacher' },
-  jp: { Home: 'ホーム', Dictionary: '辞書', Planner: 'プランナー', Notes: 'ノート', QA: 'クイズ', Community: '仲間', Materials: '資料', Teaching: '授業', Help: 'ヘルプ', More: 'メニュー', Teacher: '先生' },
+  my: { Home: 'ပင်မ', Dictionary: 'အဘိဓာန်', Planner: 'အချိန်ဇယား', Notes: 'မှတ်စု', QA: 'မေးခွန်း', Community: 'အဖွဲ့', Materials: 'စာကြည့်', Teaching: 'သင်ခန်း', Help: 'အကူအညီ', More: 'မီနူး', Teacher: 'ဆရာ့အပိုင်း', Kana: 'あ အက္ခရာ' },
+  en: { Home: 'Home', Dictionary: 'Dictionary', Planner: 'Planner', Notes: 'Notes', QA: 'Quiz', Community: 'People', Materials: 'Library', Teaching: 'Class', Help: 'Help', More: 'More', Teacher: 'Teacher', Kana: 'あ Kana' },
+  jp: { Home: 'ホーム', Dictionary: '辞書', Planner: 'プランナー', Notes: 'ノート', QA: 'クイズ', Community: '仲間', Materials: '資料', Teaching: '授業', Help: 'ヘルプ', More: 'メニュー', Teacher: '先生', Kana: 'あ 五十音' },
 };
 
 function HomeScreen({ navigation, user, onLogout }) {
@@ -470,6 +472,10 @@ function Main() {
           )}
           <Tab.Screen name="Help" options={{ title: tt.Help, tabBarButton: () => null }}>
             {(props) => <HelpScreen {...props} user={user} onLogout={handleLogout} />}
+          </Tab.Screen>
+          {/* Kana — local/offline, guest ပါ ဝင်ရ (☰ More ထဲက) */}
+          <Tab.Screen name="Kana" options={{ title: tt.Kana, tabBarButton: () => null }}>
+            {(props) => <KanaScreen {...props} user={user} onLogout={handleLogout} />}
           </Tab.Screen>
 
           {/* Teacher — teacher + admin only, bar မှာ မပြ (☰ Menu ထဲက ဝင်) */}

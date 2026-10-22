@@ -40,6 +40,7 @@ components/QAScreen.js        # Quiz + add/edit (Option4 + correct picker, Async
 components/TeacherScreen.js   # ⭐ Admin user table (approve/disable, role-picker modal, delete, tooltips) + bio + share + change-password + 📋 activity viewer (latest 50) + horizontal-scroll table (minWidth 660, mobile)
 components/TeachingScreen.js  # 📖 Teaching module MVP: lessons + assignments + submissions/grading (staff CRUD, student submit-once, single-field queries only — no composite index) + TeachErrorBoundary (white-screen guard) + 🌱 samples seed + 📥📤 export/import (staff import)
 components/HelpScreen.js      # 🆘 App usage guide (my/en/jp, 12 sections: login→tips), 🆘 Help tab for all roles (/help)
+components/KanaScreen.js      # あ 五十音表 (base46 + 濁音25 + 拗音24 + っ/ん/ー), tap→🔊 TTS+romaji+mm gloss, ひらがな⇄カタカナ toggle, offline/guest, hidden tab /kana (☰ More ထဲက)
 AI_CONTENT_PROMPT.md          # ⭐ Other-AI bulk content prompt (copy-paste EN+MM) + 5 JSON schemas (A words / B quiz / C library / D essays / E teaching) + import paths + copyright policy
 components/dictionaryData/    # ~1340 trilingual words: n5_nouns(274)/n5_verbs(113)/n5_adjectives(100)/n5_others(107)/n4_words(285)/n3(213)/n2(153)/n1(96) + fullDictionary.js (sample 9 w/ images) + index.js (merge/dedupe/normalizeImportEntry). Validated: scripts Temp count_dict.py + dupe_detail.py + dedupe_files.py + sanity_dict.py (0 dupes, readings present) + check_quiz.py.
 # Coverage aligned with standard JLPT lists (ref: OpenJLPT CC BY-SA 4.0 — Myanmar glosses are original, not copied). OpenJLPT totals for reference: N5 662 / N4 632 / N3 1784 / N2 1793 / N1 3463 (8,334 words). Our coverage ≈ N5 88% / N4 45% / N3 12% / N2 8% / N1 3% — N3-N1 gaps remain (bulk import via app Import + teacher Myanmar review).
@@ -253,6 +254,13 @@ firebase deploy --only hosting
 - **AuthScreen login**: duplicate reset link (၂ ခုစလုံး reset email ပို့) ဖြုတ် — 1 ခုပဲ. Long texts တိုတောင်း: `🔑 Password မေ့ပါသလား?`, `G Google ဖြင့် ဝင်ရန်`. Register step labels (name/pw/register button/or) trilingual ပြောင်း (အရင် Myanmar hardcode). Guest button ကို login/register နှစ်ခုစလုံးအောက် ပြ.
 - **TeacherScreen creds modal**: 📋Copy / ✉️Email (mailto→Outlook ဖွင့်) / 💬SMS ခလုတ် ၃ ခု ဖြုတ် — info card + OK ပဲ. Firebase reset email (noreply@…) ကပဲ သုံး. `credText/copyCreds/sendCredsMail/sendCredsSms` + Clipboard import ဖြုတ်.
 - Verify: export clean (678) → hosting deploy → push. Ctrl+F5. Login page: ရှင်း, Guest button ပေါ်, language switch အကုန်ပြောင်း, reset link ၁ ခုပဲ.
+
+### 6.29 Kana 五十音 screen + pronunciation lessons (2026-10-06)
+- **Gap**: app မှာ ဂျပန်အခြေခံ (အက္ခရာပုံ/အသံထွက်) လုံးဝ မပါ — teaching seed က Tofugu link ပဲ. Stroke-order animation (Option 2) က bundleကြီး+native/web test လို → ချန် (next round candidate).
+- **NEW `components/KanaScreen.js`**: 五十音表 — base 46 (あ〜わ行) + 濁音/半濁音 25 (が〜ぱ行) + 拗音 24 (きゃ/しゃ/ちゃ/じゃ…) + っ/ん/ー အထူး. Cell နှိပ် → 🔊 TTS (expo-speech ja, rate 0.8) + romaji + မြန်မာအသံနှိုင်း triple data. ひらがな⇄カタカナ toggle (code +0x60), row လိုက် 🔊 speak, selected detail card. Trilingual, local data only → offline/guest အလုပ်လုပ်, quota 0.
+- **App.js**: hidden tab `Kana` (`tabBarButton: () => null`, `/kana` deep-link), tabT Kana labels, guest ပါ ဝင်နိုင်. **MoreScreen**: "あ ဂျပန်အက္ခရာ" menu item (menu ထိပ်ဆုံး, all roles/guest).
+- **teachingSeed**: lesson seed ၂ ခု ထည့် — `seed_l12` っ・ん・ー (sokuon/nasal/long vowel), `seed_l13` ゃゅょ 拗音 + ち/つ/ふ အသံ (my/en/jp ရှင်းလင်း).
+- Verify: export clean → hosting deploy → push. Ctrl+F5 → ☰ More → あ Kana → cell နှိပ် အသံထွက်, toggle ပြောင်း, lesson ၂ ခု Teaching ထဲ ပေါ် (staff 🌱 seed).
 
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
