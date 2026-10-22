@@ -50,8 +50,8 @@ import ConfirmModal from './ConfirmModal';
 
 const teacherT = {
   my: {
-    headerAdmin: '🛡️ Admin Panel & User Management', headerUser: '🎓 ကျောင်းသား/ဆရာ ဧရိယာ',
-    adminTitle: '🛡️ ADMIN - User Management', addUser: 'User အသစ်ထည့်မည်',
+  headerAdmin: '🛡️ အက်ဒမင် Panel နှင့် User စီမံခန့်ခွဲမှု', headerUser: '🎓 ကျောင်းသား/ဆရာ ဧရိယာ',
+  adminTitle: '🛡️ ADMIN - User စီမံခန့်ခွဲမှု', addUser: 'User အသစ်ထည့်မည်',
     sub: 'Register လုပ်ထားသူများကို Approve လုပ်ရန်၊ Role ပြောင်းရန်နှင့် စီမံရန်',
     legend: 'ခလုတ် အဓိပ္ပာယ် — ✅/🔒 = ဖွင့်/ပိတ် (Approve/Disable)\n🔄 = Role ရွေးမယ် (နှိပ်ရင် Student/Teacher/Admin စာရင်း ပေါ်မယ်)\n🗑️ = အကောင့် အပြီးဖျက်\n(Web မှာ ခလုတ်ပေါ် mouse တင်ရင် စာတမ်းပေါ်မယ်၊ ဖုန်းမှာ ဖိထားရင် ရှင်းချက်ပေါ်မယ်)',
     thName: 'အမည် / Email', thRole: 'Role', thStatus: 'Status', thBy: 'Admin', thCreated: 'တည်ဆောက်ရက်', thActions: 'Actions',

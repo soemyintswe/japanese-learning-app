@@ -275,6 +275,14 @@ firebase deploy --only hosting
 - **Logout icon**: `⏻` (U+23FB — font fallback မှာ လေးဒေါင့်/tilted ပေါ်) → `🚪` (guest banner text နဲ့ တူညီ, emoji font everywhere OK).
 - Verify: export clean → hosting deploy → push. Ctrl+F5 → Home: Kana card ပေါ်; mobile width ချုံ့ → header ခလုတ်အပြည့်; logout icon 🚪 ပုံမှန်.
 
+### 6.32 Kana sticky detail + UI language sweep (2026-10-06)
+- **KanaScreen layout**: toggle + hint + selected-char detail box ကို **pinned top** (`fixedTop` View, scroll မလုပ်) — စာလုံးအကြီး အမြဲတမ်း မြင်ရ; အောက် chart (五十音 sections) ပဲ ScrollView မှာ scroll. Row 🔊 duplicate (JSX + t နှစ်ခုလုံး 🔊) ဖြုတ်.
+- **i18n audit (auto scripts `Temp\opencode\i18n_check.js` + `i18n_lang.js`)**: key parity my/en/jp = **ပြည့်စုံ (0 ပျောက်)** — blank button မရှိ. en/jp blocks ထဲ Myanmar **0**. ကျန်တာ: `my:` block ထဲ full-English chrome → ပြင်ပြီး:
+  - QAScreen: title/tabQuiz/tabSkills/tabBot (မေးခွန်း/ကျွမ်းကျင်မှု/ဘော့), qLevel အဆင့်, o3/o4 (မဖြည့်လည်းရ), **video/videoUrl keys ×3 langs အသစ်** (🎬 Video/Video URL static ကို t.video ပြောင်း)
+  - Notes header, NotificationPanel title (အသိပေးချက်များ), TeacherScreen headerAdmin/adminTitle (User စီမံခန့်ခွဲမှု), Materials mLevel/mUrl, Community stActive/stIdle/stOffline+activeNow, More libraryD, Teaching segAssign(တာဝန်ပေးစာ)/level/fLevel/fMedia/targetLevel/fLink/impTitle, **TeachErrorBoundary Retry** (retryLabel prop + teachT.retry ×3)
+  - မပြင်ရသေး: loanword-in-Myanmar (Login/Password/Chat/Import/JSON — ရည်ရွယ်ချက်ရှိ), KanjiVG attribution (copyright credit — ဘာသာမပြောင်း), AuthScreen 'Email:' label.
+- Verify: export clean → hosting deploy → push. Ctrl+F5 → Kana: detail box ပုံသေ + chart scroll; my mode: QA tab/title Myanmar; retry/video labels ဘာသာပေါ်.
+
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
 - Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).

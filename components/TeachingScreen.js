@@ -21,26 +21,26 @@ import { LESSON_SEED, ASSIGN_SEED } from './teachingSeed';
 
 const teachT = {
   my: {
-    title: '📖 သင်ခန်းစာများ', segLessons: 'သင်ခန်းစာ', segAssign: 'Assignment',
-    empty: 'မရှိသေးပါ။', by: 'သူ', at: '', level: 'Level', media: '🎬 ဗီဒီယို/လင့်ခ်ဖွင့်',
+    title: '📖 သင်ခန်းစာများ', segLessons: 'သင်ခန်းစာ', segAssign: 'တာဝန်ပေးစာ', retry: '🔄 ပြန်ကြိုးစားမည်',
+    empty: 'မရှိသေးပါ။', by: 'သူ', at: '', level: 'အဆင့်', media: '🎬 ဗီဒီယို/လင့်ခ်ဖွင့်',
     add: '➕ အသစ်ထည့်မည်', edit: 'ပြင်မည်', del: 'ဖျက်မည်', save: 'သိမ်းမည်', cancel: 'မလုပ်တော့',
-    fTitle: 'ခေါင်းစဉ်:', fBody: 'စာသား:', fLevel: 'Level (N5~N1 / All):', fMedia: 'Media link (YouTube/Drive, optional):',
+    fTitle: 'ခေါင်းစဉ်:', fBody: 'စာသား:', fLevel: 'အဆင့် (N5~N1 / အားလုံး):', fMedia: 'မီဒီယာ လင့်ခ် (YouTube/Drive, မဖြည့်လည်းရ):',
     fDesc: 'ရှင်းလင်းချက်:', fDue: 'နောက်ဆုံးရက် (ဥပမာ 2026-10-20):',
-    targetLabel: 'ပေးမည့်သူ:', targetAll: 'အားလုံး', targetLevel: 'Level:', targetPick: 'ကျောင်းသားရွေး:',
+    targetLabel: 'ပေးမည့်သူ:', targetAll: 'အားလုံး', targetLevel: 'အဆင့်:', targetPick: 'ကျောင်းသားရွေး:',
     photoAdd: '📷 ပုံတွဲမည်', photoDel: '✕ ပုံဖျက်မည်', photoBig: 'ပုံကြီးလွန်းတယ် (500KB အောက် ရွေးပါ)။',
     stTitle: '📊 အမှတ်စာရင်း', stSubmitted: 'တင်ပြီး', stGraded: 'အမှတ်ပေး', stAvg: 'ပျမ်းမျှ(ဂဏန်း)', stPending: 'မပေးရသေး',
     scoreL: 'ရမှတ် (0-100):', lvlL: 'အဆင့်:', resub: 'ပြန်တင်ပြီးပါပြီ ✅ (အမှတ်ပြန်ပေးရန် လိုမယ်)',
-    submit: 'အဖြေတင်မည်', fAnswer: 'အဖြေ:', fLink: 'Link (optional):', submitted: 'တင်ပြီးပါပြီ ✅',
+    submit: 'အဖြေတင်မည်', fAnswer: 'အဖြေ:', fLink: 'လင့်ခ် (မဖြည့်လည်းရ):', submitted: 'တင်ပြီးပါပြီ ✅',
     grade: 'အမှတ်:', feedback: 'မှတ်ချက်:', gradeSave: 'အမှတ်ပေးမည်',
     noGrade: 'အမှတ်မပေးရသေး', subs: 'တင်ထားသူများ', delQ: 'ဖျက်မှာလား?', yesDel: 'ဖျက်မည်', noDel: 'မလုပ်တော့',
     errFill: 'ခေါင်းစဉ်ဖြည့်ပါ။', back: '◀ ပြန်သွားမည်',
     seedBtn: '🌱 နမူနာထည့်မည် (၁၁+၁၁)', seeded: 'နမူနာ ထည့်ပြီးပါပြီ ✅',
-    impTitle: '📥 Lessons/Assignments Import', impHelp: 'JSON paste (သို့) file ရွေး — {lessons:[], assignments:[]} ပုံစံ။ id တူရင် skip.',
+    impTitle: '📥 သင်ခန်းစာ/တာဝန်ပေးစာ Import', impHelp: 'JSON paste (သို့) file ရွေး — {lessons:[], assignments:[]} ပုံစံ။ id တူရင် skip.',
     impDo: 'ထည့်သွင်းမည်', impOk: 'Import ပြီးပါပြီ ✅', impNone: 'အသစ်မတွေ့ပါ။', impInvalid: 'JSON ပုံစံမှားနေပါတယ်။',
     expDone: 'Export ပြီးပါပြီ ✅',
   },
   en: {
-    title: '📖 Lessons & Class', segLessons: 'Lessons', segAssign: 'Assignments',
+    title: '📖 Lessons & Class', segLessons: 'Lessons', segAssign: 'Assignments', retry: '🔄 Retry',
     empty: 'Nothing yet.', by: 'By', at: '', level: 'Level', media: '🎬 Open video/link',
     add: '➕ Add new', edit: 'Edit', del: 'Delete', save: 'Save', cancel: 'Cancel',
     fTitle: 'Title:', fBody: 'Body:', fLevel: 'Level (N5~N1 / All):', fMedia: 'Media link (YouTube/Drive, optional):',
@@ -59,7 +59,7 @@ const teachT = {
     expDone: 'Export done ✅',
   },
   jp: {
-    title: '📖 授業', segLessons: 'レッスン', segAssign: '課題',
+    title: '📖 授業', segLessons: 'レッスン', segAssign: '課題', retry: '🔄 再試行',
     empty: 'まだありません。', by: '', at: '', level: 'レベル', media: '🎬 動画/リンクを開く',
     add: '➕ 新規', edit: '編集', del: '削除', save: '保存', cancel: 'キャンセル',
     fTitle: 'タイトル:', fBody: '本文:', fLevel: 'レベル (N5~N1 / All):', fMedia: 'メディアリンク (任意):',
@@ -95,7 +95,7 @@ class TeachErrorBoundary extends React.Component {
             style={{ backgroundColor: '#D32F2F', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 }}
             onPress={() => this.setState({ err: null })}
           >
-            <Text style={{ color: '#FFF', fontWeight: 'bold' }}>🔄 Retry</Text>
+            <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{this.props.retryLabel || '🔄 Retry'}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -584,7 +584,7 @@ export default function TeachingScreen({ user, onLogout, navigation }) {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <TeachErrorBoundary key={seg}>
+        <TeachErrorBoundary key={seg} retryLabel={t.retry}>
         {loading ? (
           <ActivityIndicator size="large" color="#D32F2F" style={{ marginTop: 30 }} />
         ) : opened ? (

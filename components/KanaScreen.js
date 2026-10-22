@@ -144,8 +144,8 @@ export default function KanaScreen({ user, onLogout }) {
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title={t.title} user={user} onLogout={onLogout} onProfilePress={undefined} />
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Hira/Kata toggle */}
+      {/* Pinned top (ပုံသေ) — toggle + hint + selected detail: scroll မလုပ် */}
+      <View style={styles.fixedTop}>
         <View style={styles.toggleRow}>
           {[['あ', false], ['ア', true]].map(([label, val]) => (
             <TouchableOpacity
@@ -181,12 +181,15 @@ export default function KanaScreen({ user, onLogout }) {
             <Text style={styles.selEmpty}>{t.tap}</Text>
           )}
         </View>
+      </View>
 
+      {/* Chart area only — အောက်ဘက်ဇယားတွေ ပဲ scroll ရ (အပေါ်က ပုံသေ) */}
+      <ScrollView contentContainerStyle={styles.scroll}>
         <Section title={t.base}>
           {BASE_ROWS.map((row) => (
             <View key={row[0][0]}>
               <TouchableOpacity style={styles.rowSpeak} onPress={() => speakRow(row)}>
-                <Text style={styles.rowSpeakText}>🔊 {t.speakAll}</Text>
+                <Text style={styles.rowSpeakText}>{t.speakAll}</Text>
               </TouchableOpacity>
               <StrRow row={row} />
             </View>
@@ -267,6 +270,7 @@ export default function KanaScreen({ user, onLogout }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
+  fixedTop: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 8, backgroundColor: '#F8F9FA', borderBottomWidth: 1, borderBottomColor: '#E8E8E8' },
   scroll: { padding: 12, paddingBottom: 30 },
   toggleRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 8 },
   tgBtn: { paddingHorizontal: 18, paddingVertical: 8, borderWidth: 1, borderColor: '#DDD', borderRadius: 8, marginHorizontal: 4, backgroundColor: '#FFF' },

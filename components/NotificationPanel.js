@@ -6,7 +6,7 @@ import { useNotifications } from '../src/notifications';
 
 const nT = {
   my: {
-    title: '🔔 Notifications', chats: '💬 စာအသစ်များ', pending: '👤 Approve စောင့်နေသူများ',
+    title: '🔔 အသိပေးချက်များ', chats: '💬 စာအသစ်များ', pending: '👤 Approve စောင့်နေသူများ',
     notices: '📣 ကြေညာချက်များ', teaching: '📖 သင်ခန်းစာ/Assignment အသစ်', subs: '📝 အဖြေတင်ထားသူများ', graded: '🏅 အမှတ်ထွက်ပြီ', due: '⏰ ရက်နီးနေသော Assignment',
     emptyAll: 'အသစ်ဘာမှမရှိပါ ✅', emptyChats: '—', view: 'ကြည့်မည် →',
     approve: '✅ Approve', disable: '🚫 Disable', done: 'ပြီးပါပြီ ✅', fail: 'မအောင်မြင်ပါ',

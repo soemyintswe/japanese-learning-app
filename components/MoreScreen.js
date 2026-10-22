@@ -12,7 +12,7 @@ const moreT = {
     title: '☰ မီနူး',
     planner: 'အချိန်ဇယား', plannerD: 'နေ့စဉ်အစီအစဉ် + တိုးတက်မှု',
     notes: 'မှတ်စု', notesD: 'ကိုယ်ပိုင်မှတ်စုများ',
-    library: 'စာကြည့်', libraryD: 'Teacher Drive + Essays',
+    library: 'စာကြည့်', libraryD: 'ဆရာ့ Drive + Essay မှတ်စုများ',
     help: 'အကူအညီ', helpD: 'အသုံးပြုနည်း လမ်းညွှန်',
     kana: 'あ ဂျပန်အက္ခရာ', kanaD: '五十音表 + အသံထွက် (offline)',
     teacher: 'ဆရာ့အပိုင်း', teacherD: 'User စီမံခန့်ခွဲမှု (staff)',

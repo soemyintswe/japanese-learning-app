@@ -121,8 +121,8 @@ const cT = {
   my: {
     title: '👥 အဖွဲ့', segPeople: '👥 လူများ', segChats: '💬 Chat', segProfile: '🙍 ပရိုဖိုင်', segReports: '📊 Report',
     searchPh: 'နာမည် / Email ရှာရန်...',
-    stActive: 'Active', stIdle: 'Idle', stOffline: 'Offline',
-    activeNow: 'အခု Active', totalUsers: 'စုစုပေါင်း',
+    stActive: 'အသုံးပြုနေသည်', stIdle: 'ပိတ်ထားသည်', stOffline: 'အော့ဖ်လိုင်း',
+    activeNow: 'အခုအသုံးပြုနေသူ', totalUsers: 'စုစုပေါင်း',
     chatWith: '💬 Chat ပြောမယ်', startChat: 'Chat စမည်', newGroup: '➕ Group အသစ်',
     groupName: 'Group နာမည်:', groupNamePh: 'ဥပမာ - N5 Batch A',
     pickMembers: 'အဖွဲ့ဝင်ရွေးပါ:', create: 'ဖန်တီးမည်', cancel: 'ပယ်ဖျက်မည်',

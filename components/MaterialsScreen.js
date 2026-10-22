@@ -95,7 +95,7 @@ const mT = {
     backToList: '← စာရင်း', essPlayAll: '▶️ အစဆုံးဖွင့်',
     mTitle: 'ခေါင်းစဉ်:', mTitlePh: 'ဥပမာ - N5 Kanji Worksheet 1',
     mDesc: 'ရှင်းလင်းချက်:', mDescPh: 'အကျဉ်းရေးပါ...',
-    mLevel: 'Level:', mType: 'အမျိုးအစား:', mUrl: 'Google Drive Link:',
+    mLevel: 'အဆင့်:', mType: 'အမျိုးအစား:', mUrl: 'Google Drive လင့်ခ်:',
     mUrlPh: 'https://drive.google.com/... (Anyone with link)',
     mUrlHelp: 'နည်း: Drive မှာ folder အသစ် ("MKS Materials") ဆောက် → Right-click Share → Anyone with the link (Viewer) → ဖိုင်များ/ပုံ/အသံ/ဗီဒီယို အဲဒီထဲထည့် → file/folder link ကူးထည့်ပါ။ (App က folder auto-မဆောက်ဘူး — ကိုယ်တိုင်တစ်ခါဆောက်ရုံနဲ့ နောက် link ကူးထည့်ရုံပဲ)',
     cancel: 'ပယ်ဖျက်မည်', save: 'သိမ်းမည်',

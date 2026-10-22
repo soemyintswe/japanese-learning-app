@@ -7,7 +7,7 @@ import AppHeader from './AppHeader';
 
 const notesT = {
   my: {
-    header: '🌸 Study Notes & Memos', add: 'မှတ်စုအသစ်',
+    header: '🌸 လေ့လာရေး မှတ်စုများ', add: 'မှတ်စုအသစ်',
     editTitle: 'မှတ်စု ပြင်ဆင်ရန်', newTitle: 'မှတ်စုအသစ် ရေးရန်',
     titleLabel: 'မှတ်စုခေါင်းစဉ် (Title):', titlePh: 'ဥပမာ - N3 Grammar Notes',
     contentLabel: 'အကြောင်းအရာ (Content):', contentPh: 'မှတ်စု အသေးစိတ် ရေးရန်...',

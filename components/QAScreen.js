@@ -17,7 +17,8 @@ const PROG_KEY = '@japanese_quiz_progress_v1';
 
 const qaT = {
   my: {
-    title: '📝 Quiz & Skills', tabQuiz: '📝 Quiz', tabSkills: '🎧 Skills', tabBot: '🤖 Bot',
+    title: '📝 မေးခွန်းနှင့် ကျွမ်းကျင်မှု', tabQuiz: '📝 မေးခွန်း', tabSkills: '🎧 ကျွမ်းကျင်မှု', tabBot: '🤖 ဘော့',
+    video: '🎬 ဗီဒီယို', videoUrl: '🎬 ဗီဒီယို URL (မဖြည့်လည်းရ):',
     chooseLevel: 'အဆင့်ရွေးပြီး Quiz ဖြေပါ', unlockNeed: 'အရင်အဆင့် 70%+ ရမှ ပွင့်မယ် 🔒',
     rulesLine: 'စည်းမျဉ်း: ၁ ပုဒ်=၁ မှတ် • 70%+ နဲ့ နောက်အဆင့်ပွင့် • Level Check 75% နဲ့ အဆင့်ရ',
     randomBtn: '🎲 Random 10 လုံး (အဆင့်စုံ)', pickBtn: '✋ ကိုယ်တိုင်ရွေးမည်',
@@ -46,8 +47,8 @@ const qaT = {
     customTitle: 'ကိုယ်တိုင်ထည့်ထားတဲ့ မေးခွန်းများ',
     addQ: 'မေးခွန်းထည့်ရန်', editQ: 'မေးခွန်း ပြင်ဆင်ရန်',
     qLabel: 'မေးခွန်း:', qPh: 'မေးခွန်းရေးရန်...',
-    o1: 'အဖြေ 1:', o2: 'အဖြေ 2:', o3: 'အဖြေ 3 (optional):', o4: 'အဖြေ 4 (optional):',
-    pickCorrect: 'အမှန် ရွေးပါ:', qLevel: 'Level:', cancel: 'ပယ်ဖျက်မည်', save: 'သိမ်းမည်',
+    o1: 'အဖြေ 1:', o2: 'အဖြေ 2:', o3: 'အဖြေ 3 (မဖြည့်လည်းရ):', o4: 'အဖြေ 4 (မဖြည့်လည်းရ):',
+    pickCorrect: 'အမှန် ရွေးပါ:', qLevel: 'အဆင့်:', cancel: 'ပယ်ဖျက်မည်', save: 'သိမ်းမည်',
     errFill: 'မေးခွန်း + အဖြေ ၂ ခု ဖြည့်ပါ။',
     delTitle: 'သတိပေးချက်', delMsg: 'ဖျက်ရန် သေချာလား?', no: 'မဖျက်ပါ', yes: 'ဖျက်မည်',
     passBadge: 'အောင် ✅', failBadge: 'မအောင်',
@@ -59,6 +60,7 @@ const qaT = {
   },
   en: {
     title: '📝 Quiz & Skills', tabQuiz: '📝 Quiz', tabSkills: '🎧 Skills', tabBot: '🤖 Bot',
+    video: '🎬 Video', videoUrl: '🎬 Video URL (optional):',
     chooseLevel: 'Pick a level', unlockNeed: 'Score 70%+ on previous level to unlock 🔒',
     rulesLine: 'Rules: 1 Q = 1 pt • 70%+ unlocks next • Level Check 75% awards level',
     randomBtn: '🎲 Random 10 (mixed levels)', pickBtn: '✋ Hand-pick questions',
@@ -100,6 +102,7 @@ const qaT = {
   },
   jp: {
     title: '📝 クイズ＆技能', tabQuiz: '📝 クイズ', tabSkills: '🎧 技能', tabBot: '🤖 Bot',
+    video: '🎬 動画', videoUrl: '🎬 動画URL（任意）:',
     chooseLevel: 'レベルを選ぶ', unlockNeed: '前のレベルで70%以上で解放 🔒',
     rulesLine: 'ルール: 1問=1点 • 70%以上で解放 • チェック75%で認定',
     randomBtn: '🎲 ランダム10問', pickBtn: '✋ 問題を選ぶ',
@@ -674,7 +677,7 @@ export default function QAScreen({ user, onLogout, navigation }) {
                 style={[styles.playBtn, { backgroundColor: '#C62828', marginBottom: 8, alignSelf: 'flex-start' }]}
                 onPress={() => Linking.openURL(q.mediaUrl).catch(() => {})}
               >
-                <Text style={styles.playBtnText}>🎬 Video</Text>
+                <Text style={styles.playBtnText}>{t.video}</Text>
               </TouchableOpacity>
             )}
             {q.options.map((opt, optIndex) => {
@@ -1055,7 +1058,7 @@ export default function QAScreen({ user, onLogout, navigation }) {
               ))}
             </View>
 
-            <Text style={styles.label}>🎬 Video URL (optional):</Text>
+            <Text style={styles.label}>{t.videoUrl}</Text>
             <TextInput
               style={styles.input}
               value={qMedia}
