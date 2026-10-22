@@ -43,7 +43,6 @@ import {
   signOut, sendPasswordResetEmail,
 } from 'firebase/auth';
 import * as Crypto from 'expo-crypto';
-import * as Clipboard from 'expo-clipboard';
 import { useLanguage } from '../src/LanguageContext';
 import { logActivity } from '../src/activity';
 import AppHeader from './AppHeader';
@@ -279,33 +278,6 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
       for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
       return 'MKS-' + s;
     }
-  };
-
-  const credText = (c) => (
-    `Japanese Study Planner — Login\n${t.credLink || 'Link'}: ${APP_LOGIN_URL}\nEmail: ${c.email}\n` +
-    (c.tempPw ? `Password: ${c.tempPw}\n(${t.credFirst || ''})` : (c.approved ? `${t.credApproved || ''}` : `${t.credResetNote || ''}`))
-  );
-
-  const copyCreds = async () => {
-    if (!creds) return;
-    try {
-      await Clipboard.setStringAsync(credText(creds));
-      showInfo(t.ok, t.credCopied || 'Copied ✅');
-    } catch (e) {
-      showInfo(t.err, String(e.message || e));
-    }
-  };
-
-  const sendCredsMail = () => {
-    if (!creds) return;
-    const url = `mailto:${encodeURIComponent(creds.email)}?subject=${encodeURIComponent('Japanese Study Planner — Login')}&body=${encodeURIComponent(credText(creds))}`;
-    Linking.openURL(url).catch(() => {});
-  };
-
-  const sendCredsSms = () => {
-    if (!creds || !creds.phone) return;
-    const url = `sms:${encodeURIComponent(creds.phone)}?body=${encodeURIComponent(credText(creds))}`;
-    Linking.openURL(url).catch(() => {});
   };
 
   const [oldPassword, setOldPassword] = useState('');
@@ -1444,7 +1416,7 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
         onCancel={async () => { if (busyId) return; if (confirm?.onCancel) await confirm.onCancel(); else setConfirm(null); }}
       />
 
-      {/* 📨 Login credentials delivery card (copy / Email app / SMS) */}
+      {/* 📨 Login credentials info (Copy/Email/SMS buttons removed — Firebase reset email ကပဲ သုံး) */}
       <Modal visible={!!creds} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -1466,19 +1438,6 @@ export default function TeacherScreen({ currentUser, onLogout, navigation }) {
                   )}
                 </View>
                 <Text style={styles.credHint}>{t.credHint}</Text>
-                <View style={{ flexDirection: 'row', marginTop: 10 }}>
-                  <TouchableOpacity style={[styles.saveModalBtn, { flex: 1, backgroundColor: '#455A64' }]} onPress={copyCreds}>
-                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>📋 {t.credCopy}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.saveModalBtn, { flex: 1, marginLeft: 8, backgroundColor: '#1976D2' }]} onPress={sendCredsMail}>
-                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>✉️ Email</Text>
-                  </TouchableOpacity>
-                  {!!creds.phone && (
-                    <TouchableOpacity style={[styles.saveModalBtn, { flex: 1, marginLeft: 8, backgroundColor: '#2E7D32' }]} onPress={sendCredsSms}>
-                      <Text style={{ color: '#FFF', fontWeight: 'bold' }}>💬 SMS</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
                 <TouchableOpacity style={[styles.saveModalBtn, { marginTop: 10, alignItems: 'center' }]} onPress={() => setCreds(null)}>
                   <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{t.okBtn}</Text>
                 </TouchableOpacity>

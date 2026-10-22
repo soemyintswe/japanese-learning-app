@@ -38,6 +38,15 @@ const translations = {
     hasAccount: 'အကောင့်ရှိပြီးသားလား? Login သို့ ပြန်သွားရန်',
     guestBtn: '🎮 Guest အဖြစ် လေ့လာရန် (Login မလို)',
     guestHint: 'Quiz · အဘိဓာန် · အချိန်ဇယား · မှတ်စု — offline သုံးလို့ရ. Chat/Class အတွက် account လိုအပ်ပါတယ်.',
+    resetLink: '🔑 Password မေ့ပါသလား? Reset email ပို့မည်',
+    googleBtn: 'G  Google ဖြင့် ဝင်ရန်',
+    sending: 'Email ပို့နေပါတယ်…',
+    policyNeed: '☑️ Privacy Policy ကို ဖတ်၍ သဘောတူပါ',
+    regNameLabel: 'အမည် (Name):',
+    regPwLabel: 'Password (အနည်းဆုံး ၆ လုံး):',
+    regBtn: '📧 Email နဲ့ Register လုပ်မည်',
+    orText: '— သို့မဟုတ် —',
+    regNote: 'Email နဲ့ Register လုပ်ပါ — အကောင့် တကယ် ဖွင့်ပေးမယ် (Admin အတည်ပြုပြီးမှ ဝင်နိုင်မည်)',
   },
   en: {
     title: 'Japanese Study Planner',
@@ -56,6 +65,15 @@ const translations = {
     hasAccount: 'Already have an account? Sign In',
     guestBtn: '🎮 Continue as Guest (no login)',
     guestHint: 'Quiz · Dictionary · Planner · Notes work offline. Chat/Class needs an account.',
+    resetLink: '🔑 Forgot password? Send reset email',
+    googleBtn: 'G  Continue with Google',
+    sending: 'Sending email…',
+    policyNeed: '☑️ Please agree to the Privacy Policy',
+    regNameLabel: 'Name:',
+    regPwLabel: 'Password (min 6 chars):',
+    regBtn: '📧 Register with Email',
+    orText: '— or —',
+    regNote: 'Register with your Email (Requires Admin Approval)',
   },
   jp: {
     title: '日本語スタディプランナー',
@@ -74,6 +92,15 @@ const translations = {
     hasAccount: 'すでにアカウントをお持ちですか？',
     guestBtn: '🎮 ゲストとして続ける (ログイン不要)',
     guestHint: 'クイズ・辞書・プランナー・ノートはオフラインOK. チャット/授業はアカウント必要.',
+    resetLink: '🔑 パスワードをお忘れですか? リセットメール送信',
+    googleBtn: 'G  Googleで続行',
+    sending: 'メール送信中…',
+    policyNeed: '☑️ プライバシーポリシーに同意してください',
+    regNameLabel: '氏名:',
+    regPwLabel: 'パスワード (6文字以上):',
+    regBtn: '📧 メールで登録',
+    orText: '— または —',
+    regNote: 'メールで登録（管理者の承認が必要）',
   }
 };
 
@@ -544,31 +571,20 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
                   style={{ marginTop: 10, alignItems: 'center' }}
                 >
                   <Text style={styles.switchText}>
-                    {resetSending ? 'Email ပို့နေပါတယ်...' : '🔑 Password မရှိသေးလား / မေ့နေလား? Password သတ်မှတ်ရန် email ပို့မယ်'}
+                    {resetSending ? t.sending : t.resetLink}
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={styles.googleButton} 
+                <TouchableOpacity
+                  style={styles.googleButton}
                   onPress={handleGoogleRegister}
                   disabled={loading}
                 >
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <>
-                      <Text style={{ fontSize: 16, color: '#fff', fontWeight: 'bold', marginRight: 8 }}>G</Text>
-                      <Text style={styles.googleButtonText}>Google အကောင့်ဖြင့် ဝင်မည် / Register လုပ်မည်</Text>
-                    </>
+                    <Text style={styles.googleButtonText}>{t.googleBtn}</Text>
                   )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={handlePasswordReset}
-                  disabled={resetSending}
-                  style={{ marginTop: 10, alignItems: 'center' }}
-                >
-                  <Text style={styles.switchText}>{t.gwWantPw}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => setStep('register')} style={{ marginTop: 15, alignItems: 'center' }}>
@@ -582,10 +598,10 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
                 <Text style={styles.subtitle}>{t.register}</Text>
 
                 <Text style={styles.instructionText}>
-                  {lang === 'my' ? 'Email နဲ့ Register လုပ်ပါ — အကောင့် တကယ် ဖွင့်ပေးမယ် (Admin အတည်ပြုပြီးမှ ဝင်နိုင်မည်)' : 'Register with your Email (Requires Admin Approval)'}
+                  {t.regNote}
                 </Text>
 
-                <Text style={styles.label}>အမည် (Name):</Text>
+                <Text style={styles.label}>{t.regNameLabel}</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="ဥပမာ - Mg Mg"
@@ -607,7 +623,7 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
                   returnKeyType="next"
                 />
 
-                <Text style={styles.label}>Password (အနည်းဆုံး ၆ လုံး):</Text>
+                <Text style={styles.label}>{t.regPwLabel}</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Password"
@@ -643,11 +659,11 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
                   onPress={handleEmailRegister}
                   disabled={regLoading}
                 >
-                  {regLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>📧 Email နဲ့ Register လုပ်မည်</Text>}
+                  {regLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{t.regBtn}</Text>}
                 </TouchableOpacity>
 
                 <Text style={[styles.instructionText, { marginTop: 12 }]}>
-                  — သို့မဟုတ် —
+                  {t.orText}
                 </Text>
 
                 <TouchableOpacity
@@ -658,10 +674,7 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <>
-                      <Text style={{ fontSize: 16, color: '#fff', fontWeight: 'bold', marginRight: 8 }}>G</Text>
-                      <Text style={styles.googleButtonText}>{t.googleRegisterBtn}</Text>
-                    </>
+                    <Text style={styles.googleButtonText}>{t.googleBtn}</Text>
                   )}
                 </TouchableOpacity>
 

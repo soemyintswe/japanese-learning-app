@@ -249,6 +249,11 @@ firebase deploy --only hosting
 - **Offline cache (A)**: `initializeFirestore(..., { localCache: persistentLocalCache() })` — web=IndexedDB, RN=AsyncStorage-based (firebase v12). ဖတ်ဖူးတဲ့ data cache → offline ဖတ်ရင် cache ကနေ; writes က online ပြန်ရောက်မှ sync. Fallback = default memory cache.
 - Verify: export clean (679) → hosting deploy → push. Ctrl+F5. Test: logout → Guest → quiz/dict/planner/notes အကုန် work; 🚪 → login → full tabs ပြန်ပေါ်.
 
+### 6.28 Login UI cleanup + creds modal simplify (2026-10-06)
+- **AuthScreen login**: duplicate reset link (၂ ခုစလုံး reset email ပို့) ဖြုတ် — 1 ခုပဲ. Long texts တိုတောင်း: `🔑 Password မေ့ပါသလား?`, `G Google ဖြင့် ဝင်ရန်`. Register step labels (name/pw/register button/or) trilingual ပြောင်း (အရင် Myanmar hardcode). Guest button ကို login/register နှစ်ခုစလုံးအောက် ပြ.
+- **TeacherScreen creds modal**: 📋Copy / ✉️Email (mailto→Outlook ဖွင့်) / 💬SMS ခလုတ် ၃ ခု ဖြုတ် — info card + OK ပဲ. Firebase reset email (noreply@…) ကပဲ သုံး. `credText/copyCreds/sendCredsMail/sendCredsSms` + Clipboard import ဖြုတ်.
+- Verify: export clean (678) → hosting deploy → push. Ctrl+F5. Login page: ရှင်း, Guest button ပေါ်, language switch အကုန်ပြောင်း, reset link ၁ ခုပဲ.
+
 ### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
 - Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
 - Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).
