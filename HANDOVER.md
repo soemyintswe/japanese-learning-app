@@ -1,7 +1,7 @@
 # Japanese Learning App — Maintenance Handover (ထိန်းသိမ်းရေး လွှဲပြောင်းမှတ်တမ်း)
 
 > ဖတ်သူ: နောက်ဆက်တွဲ ပြင်မယ့် developer / AI assistant
-> နောက်ဆုံး update: 2026-10-06 (export/import all 5 areas + AI prompt + content top-up, by Muse Spark via OpenCode)
+> နောက်ဆုံး update: 2026-10-23 (HANDOVER သန့်ရှင်းရေး: changelog order, roadmap fix, scripts → repo, Help Kana section)
 > Repo: https://github.com/soemyintswe/japanese-learning-app (branch: `main`)
 > Live site: https://japanese-mksedu.web.app
 > Firebase project: `japanese-mksedu`
@@ -39,17 +39,17 @@ components/NotesScreen.js     # Notes CRUD (AsyncStorage, 3-lang chrome)
 components/QAScreen.js        # Quiz + add/edit (Option4 + correct picker, AsyncStorage, 3-lang)
 components/TeacherScreen.js   # ⭐ Admin user table (approve/disable, role-picker modal, delete, tooltips) + bio + share + change-password + 📋 activity viewer (latest 50) + horizontal-scroll table (minWidth 660, mobile)
 components/TeachingScreen.js  # 📖 Teaching module MVP: lessons + assignments + submissions/grading (staff CRUD, student submit-once, single-field queries only — no composite index) + TeachErrorBoundary (white-screen guard) + 🌱 samples seed + 📥📤 export/import (staff import)
-components/HelpScreen.js      # 🆘 App usage guide (my/en/jp, 12 sections: login→tips), 🆘 Help tab for all roles (/help)
+components/HelpScreen.js      # 🆘 App usage guide (my/en/jp, 13 sections: login→tips, incl Kana), 🆘 Help tab for all roles (/help)
 components/KanaScreen.js      # あ 五十音表 (base46 + 濁音25 + 拗音24 + っ/ん/ー), tap→🔊 TTS+romaji+mm gloss, ひらがな⇄カタカナ toggle, ✍書き順 stroke-order modal (sequential reveal, KanjiVG), offline/guest, hidden tab /kana (☰ More ထဲက)
-components/kanaStrokes.json   # 150 kana stroke paths (hiragana+katakana incl 小書き/濁音) from KanjiVG, CC BY-SA 3.0 — kanjivg.tagaini.net (attribution in screen footer). Regen: Temp opencode fetch_kana_strokes.js (jsDelivr, lowercase hex)
+components/kanaStrokes.json   # 150 kana stroke paths (hiragana+katakana incl 小書き/濁音) from KanjiVG, CC BY-SA 3.0 — kanjivg.tagaini.net (attribution in screen footer). Regen: scripts/fetch_kana_strokes.js (jsDelivr, lowercase hex)
+scripts/                      # Maintenance utilities: fetch_kana_strokes.js (KanjiVG → kanaStrokes.json), i18n_check.js (my/en/jp key parity), i18n_lang.js (lang-content audit). Run from repo root: node scripts/i18n_check.js
 AI_CONTENT_PROMPT.md          # ⭐ Other-AI bulk content prompt (copy-paste EN+MM) + 5 JSON schemas (A words / B quiz / C library / D essays / E teaching) + import paths + copyright policy
 components/dictionaryData/    # ~1340 trilingual words: n5_nouns(274)/n5_verbs(113)/n5_adjectives(100)/n5_others(107)/n4_words(285)/n3(213)/n2(153)/n1(96) + fullDictionary.js (sample 9 w/ images) + index.js (merge/dedupe/normalizeImportEntry). Validated: scripts Temp count_dict.py + dupe_detail.py + dedupe_files.py + sanity_dict.py (0 dupes, readings present) + check_quiz.py.
 # Coverage aligned with standard JLPT lists (ref: OpenJLPT CC BY-SA 4.0 — Myanmar glosses are original, not copied). OpenJLPT totals for reference: N5 662 / N4 632 / N3 1784 / N2 1793 / N1 3463 (8,334 words). Our coverage ≈ N5 88% / N4 45% / N3 12% / N2 8% / N1 3% — N3-N1 gaps remain (bulk import via app Import + teacher Myanmar review).
 # Schema: {id, japanese, reading(kana), myanmar, english, pos, level}. Old rows may use {hiragana}/{icon} — UI handles both.
-# Coverage aligned with standard JLPT lists (ref: OpenJLPT CC BY-SA 4.0 — Myanmar glosses are original, not copied).
 # Import accepts app format AND OpenJLPT format {word,reading,meanings[],level} (myanmar=''). Deps: expo-file-system/-sharing/-document-picker/-clipboard.
 components/quizData/      # Level banks N5(48)/N4(38)/N3(34)/N2(28)/N1(26) = 174 Qs {id,level,skill,question,speakText?,passage?,options[],correctIndex,explanation,mediaUrl?,points?} + index (pools/shuffle/unlock logic + SCORING rules export). skills: vocab/grammar/reading/listening. Deps: expo-speech (TTS listening/model), expo-av (speaking record/playback). All questions original (not copied from exam or sites).
-components/materialsSeed.js: 29 verified starter links (24 original + 5 added 2026-10-06, ALL webfetch alive-checked that day: Tadoku free graded readers + PracticeJLPT + NihonTorii + JLPTPass + MinnaNihongo) + 🌱 one-tap seed (dedupe by title, staff only). Policy: verify-before-add (webfetch alive check), no dead links. Tadoku content = LINK ONLY (CC BY-NC-ND 4.0, no-derivatives — never copy text into app).
+components/materialsSeed.js: 29 verified starter links (24 original + 5 added 2026-10-06, ALL webfetch alive-checked that day: Tadoku free graded readers + PracticeJLPT + NihonTorii + JLPTPass + MinnaNihongo) + 🌱 one-tap seed (dedupe by title, staff only). Policy: verify-before-add (webfetch alive check), no dead links. Tadoku content = LINK ONLY (CC BY-NC-ND 4.0, no-derivatives — never copy text into app). Historical note: initial seed was 12 links (see §6.x Materials) — superseded by 29.
 # Chat copy: message Text selectable (web drag + native) + select-mode 📋 button (expo-clipboard, joined lines). Bot messages selectable too. Note: native long-press also enters delete-select — copy via 📋 recommended there.
 components/BotPanel.js    # Offline rule-based bot: dict lookup (~1330w), quiz/skill launch callbacks, grammar tips, level guide, 9 small-talk intents + MY data (planner/notes/scores) + SHARED data (library/members/profile via Firestore). user prop wired from QAScreen. No API key. LIMIT: pattern-match only, open chat = roadmap.
 # QAScreen modes: Quiz(levels+locks+best/unlock70%+placement75%→assessedLevel, progress AsyncStorage) | 🎲 Random 10 (unlocked-levels mix, no best-write) | ✋ Hand-pick browser (search+level filter+☑️, start picked shuffled) | Skills(listening TTS/reading/writing-input/speaking record+self-mark) | Bot. Scoring: points-aware (q.points||1, results show earned/total + %). Rules line in menu + SCORING export (quizData/index). Custom Qs now have level+mediaUrl. Video: question.mediaUrl → 🎬 button (Linking).
@@ -72,7 +72,7 @@ components/BotPanel.js    # Offline rule-based bot: dict lookup (~1330w), quiz/s
 # Community blank root cause: Google.useAuthRequest throws at render when OAuth IDs unconfigured (invariantClientId) — fixed by DriveSection lazy-mount (hook runs only if driveConfigured()) + SectionErrorBoundary.
 # Dictionary RBAC: shared dataset — staff(teacher/admin) CRUD/import, students view+export only (🔒 view-only hint). Notes/Quiz customs stay personal.
 # Teacher bio → Firestore settings/teacherBio (staff edit modal, all read; fallback static). Rules += settings/* (read signed-in, write staff).
-# Materials 📚 tab: shared teacher Drive library — Firestore `materials` {title,desc,level,type,url,createdBy*} (teacher pastes Anyone-with-link Drive URL from THEIR Drive app; NO Drive API). Staff manage, all read. Deps: none. Modal web fix (ScrollView + minHeight desc). components/materialsSeed.js: 12 public starter links (TaeKim/Jisho/Tofugu/NHK/Erin/YT/JLPT/Forvo/Anki) + 🌱 one-tap seed (dedupe by title).
+# Materials 📚 tab: shared teacher Drive library — Firestore `materials` {title,desc,level,type,url,createdBy*} (teacher pastes Anyone-with-link Drive URL from THEIR Drive app; NO Drive API). Staff manage, all read. Deps: none. Modal web fix (ScrollView + minHeight desc). components/materialsSeed.js: 29 verified starter links + 🌱 one-tap seed (dedupe by title).
 # Teacher Drive organization (no auto-folder by app — manual once): Drive folder "MKS Materials" → Share Anyone-with-link Viewer → files/images/audio/video inside (Drive native preview) → paste file/folder link into 📚. API auto-folder possible but rejected (OAuth drive.file scope + verification overhead vs 30s manual setup).
 # Materials in-app viewer: resolveViewer() — YouTube ID → youtube-nocookie?/embed (WebView), Drive file ID → /file/d/preview embed (video/audio/pdf/docs/images), direct mp3/mp4 → expo-av Video (native controls), else external browser. Deps: react-native-webview (iframe on web), expo-av Video. External fallback button always shown.
 # Essay & Songs reader (components/essayData.js): 5 original essays (N5x3/N4x2: 家族/休み/買い物 + 夢/雨の季節) + 5 songs (4 traditional PD + ふるさと verse-1 added 2026-10-06; PD 1914, lyricist d.1947/composer d.1941 — NO copyrighted lyrics ever; もみじ avoided — lyricist d.1959, PD only 2029). Schema {id,title,kind,level,lines:[{ja,reading,mm}]}. Materials tab segment: list → reader (tap line = play from there, ▶️ play all JA→MM per line, highlight + auto-scroll, ⏹️ stop; stops on back/mode-switch/unmount).
@@ -125,6 +125,8 @@ firebase deploy --only hosting
 - Auth users စစ်ရန် (read-only): `firebase auth:export $env:TEMP\auth.json` → ပြီးရင် **ဖျက်ပစ်** (hash ပါတယ်).
 
 ## 6. ဒီ Maintenance Session မှာ ပြင်ခဲ့သမျှ (Changelog)
+
+> အစဉ်လိုက်: 6.1 → 6.32 (2026-10-06 အတွင်း rounds; 6.11–6.21 ကို ပြင်ဆင်ပြီးမှ chronological ပြန်စီခဲ့သည် 2026-10-23)
 
 ### 6.1 လုံခြုံရေး (critical)
 - `AuthScreen` hardcoded admin password **ဖျက်ပစ်** (literal string history purge လုပ်) → Firebase Email Auth အစစ်သုံး. ⚠️ password က git history + `AuthScreen - Copy.js` ထဲ ကျန်နေ → **compromised သဘောထား, Admin Auth password ကို Console မှာ rotate လုပ်ရန်** (sec 8).
@@ -185,11 +187,32 @@ firebase deploy --only hosting
 - **Samples (staff 🌱 one-tap, fixed IDs, skip-existing)**: `components/teachingSeed.js` — lessons 3 (あ-row + self-intro pattern + te-form作り方, all original) + assignments 3 (seed_a1 all/N5 self-intro ✍️ + seed_a2 N5-level family + seed_a3 N4-level diary). Empty-state မှာ staff only 🌱 button. Seeding logs activity.
 - Verify: export clean (677 modules) → hosting deployed → pushed. Ctrl+F5 ပြီး `/teaching` ပြန်စမ်းရန်။
 
+### 6.11 Export/Import all 5 areas + AI bulk prompt (2026-10-06)
+- **Audit**: Dictionary ✅ (ရှိ) / Quiz customs ❌ / Library ❌ / Essays ❌ / Teaching ❌ → ၄ ခု ထပ်ဆောက်. Pattern = Dictionary flow (web download + native share + clipboard fallback; paste + file pick).
+- **Quiz customs** (QAScreen ✏️ section): 📥📤 buttons + import modal; validate {question, options≥2, correctIndex in range, level}; dedupe question+options; customs auto-merge into level pools (`levelPool`) → import-တာနဲ့ quiz မှာ တန်းပေါ်.
+- **Library** (MaterialsScreen seg toolbar): 📥 staff-only (validate https, dupe title+url, addDoc) + 📤 everyone; seedBtn count 24→29 corrected.
+- **Essays custom** (personal AsyncStorage `@japanese_essays_custom_v1`): reader merges `[...ESSAYS, ...customEssays]` (same schema → TTS reader auto-works); 📥 (validate lines[].ja) + 📤 everyone.
+- **Teaching** (Class header): 📥 staff-only (`{lessons, assignments}`, same-id skip, level/target sanitize) + 📤 everyone; activity-logged.
+- **`AI_CONTENT_PROMPT.md`** (NEW, committable): copy-paste prompt (EN+MM) + 5 schemas with examples + import paths + copyright rules (no copied lyrics/exams/textbooks; Tadoku link-only; OpenJLPT level-refs). Owner flow: other-AI JSON → 📥 import → quick check (kana readings? original MM? levels?) → done. No code deploy needed for bulk adds.
+- **Content top-up (bounded)**: dict +10 (N3: 辛抱/率直/快適/退屈/謙遜 + N2: 賢明/愚か/大胆/臆病/頑丈; 切実 dropped — dupe). Dict total 1331→1341, dupes 0.
+- Verify: export clean → hosting deploy → push. Ctrl+F5.
+
 ### 6.12 Teaching round-3 — lesson targets + resubmit + score/level grading (2026-10-06)
 - **Lessons targetable**: editor target picker (all/level/students) + save + student auto-filter + 🎯 tag — assignments နည်းတူ. Old lesson docs (no target) = everyone.
 - **Resubmit**: `{assignmentId}_{uid}` merge already allowed it, but stale grade stayed — now resubmit clears grade/feedback/score/slevel + `assign.resubmit` log + dedicated message (needs re-grade notice).
 - **Score + level**: grading form = numeric score (0-100, numeric keyboard) + level chips (—/N5-N1) + feedback; saved as {score, slevel} (old `grade` text kept as fallback display + stats parse). Student sees `🏅 85 [N4]`. Stats avg uses scores.
 - Prompt Schema E updated (lesson target + grading note). Verify: export clean → hosting deploy → push. Ctrl+F5.
+
+### 6.13 Root error boundary (2026-10-06) — /teaching white-screen report
+- Symptom: `/teaching` fully white (no header/tabs) right after round-3 deploy. Static audit of TeachingScreen render path found no throw (empty lists render fine) — cause unconfirmed (possibly stale bundle or transient).
+- Fix: `RootErrorBoundary` in App.js (wraps Main) — any screen crash now shows ⚠️ + error text + 🔄 Reload instead of white screen. Next diagnosis = error-text screenshot from user.
+- Verify: export clean → hosting deploy → push. User to Ctrl+F5 and retest; also confirm other tabs OK (distinguishes route crash vs bundle-wide).
+
+### 6.14 Teaching white-screen root cause FOUND (2026-10-06)
+- Boundary caught it: `Cannot read properties of null (reading 'target')`. Cause = round-2 target-picker UI used `modal.target` / `modal.targetUids` / `modal.targetLevel` WITHOUT `?.` — Modal children mount even when `modal=null`, so first render threw immediately (whole app white, all routes).
+- Fix: all render-path modal reads → `modal?.x` (saveItem already guarded by `if (!modal) return`). Grep-audited remaining `modal.` uses — safe (handlers only).
+- LESSON: Modal content ALWAYS renders (even visible=false) — every modal-state read in JSX MUST use `?.`. Same class of bug as 6.10 (blank tab).
+- Verify: export clean (677) → hosting deploy → push. Ctrl+F5 → /teaching.
 
 ### 6.15 Samples +6 + Help tab (2026-10-06)
 - **Teaching seeds 3+3→6+6** (fixed IDs, skip-existing): lessons +3 (カタカナ/N5 + Numbers&counters/N5 + 〜たい/N4) + assignments +3 (コンビニ katakana hunt/all + 値段 reading/N5-level + 〜たい作文/N4-level). 🌱 label updated; log text updated.
@@ -213,6 +236,24 @@ firebase deploy --only hosting
 - Bug: 🌱 seed button rendered ONLY in empty state (`list.length===0`) — after first seed (3+3), new seeds (→11+11) had no way in (skip-existing logic was fine, button unreachable).
 - Fix: staff-only 🌱 button pinned in seg row (always visible), same `seedSamples` (skip-existing — safe to tap anytime).
 - Verify: export clean → hosting deploy → push. Ctrl+F5 → 🌱 tap → +10 appear.
+
+### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
+- Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
+- Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).
+- `components/MoreScreen.js` (NEW, my/en/jp, role-aware Teacher row) + App.js (More route `/more`, tabT, ☰ icon).
+- Safety: `git tag pre-moremenu` (rollback = reset-hard + redeploy). No data/rules changes.
+- Verify: export clean (679) → hosting deploy → push. Ctrl+F5 → 6-tab bar → ☰ → all reachable.
+
+### 6.20 Home Quick Access — all menus (2026-10-06)
+- Home showed only Dictionary/Planner/Notes/Quiz (+Teacher). Added: People/Library/Class/Help cards (2-col rows) + full-width ☰ More card (hidden-tabs gateway). homeT +5 keys × 3 langs.
+- Verify: export clean → hosting deploy → push. Ctrl+F5 → Home.
+
+### 6.21 Quiz bank + scoring rules + random/pick modes (2026-10-06)
+- **Bank 159→174** (all original, 3/level): N5 n5q46-48 / N4 n4q36-38 / N3 n3q32-34 / N2 n2q26-28 / N1 n1q24-26 (new dict words cross-linked: 封筒/払う/結婚式/謙虚/曖昧/偶然/大胆/賢明/浪費/黄昏/邂逅).
+- **SCORING export** (quizData/index): pointsPerQ 1, roundSize 10, passPractice 70, passPlacement 75. Engine points-aware (`q.points||1`, results earned/total + %; banks all 1pt → same display).
+- **🎲 Random 10**: unlocked-levels mixed pool, shuffled slice 10, no best-write. **✋ Hand-pick**: bank+customs browser (search + level chips + ☑️, max 200 shown, count + clear + start shuffled).
+- Rules line in quiz menu (3-lang). Bulk more via AI prompt Schema B → Quiz 📥.
+- Verify: export clean (679) → hosting deploy → push. Ctrl+F5 → Quiz.
 
 ### 6.22 Auth reliability + approve-notify (2026-10-06)
 - **Root cause of false "Firestore Rules" error**: `resolveUserProfile` collapsed EVERY exception (incl. flaky-mobile network timeouts) into one `firestoreOk=false` → UI always blamed Rules. Rules were fine (CLI-deployed, compiled OK).
@@ -264,7 +305,7 @@ firebase deploy --only hosting
 - Verify: export clean → hosting deploy → push. Ctrl+F5 → ☰ More → あ Kana → cell နှိပ် အသံထွက်, toggle ပြောင်း, lesson ၂ ခု Teaching ထဲ ပေါ် (staff 🌱 seed).
 
 ### 6.30 書き順 stroke-order animation (Option 2) (2026-10-06)
-- **Deps**: `react-native-svg` 15.15.4 (expo install). **NEW `components/kanaStrokes.json`** (7.7KB): KanjiVG stroke paths 150 kana (あ〜ん/ア〜ン + ゃゅょ/っ + 濁音/半濁音) — script `Temp\opencode\fetch_kana_strokes.js` (jsDelivr CDN, lowercase hex; PS Invoke-WebRequest က slow/rate-limit ကြောင့် node fetch ပြောင်း).
+- **Deps**: `react-native-svg` 15.15.4 (expo install). **NEW `components/kanaStrokes.json`** (7.7KB): KanjiVG stroke paths 150 kana (あ〜ん/ア〜ン + ゃゅょ/っ + 濁音/半濁音) — script `scripts/fetch_kana_strokes.js` (jsDelivr CDN, lowercase hex; PS Invoke-WebRequest က slow/rate-limit ကြောင့် node fetch ပြောင်း; 2026-10-23 Temp ကနေ repo scripts/ ထဲ ပြောင်းပြီး).
 - **KanaScreen stroke modal**: detail card ထဲ "✍ ရေးပုံ (書き順)" button (data ရှိမှ ပေါ်) → Modal: 109×109 SVG, stroke အဆင့်ဆင့် reveal 650ms/step (အနီ = ရေးပြီး, အပြာနီလေး = လက်ရှိ, မီးခိုး = ရေးရန်), step counter, 🔊, ▶ replay (playKey effect restart), ✕ close, KanjiVG CC BY-SA attribution footer. Combo (きゃ) → main kana (き); ー → no data → button hidden.
 - Data က bundled (network 0, offline/guest OK). Bundle 2.8→2.9MB.
 - Verify: export clean → hosting deploy → push `d54fdc6`+1. Ctrl+F5 → ☰ More → あ Kana → あ ရွေး → ✍ → strokes အစဉ်လိုက်ပေါ်, ▶ replay, カタカナ toggle မှာပါ အလုပ်လုပ်.
@@ -277,50 +318,11 @@ firebase deploy --only hosting
 
 ### 6.32 Kana sticky detail + UI language sweep (2026-10-06)
 - **KanaScreen layout**: toggle + hint + selected-char detail box ကို **pinned top** (`fixedTop` View, scroll မလုပ်) — စာလုံးအကြီး အမြဲတမ်း မြင်ရ; အောက် chart (五十音 sections) ပဲ ScrollView မှာ scroll. Row 🔊 duplicate (JSX + t နှစ်ခုလုံး 🔊) ဖြုတ်.
-- **i18n audit (auto scripts `Temp\opencode\i18n_check.js` + `i18n_lang.js`)**: key parity my/en/jp = **ပြည့်စုံ (0 ပျောက်)** — blank button မရှိ. en/jp blocks ထဲ Myanmar **0**. ကျန်တာ: `my:` block ထဲ full-English chrome → ပြင်ပြီး:
+- **i18n audit (auto scripts `scripts/i18n_check.js` + `scripts/i18n_lang.js` — run from repo root: `node scripts/i18n_check.js`)**: key parity my/en/jp = **ပြည့်စုံ (0 ပျောက်)** — blank button မရှိ. en/jp blocks ထဲ Myanmar **0**. ကျန်တာ: `my:` block ထဲ full-English chrome → ပြင်ပြီး:
   - QAScreen: title/tabQuiz/tabSkills/tabBot (မေးခွန်း/ကျွမ်းကျင်မှု/ဘော့), qLevel အဆင့်, o3/o4 (မဖြည့်လည်းရ), **video/videoUrl keys ×3 langs အသစ်** (🎬 Video/Video URL static ကို t.video ပြောင်း)
   - Notes header, NotificationPanel title (အသိပေးချက်များ), TeacherScreen headerAdmin/adminTitle (User စီမံခန့်ခွဲမှု), Materials mLevel/mUrl, Community stActive/stIdle/stOffline+activeNow, More libraryD, Teaching segAssign(တာဝန်ပေးစာ)/level/fLevel/fMedia/targetLevel/fLink/impTitle, **TeachErrorBoundary Retry** (retryLabel prop + teachT.retry ×3)
   - မပြင်ရသေး: loanword-in-Myanmar (Login/Password/Chat/Import/JSON — ရည်ရွယ်ချက်ရှိ), KanjiVG attribution (copyright credit — ဘာသာမပြောင်း), AuthScreen 'Email:' label.
 - Verify: export clean → hosting deploy → push. Ctrl+F5 → Kana: detail box ပုံသေ + chart scroll; my mode: QA tab/title Myanmar; retry/video labels ဘာသာပေါ်.
-
-### 6.19 Bottom bar 10→6 + ☰ More menu (2026-10-06)
-- Problem: 10 tabs → ~36px each on 360px mobile (customer review: ပြူးပြဲ/cramped).
-- Fix: visible bar = Home/Dictionary/Quiz/Class/People/More; Planner/Notes/Library/Help/Teacher hidden via `tabBarButton: () => null` (navigate + deep-links `/planner` etc. keep working; Home quick links untouched).
-- `components/MoreScreen.js` (NEW, my/en/jp, role-aware Teacher row) + App.js (More route `/more`, tabT, ☰ icon).
-- Safety: `git tag pre-moremenu` (rollback = reset-hard + redeploy). No data/rules changes.
-- Verify: export clean (679) → hosting deploy → push. Ctrl+F5 → 6-tab bar → ☰ → all reachable.
-
-### 6.20 Home Quick Access — all menus (2026-10-06)
-- Home showed only Dictionary/Planner/Notes/Quiz (+Teacher). Added: People/Library/Class/Help cards (2-col rows) + full-width ☰ More card (hidden-tabs gateway). homeT +5 keys × 3 langs.
-- Verify: export clean → hosting deploy → push. Ctrl+F5 → Home.
-
-### 6.21 Quiz bank + scoring rules + random/pick modes (2026-10-06)
-- **Bank 159→174** (all original, 3/level): N5 n5q46-48 / N4 n4q36-38 / N3 n3q32-34 / N2 n2q26-28 / N1 n1q24-26 (new dict words cross-linked: 封筒/払う/結婚式/謙虚/曖昧/偶然/大胆/賢明/浪費/黄昏/邂逅).
-- **SCORING export** (quizData/index): pointsPerQ 1, roundSize 10, passPractice 70, passPlacement 75. Engine points-aware (`q.points||1`, results earned/total + %; banks all 1pt → same display).
-- **🎲 Random 10**: unlocked-levels mixed pool, shuffled slice 10, no best-write. **✋ Hand-pick**: bank+customs browser (search + level chips + ☑️, max 200 shown, count + clear + start shuffled).
-- Rules line in quiz menu (3-lang). Bulk more via AI prompt Schema B → Quiz 📥.
-- Verify: export clean (679) → hosting deploy → push. Ctrl+F5 → Quiz.
-
-### 6.13 Root error boundary (2026-10-06) — /teaching white-screen report
-- Symptom: `/teaching` fully white (no header/tabs) right after round-3 deploy. Static audit of TeachingScreen render path found no throw (empty lists render fine) — cause unconfirmed (possibly stale bundle or transient).
-- Fix: `RootErrorBoundary` in App.js (wraps Main) — any screen crash now shows ⚠️ + error text + 🔄 Reload instead of white screen. Next diagnosis = error-text screenshot from user.
-- Verify: export clean → hosting deploy → push. User to Ctrl+F5 and retest; also confirm other tabs OK (distinguishes route crash vs bundle-wide).
-
-### 6.14 Teaching white-screen root cause FOUND (2026-10-06)
-- Boundary caught it: `Cannot read properties of null (reading 'target')`. Cause = round-2 target-picker UI used `modal.target` / `modal.targetUids` / `modal.targetLevel` WITHOUT `?.` — Modal children mount even when `modal=null`, so first render threw immediately (whole app white, all routes).
-- Fix: all render-path modal reads → `modal?.x` (saveItem already guarded by `if (!modal) return`). Grep-audited remaining `modal.` uses — safe (handlers only).
-- LESSON: Modal content ALWAYS renders (even visible=false) — every modal-state read in JSX MUST use `?.`. Same class of bug as 6.10 (blank tab).
-- Verify: export clean (677) → hosting deploy → push. Ctrl+F5 → /teaching.
-
-### 6.11 Export/Import all 5 areas + AI bulk prompt (2026-10-06)
-- **Audit**: Dictionary ✅ (ရှိ) / Quiz customs ❌ / Library ❌ / Essays ❌ / Teaching ❌ → ၄ ခု ထပ်ဆောက်. Pattern = Dictionary flow (web download + native share + clipboard fallback; paste + file pick).
-- **Quiz customs** (QAScreen ✏️ section): 📥📤 buttons + import modal; validate {question, options≥2, correctIndex in range, level}; dedupe question+options; customs auto-merge into level pools (`levelPool`) → import-တာနဲ့ quiz မှာ တန်းပေါ်.
-- **Library** (MaterialsScreen seg toolbar): 📥 staff-only (validate https, dupe title+url, addDoc) + 📤 everyone; seedBtn count 24→29 corrected.
-- **Essays custom** (personal AsyncStorage `@japanese_essays_custom_v1`): reader merges `[...ESSAYS, ...customEssays]` (same schema → TTS reader auto-works); 📥 (validate lines[].ja) + 📤 everyone.
-- **Teaching** (Class header): 📥 staff-only (`{lessons, assignments}`, same-id skip, level/target sanitize) + 📤 everyone; activity-logged.
-- **`AI_CONTENT_PROMPT.md`** (NEW, committable): copy-paste prompt (EN+MM) + 5 schemas with examples + import paths + copyright rules (no copied lyrics/exams/textbooks; Tadoku link-only; OpenJLPT level-refs). Owner flow: other-AI JSON → 📥 import → quick check (kana readings? original MM? levels?) → done. No code deploy needed for bulk adds.
-- **Content top-up (bounded)**: dict +10 (N3: 辛抱/率直/快適/退屈/謙遜 + N2: 賢明/愚か/大胆/臆病/頑丈; 切実 dropped — dupe). Dict total 1331→1341, dupes 0.
-- Verify: export clean → hosting deploy → push. Ctrl+F5.
 
 ## 7. Lesson Learned (နောင် AI/dev သတိထားရန်)
 
@@ -335,11 +337,10 @@ firebase deploy --only hosting
 
 - [x] **P0 — Secret cleanup (local, 2026-10-05):** local Copy files ဖျက်ပြီးပြီ. history purge ပြီးပြီ (2026-10-05, `git filter-branch` tree-filter + `push --force`; verify `git log --all -S` empty ✅; safety bundle: local Temp `pre-purge-backup.bundle`) — တကယ့် credential မဟုတ် (client-side အတုသက်သက်) ပေမယ့် တခြားနေရာ (Gmail etc.) မှာ **ထပ်သုံးနေရင် အခု ချက်ချင်း ပြောင်း** + history purge စဉ်းစား (`git filter-repo` + force-push). Firestore `users` ထဲ password field ကျန်ရင် ရှင်း.
 - [ ] **P0 — Rules publish verify:** Console Rules = `firestore.rules` ဟုတ်/မဟုတ် တိုက်စစ်.
-- [ ] P1 — README `Google Drive Backup` ကြေညာချက်: code မရှိ → ဖြုတ် သို့မဟုတ် implement (Drive API + export/import JSON).
-- [x] P1 — Dictionary data (2026-10-05): ~800 trilingual + level filter + import/export + reading/pos edit. ကျန်: words ဆက်တိုး (OpenJLPT bulk import via app Import), N3-N1 Myanmar refine (teacher review).
-- [ ] P1 — Home progress အစစ် (planner completion % တွက်; အခု 80→85% အတု).
+- [x] P1 — Home progress REAL (2026-10-06, §Home progress line + Quick Access round): planner completion % from AsyncStorage, mount/tab-focus/pull-refresh; 0% when empty (was fake 80→85% hardcode).
+- [x] P1 — Bottom tab titles i18n (tabT my/en/jp in App.js, incl Kana labels + hidden-tab navigate).
 - [ ] P2 — Tests (quiz scoring, resolveUserProfile, role guard) + EAS build (Android package `com.mksedu.japanesestudyplanner` ready) + `expo-status-bar` plugin cleanup note (app.json).
-- [ ] P2 — Bottom tab titles i18n, QA question bank Firestore sync (ယခု local only), teacher question moderation flow.
+- [ ] P2 — QA question bank Firestore sync (ယခု local only), teacher question moderation flow.
 - [ ] P3 — Deps update (Expo 57→latest), `requirements.txt` (Python, irrelevant) ဖြုတ်/ပြင်.
 
 ## 9. Common Recipes
