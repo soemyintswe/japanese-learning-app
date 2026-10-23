@@ -1,10 +1,10 @@
 // components/KanaScreen.js — あ 五十音表 (Hiragana/Katakana) + tap-to-hear TTS
 // Local data only (guest/offline OK). Katakana = hiragana +0x60 code conversion.
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, PanResponder } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle, Line as SvgLine, Text as SvgText } from 'react-native-svg';
 import AppHeader from './AppHeader';
 import { useLanguage } from '../src/LanguageContext';
 import STROKES from './kanaStrokes.json';
@@ -17,6 +17,9 @@ const tX = {
     tap: 'စာလုံး ရွေးပြီး နှိပ်ပါ', speakAll: '🔊 တစ်ကြောင်းလုံး နားထောင်',
     stroke: '✍ ရေးပုံ (書き順)', replay: '▶ ပြန်ကြည့်', strokes: 'အဆင့်',
     strokeHint: 'လက်နဲ့ လိုက်ရေးကြည့်ပါ — အနီရောင် = ရေးပြီး, မီးခိုးရောင် = ရေးရန်',
+    legend: '① = စရာ (ဂဏန်း = စဉ်လိုက်) · ● = ဆုံးရာ · မြား = ဆွဲရမည့် ဘက်',
+    practice: '✍ လေ့ကျင့်', practiceOn: 'စာကွက်ပေါ် လက်နဲ့ (cursor နဲ့) အဖြူပေါ် လိုက်ဆွဲပါ',
+    clear: '🧹 ဖျက်',
     attrib: 'Stroke data: KanjiVG (CC BY-SA 3.0) — kanjivg.tagaini.net',
   },
   en: {
@@ -26,6 +29,9 @@ const tX = {
     tap: 'Select a kana', speakAll: '🔊 Hear whole row',
     stroke: '✍ Stroke order', replay: '▶ Replay', strokes: 'step',
     strokeHint: 'Trace along — red = drawn, grey = next',
+    legend: '① = start (number = order) · ● = end · arrow = direction',
+    practice: '✍ Practice', practiceOn: 'Trace over the box with finger or mouse',
+    clear: '🧹 Clear',
     attrib: 'Stroke data: KanjiVG (CC BY-SA 3.0) — kanjivg.tagaini.net',
   },
   jp: {
@@ -35,6 +41,9 @@ const tX = {
     tap: '文字を選んでタップ', speakAll: '🔊 行をまとめて聞く',
     stroke: '✍ 書き順', replay: '▶ やり直し', strokes: 'ステップ',
     strokeHint: '赤=書いた stroke, 灰=次の stroke',
+    legend: '①=始点(数字=順番) · ●=終点 · 矢印=向き',
+    practice: '✍ 練習', practiceOn: '枠の上で指/マウスでなぞる',
+    clear: '🧹 消す',
     attrib: 'Stroke data: KanjiVG (CC BY-SA 3.0) — kanjivg.tagaini.net',
   },
 };
@@ -87,6 +96,34 @@ const speak = (word) => {
 // きゃ (combo) → main kana き; ー etc → null (button hidden)
 const strokesFor = (ch) => (!ch ? null : STROKES[ch] || STROKES[ch[0]] || null);
 
+// KanjiVG path (M/c/C/L... absolute+relative) → {sx,sy start, ex,ey end, ux,uy unit direction at start}
+const pathInfo = (d) => {
+  const toks = d.match(/[MmLlHhVvCcQqSsTtAaZz]|-?[\d.]+(?:e-?\d+)?/g) || [];
+  let i = 0, x = 0, y = 0, st = null, cmd = null, lastM = null;
+  let d0x = 0, d0y = 0, gotDir = false;
+  const n = () => { const v = parseFloat(toks[i]); i += 1; return v || 0; };
+  while (i < toks.length) {
+    if (/[A-Za-z]/.test(toks[i])) cmd = toks[i]; i += 1;
+    if (!cmd) { i += 1; continue; }
+    const rel = cmd === cmd.toLowerCase() && cmd !== 'Z' && cmd !== 'z';
+    const C = cmd.toUpperCase();
+    if (C === 'M') { const nx = n(), ny = n(); x = rel ? x + nx : nx; y = rel ? y + ny : ny; if (!st) st = { x, y }; lastM = { x, y }; }
+    else if (C === 'L') { const nx = n(), ny = n(); x = rel ? x + nx : nx; y = rel ? y + ny : ny; }
+    else if (C === 'H') { const nx = n(); x = rel ? x + nx : nx; }
+    else if (C === 'V') { const ny = n(); y = rel ? y + ny : ny; }
+    else if (C === 'C') { const a = n(), b = n(), c = n(), e = n(), f = n(), g = n(); if (!gotDir) { const c1x = rel ? x + a : a, c1y = rel ? y + b : b; d0x = c1x - x; d0y = c1y - y; gotDir = true; } x = rel ? x + f : f; y = rel ? y + g : g; }
+    else if (C === 'Q') { const a = n(), b = n(), c = n(), e = n(); if (!gotDir) { const c1x = rel ? x + a : a, c1y = rel ? y + b : b; d0x = c1x - x; d0y = c1y - y; gotDir = true; } x = rel ? x + c : c; y = rel ? y + e : e; }
+    else if (C === 'A') { n(); n(); n(); n(); n(); const nx = n(), ny = n(); x = rel ? x + nx : nx; y = rel ? y + ny : ny; }
+    else if (C === 'Z') { if (lastM) { x = lastM.x; y = lastM.y; } }
+    else { i += 1; }
+  }
+  const s = st || { x: 0, y: 0 };
+  if (!gotDir || (Math.abs(d0x) < 0.01 && Math.abs(d0y) < 0.01)) { d0x = x - s.x; d0y = y - s.y; }
+  if (Math.abs(d0x) < 0.01 && Math.abs(d0y) < 0.01) { d0x = 1; d0y = 0; }
+  const len = Math.hypot(d0x, d0y) || 1;
+  return { sx: s.x, sy: s.y, ex: x, ey: y, ux: d0x / len, uy: d0y / len };
+};
+
 export default function KanaScreen({ user, onLogout }) {
   const { lang } = useLanguage();
   const t = tX[lang] || tX.my;
@@ -95,6 +132,9 @@ export default function KanaScreen({ user, onLogout }) {
   const [strokeOpen, setStrokeOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [playKey, setPlayKey] = useState(0);
+  const [practice, setPractice] = useState(false);
+  const [userStrokes, setUserStrokes] = useState([]); // [[{x,y}...]...] viewBox coords
+  const curStroke = useRef(null);
 
   const strokes = strokesFor(sel?.k || '');
   const total = strokes ? strokes.length : 0;
@@ -112,6 +152,51 @@ export default function KanaScreen({ user, onLogout }) {
     }, 650);
     return () => clearInterval(iv);
   }, [strokeOpen, sel, total, playKey]);
+
+  // close/clear practice when modal closes or kana changes
+  useEffect(() => {
+    if (!strokeOpen) { setPractice(false); setUserStrokes([]); curStroke.current = null; }
+  }, [strokeOpen, sel]);
+
+  // finger/mouse tracing layer (only active when practice ON) — svg viewBox = 109 units, render box = 230px
+  const pan = useMemo(() => {
+    const toVB = (e) => {
+      const { locationX: lx, locationY: ly } = e.nativeEvent;
+      return { x: (lx * 109) / 230, y: (ly * 109) / 230 };
+    };
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => practice,
+      onMoveShouldSetPanResponder: () => practice,
+      onPanResponderGrant: (e) => {
+        if (!practice) return;
+        curStroke.current = [toVB(e)];
+        setUserStrokes((s) => [...s]);
+      },
+      onPanResponderMove: (e) => {
+        if (!practice || !curStroke.current) return;
+        const p = toVB(e);
+        const last = curStroke.current[curStroke.current.length - 1];
+        if (last && Math.abs(last.x - p.x) + Math.abs(last.y - p.y) < 0.4) return;
+        curStroke.current.push(p);
+        setUserStrokes((s) => [...s]);
+      },
+      onPanResponderRelease: () => {
+        const c = curStroke.current;
+        curStroke.current = null;
+        if (c && c.length > 1) setUserStrokes((s) => [...s, c]);
+        else setUserStrokes((s) => [...s]);
+      },
+      onPanResponderTerminate: () => {
+        const c = curStroke.current;
+        curStroke.current = null;
+        if (c && c.length > 1) setUserStrokes((s) => [...s, c]);
+        else setUserStrokes((s) => [...s]);
+      },
+    });
+  }, [practice]);
+
+  const allUserStrokes = () => (curStroke.current ? [...userStrokes, curStroke.current] : userStrokes);
+  const clearUser = () => { curStroke.current = null; setUserStrokes([]); };
 
   const show = (ch) => (kata ? toKata(ch) : ch);
   const pick = (k, r, mm) => { const it = { k: show(k), r, mm }; setSel(it); speak(it.k); };
@@ -224,13 +309,14 @@ export default function KanaScreen({ user, onLogout }) {
         </Section>
       </ScrollView>
 
-      {/* 書き順 stroke-order modal — KanjiVG data, sequential reveal */}
+      {/* 書き順 stroke-order modal — KanjiVG data, sequential reveal + start/end markers + practice trace */}
       <Modal visible={strokeOpen} transparent animationType="fade" onRequestClose={() => setStrokeOpen(false)}>
         <View style={styles.modalBack}>
           <View style={styles.modalCard}>
             <Text style={styles.modalKana}>{sel ? sel.k : ''}</Text>
             <View style={styles.svgBox}>
-              <Svg viewBox="0 0 109 109" width={230} height={230}>
+              <View style={styles.canvasBox} {...pan.panHandlers}>
+                <Svg viewBox="0 0 109 109" width={230} height={230}>
                 {(strokes || []).map((d, i) => (
                   <Path
                     key={i}
@@ -242,10 +328,53 @@ export default function KanaScreen({ user, onLogout }) {
                     strokeLinejoin="round"
                   />
                 ))}
+                {/* start(① green) + end(● red) markers + direction arrow per stroke */}
+                {(strokes || []).map((d, i) => {
+                  const info = pathInfo(d);
+                  const ax = info.sx + info.ux * 16;
+                  const ay = info.sy + info.uy * 16;
+                  const shown = i < step; // marker appears when stroke revealed
+                  if (!shown) return null;
+                  const hot = i === step - 1;
+                  return (
+                    <React.Fragment key={`m${i}`}>
+                      <SvgLine
+                        x1={info.sx + info.ux * 5}
+                        y1={info.sy + info.uy * 5}
+                        x2={ax}
+                        y2={ay}
+                        stroke={hot ? '#1976D2' : '#90CAF9'}
+                        strokeWidth={hot ? 2 : 1.5}
+                      />
+                      <Path
+                        d={`M${ax},${ay} L${ax - info.ux * 5 + info.uy * 3},${ay - info.uy * 5 - info.ux * 3} M${ax},${ay} L${ax - info.ux * 5 - info.uy * 3},${ay - info.uy * 5 + info.ux * 3}`}
+                        stroke={hot ? '#1976D2' : '#90CAF9'}
+                        strokeWidth={hot ? 2 : 1.5}
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      <Circle cx={info.sx} cy={info.sy} r={5.5} fill="#2E7D32" />
+                      <SvgText x={info.sx} y={info.sy + 2.6} fontSize={7} fill="#FFF" textAnchor="middle" fontWeight="bold">
+                        {i + 1}
+                      </SvgText>
+                      <Circle cx={info.ex} cy={info.ey} r={3.5} fill="#D32F2F" stroke="#FFF" strokeWidth={1} />
+                    </React.Fragment>
+                  );
+                })}
+                {/* user practice trace (blue) */}
+                {allUserStrokes().map((pts, i) => {
+                  if (!pts || pts.length < 2) return null;
+                  const d = pts.map((p, j) => `${j === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+                  return (
+                    <Path key={`u${i}`} d={d} stroke="#1565C0" strokeWidth={4} opacity={0.75} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  );
+                })}
               </Svg>
+              </View>
             </View>
             <Text style={styles.stepText}>{t.strokes} {step}/{total}</Text>
-            <Text style={styles.strokeHint}>{t.strokeHint}</Text>
+            <Text style={styles.legend}>{t.legend}</Text>
+            <Text style={styles.strokeHint}>{practice ? t.practiceOn : t.strokeHint}</Text>
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.speakBtn} onPress={() => speak(sel ? sel.k : '')}>
                 <Text style={styles.speakText}>🔊</Text>
@@ -256,10 +385,21 @@ export default function KanaScreen({ user, onLogout }) {
               >
                 <Text style={styles.replayText}>{t.replay}</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.practiceBtn, practice && styles.practiceBtnOn]}
+                onPress={() => { setPractice((p) => !p); clearUser(); }}
+              >
+                <Text style={[styles.practiceText, practice && styles.practiceTextOn]}>{t.practice}</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.closeBtn} onPress={() => setStrokeOpen(false)}>
                 <Text style={styles.closeText}>✕</Text>
               </TouchableOpacity>
             </View>
+            {(userStrokes.length > 0 || curStroke.current) && (
+              <TouchableOpacity style={styles.clearBtn} onPress={clearUser}>
+                <Text style={styles.clearText}>{t.clear}</Text>
+              </TouchableOpacity>
+            )}
             <Text style={styles.attrib}>{t.attrib}</Text>
           </View>
         </View>
@@ -301,9 +441,17 @@ const styles = StyleSheet.create({
   modalCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, alignItems: 'center', width: '100%', maxWidth: 360 },
   modalKana: { fontSize: 44, fontWeight: 'bold', color: '#333', marginBottom: 8 },
   svgBox: { backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: '#EEE', borderRadius: 10, padding: 6 },
+  canvasBox: { width: 230, height: 230 },
+  legend: { fontSize: 10, color: '#555', marginTop: 6, textAlign: 'center' },
+  practiceBtn: { backgroundColor: '#E3F2FD', borderWidth: 1, borderColor: '#1976D2', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginLeft: 8 },
+  practiceBtnOn: { backgroundColor: '#1976D2' },
+  practiceText: { color: '#1976D2', fontWeight: 'bold', fontSize: 13 },
+  practiceTextOn: { color: '#FFF' },
+  clearBtn: { marginTop: 8, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#BDBDBD', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
+  clearText: { color: '#555', fontWeight: 'bold', fontSize: 12 },
   stepText: { fontSize: 14, fontWeight: 'bold', color: '#D32F2F', marginTop: 8 },
   strokeHint: { fontSize: 11, color: '#777', marginTop: 4, textAlign: 'center' },
-  modalBtns: { flexDirection: 'row', marginTop: 12, alignItems: 'center' },
+  modalBtns: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 12, alignItems: 'center' },
   replayBtn: { backgroundColor: '#1976D2', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, marginLeft: 8 },
   replayText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
   closeBtn: { backgroundColor: '#EEE', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginLeft: 8 },

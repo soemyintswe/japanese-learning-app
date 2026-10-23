@@ -13,7 +13,8 @@ async function one(c) {
   const strokes = [];
   for (const m of t.matchAll(/<path\b[^>]*>/g)) {
     if (/id="kvg:[0-9A-Fa-f]+-s\d+"/.test(m[0])) {
-      const d = m[0].match(/d="([^"]+)"/);
+      // \sd= — NOT bare d= (that matches inside id="kvg:..." and saves IDs instead of paths!)
+      const d = m[0].match(/\sd="([^"]+)"/);
       if (d) strokes.push(d[1]);
     }
   }
