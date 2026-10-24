@@ -8,6 +8,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './src/firebase';
 import { resolveUserProfile, classifyResolveError } from './src/session';
 import { logActivity } from './src/activity';
+import { recordGuestSession } from './src/guestSessions';
 import { LanguageProvider, useLanguage } from './src/LanguageContext';
 import { usePresence, markActiveNow } from './src/presence';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -277,6 +278,7 @@ function Main() {
         if (g === '1') {
           guestRef.current = true;
           setUser(GUEST_USER);
+          recordGuestSession();
         }
       } catch (e) {}
     })();
@@ -353,6 +355,7 @@ function Main() {
   // 🎮 AuthScreen "Guest" ခလုတ် — Firebase မချိတ်ဘဲ local features ပဲ
   const handleGuest = async () => {
     try { await AsyncStorage.setItem(GUEST_KEY, '1'); } catch (e) {}
+    recordGuestSession();
     guestRef.current = true;
     setNotice('');
     setUser(GUEST_USER);

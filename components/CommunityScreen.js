@@ -13,6 +13,7 @@ import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
 import { presenceOf } from '../src/presence';
 import { useDriveBackup, driveConfigured } from '../src/driveBackup';
+import { subscribeGuestCount } from '../src/guestSessions';
 
 // Safety net: child crash (e.g. OAuth misconfig) must never blank the whole tab
 class SectionErrorBoundary extends React.Component {
@@ -151,7 +152,7 @@ const cT = {
     edus: { '': '—', 'high-school': 'အထက်တန်း', bachelor: 'ဘွဲ့', master: 'မဟာဘွဲ့', phd: 'ပါရဂူဘွဲ့', other: 'အခြား' },
     photo: 'Profile ပုံ:', pickPhoto: '📷 ပုံရွေးမယ်', uploading: 'တင်နေပါတယ်...',
     rPresence: 'အခြေအနေ', rRole: 'Role', rGender: 'ကျား/မ', rAge: 'အသက်အရွယ်', rEdu: 'ပညာအရည်အချင်း',
-    rJlpt: 'ဂျပန် (ကိုယ်ပြော)', rTested: 'ဂျပန် (စစ်ပြီး)', ageNA: 'မသိ',
+    rJlpt: 'ဂျပန် (ကိုယ်ပြော)', rTested: 'ဂျပန် (စစ်ပြီး)', rGuests: 'Guest အသုံးပြုသူ စုစုပေါင်း', ageNA: 'မသိ',
     driveTitle: '☁️ Google Drive Backup (ကိုယ့် Drive)',
     driveHelp: 'ကိုယ့် Drive appDataFolder (hidden) ထဲ သိမ်းမယ် — device ပြောင်းရင် Restore ပြန်လုပ်',
     driveSetup: 'Admin setup လိုသေးတယ်: Google Cloud OAuth Client ID (.env) + tester email (HANDOVER ကြည့်)',
@@ -197,7 +198,7 @@ const cT = {
     edus: { '': '—', 'high-school': 'High school', bachelor: "Bachelor's", master: "Master's", phd: 'PhD', other: 'Other' },
     photo: 'Photo:', pickPhoto: '📷 Pick photo', uploading: 'Uploading...',
     rPresence: 'Status', rRole: 'Role', rGender: 'Gender', rAge: 'Age', rEdu: 'Education',
-    rJlpt: 'Japanese (self)', rTested: 'Japanese (tested)', ageNA: 'Unknown',
+    rJlpt: 'Japanese (self)', rTested: 'Japanese (tested)', rGuests: 'Guest users (unique devices)', ageNA: 'Unknown',
     driveTitle: '☁️ Google Drive Backup (my Drive)',
     driveHelp: 'Saves to your Drive appDataFolder (hidden) — restore on new device',
     driveSetup: 'Admin setup needed: Google Cloud OAuth Client ID (.env) + tester email (see HANDOVER)',
@@ -243,7 +244,7 @@ const cT = {
     edus: { '': '—', 'high-school': '高校', bachelor: '学士', master: '修士', phd: '博士', other: 'その他' },
     photo: '写真:', pickPhoto: '📷 選択', uploading: '送信中...',
     rPresence: '状態', rRole: 'ロール', rGender: '性別', rAge: '年齢', rEdu: '学歴',
-    rJlpt: '日本語（自己）', rTested: '日本語（測定）', ageNA: '不明',
+    rJlpt: '日本語（自己）', rTested: '日本語（測定）', rGuests: 'ゲスト利用者（端末ごと）', ageNA: '不明',
     driveTitle: '☁️ Googleドライブ backup',
     driveHelp: 'DriveのappDataFolder（非表示）に保存 — 機種変更時に復元',
     driveSetup: '管理者設定が必要: OAuth Client ID (.env)',
@@ -311,6 +312,7 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
     })();
   }, [route && route.params && route.params.openChatId]);
   const [users, setUsers] = useState([]);
+  const [guestCount, setGuestCount] = useState(0);
   const [q, setQ] = useState('');
   const [now, setNow] = useState(Date.now());
 
@@ -364,6 +366,12 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
     const timer = setInterval(fetchUsers, 5 * 60 * 1000);
     return () => clearInterval(timer);
   }, [user?.uid]);
+
+  // Guest sessions are device-scoped, anonymous, and read only while admin views Reports.
+  useEffect(() => {
+    if (!isAdmin || seg !== 'reports') return undefined;
+    return subscribeGuestCount(setGuestCount, () => setGuestCount(0));
+  }, [isAdmin, seg]);
 
   // my chats realtime
   useEffect(() => {
@@ -1008,6 +1016,10 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
           <Text style={{ color: '#FFF', fontSize: 13 }}>{t.activeNow}</Text>
           <Text style={{ color: '#FFF', fontSize: 32, fontWeight: 'bold' }}>{counts.active}</Text>
           <Text style={{ color: '#FFCDD2', fontSize: 11 }}>{t.totalUsers}: {users.length}</Text>
+        </View>
+        <View style={{ backgroundColor: '#FFF3E0', borderRadius: 10, padding: 14, marginBottom: 12, alignItems: 'center' }}>
+          <Text style={{ color: '#E65100', fontSize: 12 }}>{t.rGuests}</Text>
+          <Text style={{ color: '#E65100', fontSize: 28, fontWeight: 'bold' }}>{guestCount}</Text>
         </View>
         {blocks.map(([title, m]) => {
           const keys = Object.keys(m);

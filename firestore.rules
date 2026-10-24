@@ -65,6 +65,16 @@ service cloud.firestore {
       );
     }
 
+    // Device-scoped guest counts for the admin Community report. No user data is stored.
+    // Anonymous clients may only create/update a server-timestamp field; only admins can read.
+    match /guestSessions/{sessionId} {
+      allow get, list: if isAdminRole();
+      allow create, update: if request.auth == null
+        && request.resource.data.keys().hasOnly(['lastSeenAt'])
+        && request.resource.data.lastSeenAt is timestamp;
+      allow delete: if isAdminRole();
+    }
+
     // Banned/deleted accounts — true delete without Admin SDK:
     // delete flow writes banned/{uid}; login checks it first and refuses.
     // Email re-register with same address is ALSO blocked (email check).
