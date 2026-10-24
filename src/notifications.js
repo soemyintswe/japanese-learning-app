@@ -244,8 +244,17 @@ export function NotificationProvider({ user, children }) {
     return a ? a.title : id;
   };
 
-  const count = unread.length + (isAdmin ? pending.length : 0)
-    + newNotices.length + newAssigns.length + newSubs.length + graded.length + dueSoon.length;
+  // Keep the badge and panel on the same role-filtered set of fetched items.
+  const categoryCounts = {
+    chats: unread.length,
+    pending: isAdmin ? pending.length : 0,
+    notices: newNotices.length,
+    teaching: newAssigns.length,
+    submissions: isStaff ? newSubs.length : 0,
+    graded: !isStaff ? graded.length : 0,
+    due: !isStaff ? dueSoon.length : 0,
+  };
+  const count = Object.values(categoryCounts).reduce((sum, n) => sum + n, 0);
 
   // web tab title badge
   useEffect(() => {
@@ -299,7 +308,7 @@ export function NotificationProvider({ user, children }) {
   return (
     <Ctx.Provider
       value={{
-        unread, pending, isAdmin, isStaff, count, panelOpen, setPanelOpen,
+        unread, pending, isAdmin, isStaff, count, categoryCounts, panelOpen, setPanelOpen,
         openChat, openTeaching, markChatRead, approveUser, disableUser,
         newNotices, newAssigns, newSubs, graded, dueSoon, assignTitle,
       }}

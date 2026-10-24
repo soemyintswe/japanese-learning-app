@@ -331,6 +331,14 @@ firebase deploy --only hosting
 - **i18n**: legend/practice/practiceOn/clear keys ×3 langs; i18n_check parity ✅ (0 missing). Hint line = practice ဖွင့်ရင် practiceOn hint, ပိတ်ရင် strokeHint.
 - Verify: export clean (2.9MB) → `pathInfo` node test 437/437 → hosting deploy → push. Ctrl+F5 → Kana → あ → ✍ → strokes အစဉ်ပေါ် + စ/ဆုံး marker + arrow; ✋ နဲ့ လိုက်ဆွဲ → blue trace; 🧹 clear.
 
+### 6.34 Kana stroke UI touch/text polish + notification badge parity (2026-10-25)
+- **Mobile canvas zoom**: canvas `touchAction: 'pinch-zoom'` allows standard two-finger browser zoom while practice drawing continues through the single-finger PanResponder.
+- **Stroke start labels**: remove green circle backgrounds; render only readable blue text numbers, offset ~15px from the starting point so labels do not cover the path.
+- **Text selection**: disable selection on the large reference kana and stroke step, legend, hint, and attribution text to prevent highlighting during drawing.
+- **Notification counts**: derive badge count and modal category counts from the same role-filtered fetched category counts. Staff submissions and student graded/due categories follow the same visibility rules as the panel.
+- **Release**: `npx expo export --platform web --output-dir dist` completed (2.9MB web bundle); Firebase Hosting deployed to `https://japanese-mksedu.web.app`. GitHub push: commit `bd593c6` (`Fix kana stroke UI and notification counts`) pushed to `origin/main`.
+- Verify: `git diff --check` clean; refresh the site (Ctrl+F5) and check Kana → stroke modal, pinch zoom on mobile, and admin notification badge/category totals.
+
 ## 7. Lesson Learned (နောင် AI/dev သတိထားရန်)
 
 1. `initializeAuth` on **web** MUST include `popupRedirectResolver: browserPopupRedirectResolver` — မပါရင် popup/redirect = `auth/argument-error` (အစကတည်းက မရခဲ့တာ).

@@ -40,7 +40,14 @@ export default function NotificationPanel() {
 
   if (!notif) return null;
   const { unread, pending, isAdmin, isStaff, panelOpen, setPanelOpen, openChat, openTeaching,
-    approveUser, disableUser, newNotices, newAssigns, newSubs, graded, dueSoon, assignTitle } = notif;
+    approveUser, disableUser, newNotices, newAssigns, newSubs, graded, dueSoon, assignTitle,
+    categoryCounts } = notif;
+  const counts = categoryCounts || {
+    chats: unread.length, pending: isAdmin ? pending.length : 0,
+    notices: newNotices.length, teaching: newAssigns.length,
+    submissions: isStaff ? newSubs.length : 0,
+    graded: !isStaff ? graded.length : 0, due: !isStaff ? dueSoon.length : 0,
+  };
   const allEmpty = unread.length === 0 && pending.length === 0
     && newNotices.length === 0 && newAssigns.length === 0
     && newSubs.length === 0 && graded.length === 0 && dueSoon.length === 0;
@@ -66,7 +73,7 @@ export default function NotificationPanel() {
           </View>
 
           <ScrollView style={{ maxHeight: 420 }}>
-            <Text style={styles.secTitle}>{t.chats} ({unread.length})</Text>
+            <Text style={styles.secTitle}>{t.chats} ({counts.chats})</Text>
             {unread.length === 0 && <Text style={styles.empty}>{t.emptyChats}</Text>}
             {unread.map((c) => (
               <TouchableOpacity key={c.id} style={styles.row} onPress={() => openChat(c.id)}>
@@ -80,7 +87,7 @@ export default function NotificationPanel() {
 
             {isAdmin && (
               <>
-                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.pending} ({pending.length})</Text>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.pending} ({counts.pending})</Text>
                 {pending.length === 0 && <Text style={styles.empty}>{t.emptyChats}</Text>}
                 {pending.map((u) => (
                   <View key={u.id} style={styles.row}>
@@ -131,7 +138,7 @@ export default function NotificationPanel() {
 
             {newNotices.length > 0 && (
               <>
-                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.notices} ({newNotices.length})</Text>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.notices} ({counts.notices})</Text>
                 {newNotices.map((n) => (
                   <View key={n.id} style={styles.row}>
                     <View style={{ flex: 1 }}>
@@ -145,7 +152,7 @@ export default function NotificationPanel() {
 
             {newAssigns.length > 0 && (
               <>
-                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.teaching} ({newAssigns.length})</Text>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.teaching} ({counts.teaching})</Text>
                 {newAssigns.map((a) => (
                   <TouchableOpacity key={a.id} style={styles.row} onPress={openTeaching}>
                     <View style={{ flex: 1 }}>
@@ -160,7 +167,7 @@ export default function NotificationPanel() {
 
             {isStaff && newSubs.length > 0 && (
               <>
-                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.subs} ({newSubs.length})</Text>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.subs} ({counts.submissions})</Text>
                 {newSubs.map((s) => (
                   <TouchableOpacity key={s.id} style={styles.row} onPress={openTeaching}>
                     <View style={{ flex: 1 }}>
@@ -175,7 +182,7 @@ export default function NotificationPanel() {
 
             {!isStaff && graded.length > 0 && (
               <>
-                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.graded} ({graded.length})</Text>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.graded} ({counts.graded})</Text>
                 {graded.map((g) => (
                   <TouchableOpacity key={g.id} style={styles.row} onPress={openTeaching}>
                     <View style={{ flex: 1 }}>
@@ -190,7 +197,7 @@ export default function NotificationPanel() {
 
             {!isStaff && dueSoon.length > 0 && (
               <>
-                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.due} ({dueSoon.length})</Text>
+                <Text style={[styles.secTitle, { marginTop: 12 }]}>{t.due} ({counts.due})</Text>
                 {dueSoon.map((d) => (
                   <TouchableOpacity key={'due' + d.id} style={styles.row} onPress={openTeaching}>
                     <View style={{ flex: 1 }}>

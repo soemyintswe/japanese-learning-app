@@ -316,7 +316,7 @@ export default function KanaScreen({ user, onLogout }) {
       <Modal visible={strokeOpen} transparent animationType="fade" onRequestClose={() => setStrokeOpen(false)}>
         <View style={styles.modalBack}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalKana}>{sel ? sel.k : ''}</Text>
+            <Text style={[styles.modalKana, { userSelect: 'none', WebkitUserSelect: 'none', msUserSelect: 'none' }]} pointerEvents="none">{sel ? sel.k : ''}</Text>
             <View style={styles.svgBox}>
               <View style={styles.canvasBox} {...pan.panHandlers}>
                 <Svg viewBox="0 0 109 109" width={230} height={230}>
@@ -341,12 +341,11 @@ export default function KanaScreen({ user, onLogout }) {
                   const hot = i === step - 1;
                   return (
                     <G key={`m${i}`} pointerEvents="none">
-                      <Circle cx={info.sx - 7} cy={info.sy - 7} r={5.5} fill="#2E7D32" pointerEvents="none" />
                       <SvgText
                         x={info.sx - 7}
-                        y={info.sy - 4.4}
+                        y={info.sy - 7}
                         fontSize={7}
-                        fill="#FFF"
+                        fill="#1565C0"
                         textAnchor="middle"
                         fontWeight="bold"
                         pointerEvents="none"
@@ -436,7 +435,7 @@ const styles = StyleSheet.create({
   strokeBtnText: { color: '#E65100', fontWeight: 'bold', fontSize: 13 },
   modalBack: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 16 },
   modalCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, alignItems: 'center', width: '100%', maxWidth: 360 },
-  modalKana: { fontSize: 44, fontWeight: 'bold', color: '#333', marginBottom: 8 },
+  modalKana: { fontSize: 44, fontWeight: 'bold', color: '#333', marginBottom: 8, userSelect: 'none', WebkitUserSelect: 'none' },
   svgBox: { backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: '#EEE', borderRadius: 10, padding: 6 },
   canvasBox: { width: 230, height: 230, touchAction: 'pinch-zoom' },
   legend: { fontSize: 10, color: '#555', marginTop: 6, textAlign: 'center', userSelect: 'none', WebkitUserSelect: 'none' },
