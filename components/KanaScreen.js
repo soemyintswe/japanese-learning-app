@@ -345,6 +345,7 @@ export default function KanaScreen({ user, onLogout }) {
                         y2={ay}
                         stroke={hot ? '#1976D2' : '#90CAF9'}
                         strokeWidth={hot ? 2 : 1.5}
+                        pointerEvents="none"
                       />
                       <Path
                         d={`M${ax},${ay} L${ax - info.ux * 5 + info.uy * 3},${ay - info.uy * 5 - info.ux * 3} M${ax},${ay} L${ax - info.ux * 5 - info.uy * 3},${ay - info.uy * 5 + info.ux * 3}`}
@@ -352,12 +353,21 @@ export default function KanaScreen({ user, onLogout }) {
                         strokeWidth={hot ? 2 : 1.5}
                         fill="none"
                         strokeLinecap="round"
+                        pointerEvents="none"
                       />
-                      <Circle cx={info.sx} cy={info.sy} r={5.5} fill="#2E7D32" />
-                      <SvgText x={info.sx} y={info.sy + 2.6} fontSize={7} fill="#FFF" textAnchor="middle" fontWeight="bold">
+                      <Circle cx={info.sx} cy={info.sy} r={5.5} fill="#2E7D32" pointerEvents="none" />
+                      <SvgText
+                        x={info.sx}
+                        y={info.sy + 2.6}
+                        fontSize={7}
+                        fill="#FFF"
+                        textAnchor="middle"
+                        fontWeight="bold"
+                        pointerEvents="none"
+                      >
                         {i + 1}
                       </SvgText>
-                      <Circle cx={info.ex} cy={info.ey} r={3.5} fill="#D32F2F" stroke="#FFF" strokeWidth={1} />
+                      <Circle cx={info.ex} cy={info.ey} r={3.5} fill="#D32F2F" stroke="#FFF" strokeWidth={1} pointerEvents="none" />
                     </React.Fragment>
                   );
                 })}
