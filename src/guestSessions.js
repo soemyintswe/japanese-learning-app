@@ -1,5 +1,5 @@
 // Anonymous, device-scoped guest counts for the admin Community report.
-import { collection, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from './firebase';
 
@@ -18,9 +18,10 @@ async function getGuestId() {
 export async function recordGuestSession() {
   try {
     const id = await getGuestId();
+    const now = new Date().toISOString();
     await setDoc(doc(db, 'guestSessions', id), {
-      lastSeenAt: serverTimestamp(),
-      lastActiveAt: serverTimestamp(),
+      lastSeenAt: now,
+      lastActiveAt: now,
     }, { merge: true });
   } catch (e) {
     // Guest mode remains available if the optional report write is offline/denied.
@@ -31,7 +32,7 @@ export async function recordGuestSession() {
 export async function heartbeatGuestSession() {
   try {
     const id = await getGuestId();
-    await setDoc(doc(db, 'guestSessions', id), { lastSeenAt: serverTimestamp() }, { merge: true });
+    await setDoc(doc(db, 'guestSessions', id), { lastSeenAt: new Date().toISOString() }, { merge: true });
   } catch (e) {
     console.warn('Guest session heartbeat failed', e?.code || e?.message || e);
   }
@@ -43,7 +44,7 @@ export async function markGuestActive() {
   lastActiveWrite = now;
   try {
     const id = await getGuestId();
-    await setDoc(doc(db, 'guestSessions', id), { lastActiveAt: serverTimestamp() }, { merge: true });
+    await setDoc(doc(db, 'guestSessions', id), { lastActiveAt: new Date().toISOString() }, { merge: true });
   } catch (e) {
     console.warn('Guest activity report failed', e?.code || e?.message || e);
   }

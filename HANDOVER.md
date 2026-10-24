@@ -342,7 +342,7 @@ firebase deploy --only hosting
 ### 6.35 Guest session count in Community Reports (2026-10-25)
 - **Guest tracking**: app records a device-scoped anonymous session ID on Guest entry/restore, updates `lastSeenAt` every minute, and updates `lastActiveAt` on interaction. Clearing local app storage creates a new guest device ID.
 - **Admin report**: Community → Reports shows three single-line summaries: registered users, guest users, and their combined totals. Each row includes active/idle/offline/total; guest sessions use the same presence thresholds as registered users. Burmese, English, Japanese labels are available.
-- **Firestore rules**: `guestSessions/{sessionId}` permits only server-timestamp presence fields; reads/deletes are admin-only. Signed-out and signed-in clients can write their own device-generated session document (rules cannot verify anonymous device ownership). Rules/Hosting are redeployed after this update.
+- **Firestore rules**: `guestSessions/{sessionId}` permits only ISO-string presence fields; reads/deletes are admin-only. Signed-out and signed-in clients can write their own device-generated session document (rules cannot verify anonymous device ownership). Rules/Hosting are redeployed after this update.
 - **Privacy/limits**: no guest name, email, UID, or browsing path is collected. Counts represent devices/browsers that entered Guest mode, not verified people; clearing app storage can count the same person again. Guest reporting needs a network connection; offline/local guest learning still works.
 - Verify: web export and Firestore rules compile/deploy; refresh while in Guest mode and confirm the anonymous record appears; admin Report shows separate and combined counts.
 

@@ -66,13 +66,13 @@ service cloud.firestore {
     }
 
     // Device-scoped guest counts for the admin Community report. No user data is stored.
-    // Clients may only create/update server timestamps; only admins can read.
+    // Clients may only create/update ISO presence timestamps; only admins can read.
     match /guestSessions/{sessionId} {
       allow get, list: if isAdminRole();
       allow create, update: if request.resource.data.keys().hasOnly(['lastSeenAt', 'lastActiveAt'])
         && request.resource.data.keys().hasAll(['lastSeenAt'])
-        && request.resource.data.lastSeenAt is timestamp
-        && (!('lastActiveAt' in request.resource.data) || request.resource.data.lastActiveAt is timestamp);
+        && request.resource.data.lastSeenAt is string
+        && (!('lastActiveAt' in request.resource.data) || request.resource.data.lastActiveAt is string);
       allow delete: if isAdminRole();
     }
 
