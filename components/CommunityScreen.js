@@ -1026,9 +1026,9 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
       offline: counts.offline + guestCounts.offline,
     };
     const summaryRows = [
-      { label: t.rRegistered, counts, total: users.length, totalLabel: t.totalUsers, bg: '#E8F5E9' },
-      { label: t.rGuestUsers, counts: guestCounts, total: guestUsers.length, totalLabel: t.totalGuests, bg: '#FFF8E1' },
-      { label: t.rAllUsers, counts: combinedCounts, total: users.length + guestUsers.length, totalLabel: t.totalAll, bg: '#E3F2FD' },
+      { label: t.rRegistered, counts, total: users.length, totalLabel: t.totalUsers, totalIcon: '👤', bg: '#E8F5E9' },
+      { label: t.rGuestUsers, counts: guestCounts, total: guestUsers.length, totalLabel: t.totalGuests, totalIcon: '🎮', bg: '#FFF8E1' },
+      { label: t.rAllUsers, counts: combinedCounts, total: users.length + guestUsers.length, totalLabel: t.totalAll, totalIcon: '👥', bg: '#E3F2FD' },
     ];
     const blocks = [
       [t.rGender, genders], [t.rAge, ages], [t.rEdu, edus],
@@ -1049,7 +1049,7 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
                   </View>
                 ))}
                 <Text style={{ minWidth: 125, textAlign: 'right', fontSize: 12, fontWeight: 'bold', color: '#333' }}>
-                  {row.totalLabel}: {guestLoadError && row === summaryRows[1] ? '—' : row.total}
+                  {row.totalIcon} {row.totalLabel}: {guestLoadError && row === summaryRows[1] ? '—' : row.total}
                 </Text>
               </View>
             ))}

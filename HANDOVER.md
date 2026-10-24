@@ -346,6 +346,10 @@ firebase deploy --only hosting
 - **Privacy/limits**: no guest name, email, UID, or browsing path is collected. Counts represent devices/browsers that entered Guest mode, not verified people; clearing app storage can count the same person again. Guest reporting needs a network connection; offline/local guest learning still works.
 - Verify: web export and Firestore rules compile/deploy; refresh while in Guest mode and confirm the anonymous record appears; admin Report shows separate and combined counts.
 
+### 6.36 Report total icons + mobile browser speech note (2026-10-25)
+- **Report totals**: add 👤, 🎮, and 👥 before registered, guest, and combined total labels.
+- **Kana audio**: web uses `expo-speech` and delegates to browser/device speech synthesis (`language: 'ja'`); Japanese voice availability and Web Speech behavior vary by browser/WebView. Chrome works in reported mobile setup; Bing app's embedded browser may not expose a Japanese speech voice. Suggest opening the page in Chrome or checking Android Settings → Text-to-speech output for an installed Japanese voice.
+
 ## 7. Lesson Learned (နောင် AI/dev သတိထားရန်)
 
 1. `initializeAuth` on **web** MUST include `popupRedirectResolver: browserPopupRedirectResolver` — မပါရင် popup/redirect = `auth/argument-error` (အစကတည်းက မရခဲ့တာ).
