@@ -16,10 +16,11 @@ const tX = {
     hint: 'စာလုံး နှိပ် → 🔊 အသံထွက် နားထောင်ပါ · a=အ i=ိ u=ု e=ေ o=ော',
     tap: 'စာလုံး ရွေးပြီး နှိပ်ပါ', speakAll: '🔊 တစ်ကြောင်းလုံး နားထောင်',
     stroke: '✍ ရေးပုံ (書き順)', replay: '▶ ပြန်ကြည့်', strokes: 'အဆင့်',
-    strokeHint: 'လက်နဲ့ လိုက်ရေးကြည့်ပါ — အနီရောင် = ရေးပြီး, မီးခိုးရောင် = ရေးရန်',
+    strokeHint: 'လက်နဲ့ လိုက်ရေးကြည့်ပါ — အနီရ운드် = ရေးပြီး, မီးခိုးရ운드် = ရေးရန်',
     legend: '① = စရာ (ဂဏန်း = စဉ်လိုက်) · ● = ဆုံးရာ · မြား = ဆွဲရမည့် ဘက်',
     practice: '✍ လေ့ကျင့်', practiceOn: 'စာကွက်ပေါ် လက်နဲ့ (cursor နဲ့) အဖြူပေါ် လိုက်ဆွဲပါ',
     clear: '🧹 ဖျက်',
+    hiragana: 'ဟီလာဂနား', katakana: 'ကက်ကကနား',
     attrib: 'Stroke data: KanjiVG (CC BY-SA 3.0) — kanjivg.tagaini.net',
   },
   en: {
@@ -32,6 +33,7 @@ const tX = {
     legend: '① = start (number = order) · ● = end · arrow = direction',
     practice: '✍ Practice', practiceOn: 'Trace over the box with finger or mouse',
     clear: '🧹 Clear',
+    hiragana: 'Hiragana', katakana: 'Katakana',
     attrib: 'Stroke data: KanjiVG (CC BY-SA 3.0) — kanjivg.tagaini.net',
   },
   jp: {
@@ -44,6 +46,7 @@ const tX = {
     legend: '①=始点(数字=順番) · ●=終点 · 矢印=向き',
     practice: '✍ 練習', practiceOn: '枠の上で指/マウスでなぞる',
     clear: '🧹 消す',
+    hiragana: 'ひらがな', katakana: 'カタカナ',
     attrib: 'Stroke data: KanjiVG (CC BY-SA 3.0) — kanjivg.tagaini.net',
   },
 };
@@ -239,7 +242,7 @@ export default function KanaScreen({ user, onLogout }) {
               onPress={() => { setKata(val); setSel(null); }}
             >
               <Text style={[styles.tgText, kata === val && styles.tgTextActive]}>
-                {val ? 'カタカナ' : 'ひらがな'}
+                {val ? t.katakana : t.hiragana}
               </Text>
             </TouchableOpacity>
           ))}
@@ -338,10 +341,10 @@ export default function KanaScreen({ user, onLogout }) {
                   const hot = i === step - 1;
                   return (
                     <G key={`m${i}`} pointerEvents="none">
-                      <Circle cx={info.sx} cy={info.sy} r={5.5} fill="#2E7D32" pointerEvents="none" />
+                      <Circle cx={info.sx - 7} cy={info.sy - 7} r={5.5} fill="#2E7D32" pointerEvents="none" />
                       <SvgText
-                        x={info.sx}
-                        y={info.sy + 2.6}
+                        x={info.sx - 7}
+                        y={info.sy - 4.4}
                         fontSize={7}
                         fill="#FFF"
                         textAnchor="middle"
@@ -435,7 +438,7 @@ const styles = StyleSheet.create({
   modalCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, alignItems: 'center', width: '100%', maxWidth: 360 },
   modalKana: { fontSize: 44, fontWeight: 'bold', color: '#333', marginBottom: 8 },
   svgBox: { backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: '#EEE', borderRadius: 10, padding: 6 },
-  canvasBox: { width: 230, height: 230, touchAction: 'none' },
+  canvasBox: { width: 230, height: 230, touchAction: 'pinch-zoom' },
   legend: { fontSize: 10, color: '#555', marginTop: 6, textAlign: 'center', userSelect: 'none', WebkitUserSelect: 'none' },
   practiceBtn: { backgroundColor: '#E3F2FD', borderWidth: 1, borderColor: '#1976D2', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginLeft: 8 },
   practiceBtnOn: { backgroundColor: '#1976D2' },
