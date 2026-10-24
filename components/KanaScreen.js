@@ -1,7 +1,7 @@
 // components/KanaScreen.js — あ 五十音表 (Hiragana/Katakana) + tap-to-hear TTS
 // Local data only (guest/offline OK). Katakana = hiragana +0x60 code conversion.
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, PanResponder } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, PanResponder, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
 import Svg, { Path, Circle, Line as SvgLine, G, Text as SvgText } from 'react-native-svg';
@@ -15,6 +15,9 @@ const tX = {
     base: 'အခြေခံ (あ行〜ら行)', daku: 'သံတိုး (が〜ぱ行)', youon: 'ပေါင်းထုတ် (ゃゅょ)', spec: 'အထူးစာလုံး',
     hint: 'စာလုံး နှိပ် → 🔊 အသံထွက် နားထောင်ပါ · a=အ i=ိ u=ု e=ေ o=ော',
     tap: 'စာလုံး ရွေးပြီး နှိပ်ပါ', speakAll: '🔊 တစ်ကြောင်းလုံး နားထောင်',
+    audioTitle: '🔊 အသံထွက်မရပါ',
+    audioHelp: 'ဒီ Browser မှာ ဂျပန်အသံဖတ်စနစ် မရနိုင်ပါ။ Bing app ထဲက browser ကိုသုံးနေပါက ⋮ menu → Open in Chrome ကိုရွေးပါ။ မရသေးရင် ဖုန်း Settings → Text-to-speech output ထဲမှာ Japanese voice ကို ထည့်သွင်း/ရွေးချယ်ပြီး Media volume ကို စစ်ပါ။',
+    audioOk: 'နားလည်ပါပြီ',
     stroke: '✍ ရေးပုံ (書き順)', replay: '▶ ပြန်ကြည့်', strokes: 'အဆင့်',
     strokeHint: 'လက်နဲ့ လိုက်ရေးကြည့်ပါ — အနီရ운드် = ရေးပြီး, မီးခိုးရ운드် = ရေးရန်',
     legend: '① = စရာ (ဂဏန်း = စဉ်လိုက်) · ● = ဆုံးရာ · မြား = ဆွဲရမည့် ဘက်',
@@ -28,6 +31,9 @@ const tX = {
     base: 'Basic (a〜ra)', daku: 'Voiced (ga〜pa)', youon: 'Combos (ゃゅょ)', spec: 'Special',
     hint: 'Tap a kana → 🔊 hear it · a/i/u/e/o vowels',
     tap: 'Select a kana', speakAll: '🔊 Hear whole row',
+    audioTitle: '🔊 Audio unavailable',
+    audioHelp: 'This browser cannot access a Japanese speech voice. If you opened the page inside the Bing app, use its ⋮ menu → Open in Chrome. If it still does not speak, install/select a Japanese voice in your phone’s Text-to-speech output settings and check media volume.',
+    audioOk: 'OK',
     stroke: '✍ Stroke order', replay: '▶ Replay', strokes: 'step',
     strokeHint: 'Trace along — red = drawn, grey = next',
     legend: '① = start (number = order) · ● = end · arrow = direction',
@@ -41,6 +47,9 @@ const tX = {
     base: '基本 (あ行〜ら行)', daku: '濁音 (が〜ぱ行)', youon: '拗音 (ゃゅょ)', spec: '特殊文字',
     hint: '文字をタップ → 🔊 発音を聞く',
     tap: '文字を選んでタップ', speakAll: '🔊 行をまとめて聞く',
+    audioTitle: '🔊 音声を再生できません',
+    audioHelp: 'このブラウザーで日本語音声を利用できません。Bingアプリ内で開いている場合は、⋮メニューから「Chromeで開く」を選んでください。直らない場合は、端末の「テキスト読み上げ」で日本語音声を追加・選択し、メディア音量を確認してください。',
+    audioOk: 'OK',
     stroke: '✍ 書き順', replay: '▶ やり直し', strokes: 'ステップ',
     strokeHint: '赤=書いた stroke, 灰=次の stroke',
     legend: '①=始点(数字=順番) · ●=終点 · 矢印=向き',
@@ -92,10 +101,6 @@ const toKata = (ch) => {
   const c = ch.codePointAt(0);
   return (c >= 0x3041 && c <= 0x3096) ? String.fromCodePoint(c + 0x60) : ch;
 };
-const speak = (word) => {
-  try { Speech.speak(word, { language: 'ja', rate: 0.8 }); } catch (e) {}
-};
-
 // きゃ (combo) → main kana き; ー etc → null (button hidden)
 const strokesFor = (ch) => (!ch ? null : STROKES[ch] || STROKES[ch[0]] || null);
 
@@ -132,6 +137,7 @@ export default function KanaScreen({ user, onLogout }) {
   const t = tX[lang] || tX.my;
   const [kata, setKata] = useState(false);
   const [sel, setSel] = useState(null);
+  const speechHelpShown = useRef(false);
   const [strokeOpen, setStrokeOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [playKey, setPlayKey] = useState(0);
@@ -141,6 +147,41 @@ export default function KanaScreen({ user, onLogout }) {
 
   const strokes = strokesFor(sel?.k || '');
   const total = strokes ? strokes.length : 0;
+
+  const showSpeechHelp = () => {
+    if (speechHelpShown.current) return;
+    speechHelpShown.current = true;
+    Alert.alert(t.audioTitle, t.audioHelp, [{ text: t.audioOk }]);
+  };
+  const speak = (word) => {
+    if (!word) return;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const synth = window.speechSynthesis;
+      const Utterance = window.SpeechSynthesisUtterance;
+      if (!synth || !Utterance) { showSpeechHelp(); return; }
+      const voices = synth.getVoices();
+      const jaVoice = voices.find((voice) => /^ja(?:-|$)/i.test(voice.lang || ''));
+      if (voices.length > 0 && !jaVoice) { showSpeechHelp(); return; }
+      try {
+        const utterance = new Utterance(word);
+        utterance.lang = 'ja-JP';
+        utterance.rate = 0.8;
+        if (jaVoice) utterance.voice = jaVoice;
+        utterance.onerror = showSpeechHelp;
+        synth.cancel();
+        synth.speak(utterance);
+        if (voices.length === 0) {
+          window.setTimeout(() => {
+            const currentVoices = synth.getVoices();
+            if (!currentVoices.some((voice) => /^ja(?:-|$)/i.test(voice.lang || ''))) showSpeechHelp();
+          }, 2500);
+        }
+      } catch (e) { showSpeechHelp(); }
+      return;
+    }
+    try { Speech.speak(word, { language: 'ja', rate: 0.8, onError: showSpeechHelp }); }
+    catch (e) { showSpeechHelp(); }
+  };
 
   // sequential stroke reveal: advance every 650ms until done
   useEffect(() => {

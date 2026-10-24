@@ -350,6 +350,9 @@ firebase deploy --only hosting
 - **Report totals**: add 👤, 🎮, and 👥 before registered, guest, and combined total labels.
 - **Kana audio**: web uses `expo-speech` and delegates to browser/device speech synthesis (`language: 'ja'`); Japanese voice availability and Web Speech behavior vary by browser/WebView. Chrome works in reported mobile setup; Bing app's embedded browser may not expose a Japanese speech voice. Suggest opening the page in Chrome or checking Android Settings → Text-to-speech output for an installed Japanese voice.
 
+### 6.37 Kana speech-unavailable help (2026-10-25)
+- Kana speech checks browser speech synthesis and Japanese voice availability. Missing API/voice or speech error shows a one-time localized alert with Bing → Chrome and Android Japanese Text-to-speech setup steps. Native `expo-speech` error callback uses the same guidance.
+
 ## 7. Lesson Learned (နောင် AI/dev သတိထားရန်)
 
 1. `initializeAuth` on **web** MUST include `popupRedirectResolver: browserPopupRedirectResolver` — မပါရင် popup/redirect = `auth/argument-error` (အစကတည်းက မရခဲ့တာ).
