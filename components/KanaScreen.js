@@ -338,23 +338,6 @@ export default function KanaScreen({ user, onLogout }) {
                   const hot = i === step - 1;
                   return (
                     <G key={`m${i}`} pointerEvents="none">
-                      <SvgLine
-                        x1={info.sx + info.ux * 5}
-                        y1={info.sy + info.uy * 5}
-                        x2={ax}
-                        y2={ay}
-                        stroke={hot ? '#1976D2' : '#90CAF9'}
-                        strokeWidth={hot ? 2 : 1.5}
-                        pointerEvents="none"
-                      />
-                      <Path
-                        d={`M${ax},${ay} L${ax - info.ux * 5 + info.uy * 3},${ay - info.uy * 5 - info.ux * 3} M${ax},${ay} L${ax - info.ux * 5 - info.uy * 3},${ay - info.uy * 5 + info.ux * 3}`}
-                        stroke={hot ? '#1976D2' : '#90CAF9'}
-                        strokeWidth={hot ? 2 : 1.5}
-                        fill="none"
-                        strokeLinecap="round"
-                        pointerEvents="none"
-                      />
                       <Circle cx={info.sx} cy={info.sy} r={5.5} fill="#2E7D32" pointerEvents="none" />
                       <SvgText
                         x={info.sx}
@@ -452,22 +435,22 @@ const styles = StyleSheet.create({
   modalCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, alignItems: 'center', width: '100%', maxWidth: 360 },
   modalKana: { fontSize: 44, fontWeight: 'bold', color: '#333', marginBottom: 8 },
   svgBox: { backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: '#EEE', borderRadius: 10, padding: 6 },
-  canvasBox: { width: 230, height: 230 },
-  legend: { fontSize: 10, color: '#555', marginTop: 6, textAlign: 'center' },
+  canvasBox: { width: 230, height: 230, touchAction: 'none' },
+  legend: { fontSize: 10, color: '#555', marginTop: 6, textAlign: 'center', userSelect: 'none', WebkitUserSelect: 'none' },
   practiceBtn: { backgroundColor: '#E3F2FD', borderWidth: 1, borderColor: '#1976D2', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginLeft: 8 },
   practiceBtnOn: { backgroundColor: '#1976D2' },
   practiceText: { color: '#1976D2', fontWeight: 'bold', fontSize: 13 },
   practiceTextOn: { color: '#FFF' },
   clearBtn: { marginTop: 8, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#BDBDBD', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
   clearText: { color: '#555', fontWeight: 'bold', fontSize: 12 },
-  stepText: { fontSize: 14, fontWeight: 'bold', color: '#D32F2F', marginTop: 8 },
-  strokeHint: { fontSize: 11, color: '#777', marginTop: 4, textAlign: 'center' },
+  stepText: { fontSize: 14, fontWeight: 'bold', color: '#D32F2F', marginTop: 8, userSelect: 'none', WebkitUserSelect: 'none' },
+  strokeHint: { fontSize: 11, color: '#777', marginTop: 4, textAlign: 'center', userSelect: 'none', WebkitUserSelect: 'none' },
   modalBtns: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 12, alignItems: 'center' },
   replayBtn: { backgroundColor: '#1976D2', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, marginLeft: 8 },
   replayText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
   closeBtn: { backgroundColor: '#EEE', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginLeft: 8 },
   closeText: { color: '#333', fontWeight: 'bold', fontSize: 13 },
-  attrib: { fontSize: 9, color: '#999', marginTop: 12, textAlign: 'center' },
+  attrib: { fontSize: 9, color: '#999', marginTop: 12, textAlign: 'center', userSelect: 'none', WebkitUserSelect: 'none' },
   specRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 8, borderWidth: 1, borderColor: '#EEE', padding: 10, marginBottom: 6 },
   specKana: { fontSize: 34, color: '#333', width: 56, textAlign: 'center', marginRight: 8 },
   specSpeak: { fontSize: 18 },
