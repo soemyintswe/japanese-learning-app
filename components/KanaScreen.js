@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, PanResponder } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
-import Svg, { Path, Circle, Line as SvgLine, Text as SvgText } from 'react-native-svg';
+import Svg, { Path, Circle, Line as SvgLine, G, Text as SvgText } from 'react-native-svg';
 import AppHeader from './AppHeader';
 import { useLanguage } from '../src/LanguageContext';
 import STROKES from './kanaStrokes.json';
@@ -337,7 +337,7 @@ export default function KanaScreen({ user, onLogout }) {
                   if (!shown) return null;
                   const hot = i === step - 1;
                   return (
-                    <React.Fragment key={`m${i}`}>
+                    <G key={`m${i}`} pointerEvents="none">
                       <SvgLine
                         x1={info.sx + info.ux * 5}
                         y1={info.sy + info.uy * 5}
@@ -364,11 +364,12 @@ export default function KanaScreen({ user, onLogout }) {
                         textAnchor="middle"
                         fontWeight="bold"
                         pointerEvents="none"
+                        style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none' }}
                       >
                         {i + 1}
                       </SvgText>
                       <Circle cx={info.ex} cy={info.ey} r={3.5} fill="#D32F2F" stroke="#FFF" strokeWidth={1} pointerEvents="none" />
-                    </React.Fragment>
+                    </G>
                   );
                 })}
                 {/* user practice trace (blue) */}
