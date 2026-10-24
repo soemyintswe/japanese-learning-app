@@ -13,7 +13,7 @@ import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
 import { presenceOf } from '../src/presence';
 import { useDriveBackup, driveConfigured } from '../src/driveBackup';
-import { subscribeGuestCount } from '../src/guestSessions';
+import { subscribeGuestSessions } from '../src/guestSessions';
 
 // Safety net: child crash (e.g. OAuth misconfig) must never blank the whole tab
 class SectionErrorBoundary extends React.Component {
@@ -124,6 +124,8 @@ const cT = {
     searchPh: 'နာမည် / Email ရှာရန်...',
     stActive: 'အသုံးပြုနေသည်', stIdle: 'ပိတ်ထားသည်', stOffline: 'အော့ဖ်လိုင်း',
     activeNow: 'အခုအသုံးပြုနေသူ', totalUsers: 'စုစုပေါင်း',
+    rRegistered: 'Register လုပ်ထားသူများ', rGuestUsers: 'Guest User များ', rAllUsers: 'Register + Guest စုစုပေါင်း',
+    totalGuests: 'Guest စုစုပေါင်း', totalAll: 'အားလုံး စုစုပေါင်း',
     chatWith: '💬 Chat ပြောမယ်', startChat: 'Chat စမည်', newGroup: '➕ Group အသစ်',
     groupName: 'Group နာမည်:', groupNamePh: 'ဥပမာ - N5 Batch A',
     pickMembers: 'အဖွဲ့ဝင်ရွေးပါ:', create: 'ဖန်တီးမည်', cancel: 'ပယ်ဖျက်မည်',
@@ -170,6 +172,8 @@ const cT = {
     searchPh: 'Search name / email...',
     stActive: 'Active', stIdle: 'Idle', stOffline: 'Offline',
     activeNow: 'Active now', totalUsers: 'Total users',
+    rRegistered: 'Registered users', rGuestUsers: 'Guest users', rAllUsers: 'All users (registered + guests)',
+    totalGuests: 'Total guests', totalAll: 'Total users',
     chatWith: '💬 Chat', startChat: 'Start chat', newGroup: '➕ New group',
     groupName: 'Group name:', groupNamePh: 'e.g. N5 Batch A',
     pickMembers: 'Pick members:', create: 'Create', cancel: 'Cancel',
@@ -216,6 +220,8 @@ const cT = {
     searchPh: '名前・Email検索...',
     stActive: 'オンライン', stIdle: '離席中', stOffline: 'オフライン',
     activeNow: 'オンライン中', totalUsers: '総ユーザー',
+    rRegistered: '登録ユーザー', rGuestUsers: 'ゲストユーザー', rAllUsers: '全ユーザー（登録＋ゲスト）',
+    totalGuests: 'ゲスト合計', totalAll: '総ユーザー',
     chatWith: '💬 チャット', startChat: '開始', newGroup: '➕ 新規グループ',
     groupName: 'グループ名:', groupNamePh: '例 - N5 Batch A',
     pickMembers: 'メンバー選択:', create: '作成', cancel: 'キャンセル',
@@ -312,7 +318,8 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
     })();
   }, [route && route.params && route.params.openChatId]);
   const [users, setUsers] = useState([]);
-  const [guestCount, setGuestCount] = useState(0);
+  const [guestUsers, setGuestUsers] = useState([]);
+  const [guestLoadError, setGuestLoadError] = useState(false);
   const [q, setQ] = useState('');
   const [now, setNow] = useState(Date.now());
 
@@ -370,7 +377,21 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
   // Guest sessions are device-scoped, anonymous, and read only while admin views Reports.
   useEffect(() => {
     if (!isAdmin || seg !== 'reports') return undefined;
-    return subscribeGuestCount(setGuestCount, () => setGuestCount(0));
+    return subscribeGuestSessions((snapshot) => {
+      setGuestLoadError(false);
+      setGuestUsers(snapshot.docs.map((guestDoc) => {
+        const data = guestDoc.data();
+        const toIso = (value) => value?.toDate ? value.toDate().toISOString() : value;
+        return {
+          id: guestDoc.id,
+          lastSeenAt: toIso(data.lastSeenAt),
+          lastActiveAt: toIso(data.lastActiveAt),
+        };
+      }));
+    }, (error) => {
+      console.warn('Guest report subscription failed', error?.code || error?.message || error);
+      setGuestLoadError(true);
+    });
   }, [isAdmin, seg]);
 
   // my chats realtime
@@ -997,30 +1018,43 @@ export default function CommunityScreen({ user, onLogout, navigation, route }) {
     const jlpts = tally((u) => u.jlpt || null);
     const tested = tally((u) => u.testedLevel || null);
     const roles = tally((u) => (u.role || 'student').toUpperCase());
+    const guestCounts = { active: 0, idle: 0, offline: 0 };
+    guestUsers.forEach((guest) => { guestCounts[statusOf(guest)] += 1; });
+    const combinedCounts = {
+      active: counts.active + guestCounts.active,
+      idle: counts.idle + guestCounts.idle,
+      offline: counts.offline + guestCounts.offline,
+    };
+    const summaryRows = [
+      { label: t.rRegistered, counts, total: users.length, totalLabel: t.totalUsers, bg: '#E8F5E9' },
+      { label: t.rGuestUsers, counts: guestCounts, total: guestUsers.length, totalLabel: t.totalGuests, bg: '#FFF8E1' },
+      { label: t.rAllUsers, counts: combinedCounts, total: users.length + guestUsers.length, totalLabel: t.totalAll, bg: '#E3F2FD' },
+    ];
     const blocks = [
       [t.rGender, genders], [t.rAge, ages], [t.rEdu, edus],
       [t.rJlpt, jlpts], [t.rTested, tested], [t.rRole, roles],
     ];
     return (
       <ScrollView contentContainerStyle={{ padding: 12 }}>
-        <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-          {[['🟢', t.stActive, counts.active, '#E8F5E9'], ['🟡', t.stIdle, counts.idle, '#FFF8E1'], ['⚪', t.stOffline, counts.offline, '#F5F5F5']].map(([e, label, n, bg]) => (
-            <View key={label} style={{ flex: 1, backgroundColor: bg, borderRadius: 10, padding: 12, marginHorizontal: 3, alignItems: 'center' }}>
-              <Text style={{ fontSize: 22 }}>{e}</Text>
-              <Text style={{ fontSize: 20, fontWeight: 'bold' }}>{n}</Text>
-              <Text style={{ fontSize: 11, color: '#666' }}>{label}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={{ backgroundColor: '#D32F2F', borderRadius: 10, padding: 14, marginBottom: 12, alignItems: 'center' }}>
-          <Text style={{ color: '#FFF', fontSize: 13 }}>{t.activeNow}</Text>
-          <Text style={{ color: '#FFF', fontSize: 32, fontWeight: 'bold' }}>{counts.active}</Text>
-          <Text style={{ color: '#FFCDD2', fontSize: 11 }}>{t.totalUsers}: {users.length}</Text>
-        </View>
-        <View style={{ backgroundColor: '#FFF3E0', borderRadius: 10, padding: 14, marginBottom: 12, alignItems: 'center' }}>
-          <Text style={{ color: '#E65100', fontSize: 12 }}>{t.rGuests}</Text>
-          <Text style={{ color: '#E65100', fontSize: 28, fontWeight: 'bold' }}>{guestCount}</Text>
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ minWidth: '100%' }}>
+          <View style={{ minWidth: 760, width: '100%', marginBottom: 12 }}>
+            {summaryRows.map((row) => (
+              <View key={row.label} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: row.bg, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, marginBottom: 8 }}>
+                <Text style={{ width: 230, fontSize: 13, fontWeight: 'bold', color: '#333' }}>{row.label}</Text>
+                {[[ '🟢', t.stActive, row.counts.active ], [ '🟡', t.stIdle, row.counts.idle ], [ '⚪', t.stOffline, row.counts.offline ]].map(([icon, label, value]) => (
+                  <View key={label} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 12 }}>{icon} </Text>
+                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#222' }}>{row === summaryRows[1] && guestLoadError ? '—' : value}</Text>
+                    <Text style={{ fontSize: 11, color: '#666' }}> {label}</Text>
+                  </View>
+                ))}
+                <Text style={{ minWidth: 125, textAlign: 'right', fontSize: 12, fontWeight: 'bold', color: '#333' }}>
+                  {row.totalLabel}: {guestLoadError && row === summaryRows[1] ? '—' : row.total}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
         {blocks.map(([title, m]) => {
           const keys = Object.keys(m);
           if (keys.length === 0) return null;

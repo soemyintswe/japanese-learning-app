@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from './firebase';
 
 const GUEST_ID_KEY = '@japanese_guest_report_id_v1';
+let lastActiveWrite = 0;
 
 async function getGuestId() {
   let id = await AsyncStorage.getItem(GUEST_ID_KEY);
@@ -19,16 +20,39 @@ export async function recordGuestSession() {
     const id = await getGuestId();
     await setDoc(doc(db, 'guestSessions', id), {
       lastSeenAt: serverTimestamp(),
+      lastActiveAt: serverTimestamp(),
     }, { merge: true });
   } catch (e) {
     // Guest mode remains available if the optional report write is offline/denied.
+    console.warn('Guest session report write failed', e?.code || e?.message || e);
   }
 }
 
-export function subscribeGuestCount(onCount, onError) {
+export async function heartbeatGuestSession() {
+  try {
+    const id = await getGuestId();
+    await setDoc(doc(db, 'guestSessions', id), { lastSeenAt: serverTimestamp() }, { merge: true });
+  } catch (e) {
+    console.warn('Guest session heartbeat failed', e?.code || e?.message || e);
+  }
+}
+
+export async function markGuestActive() {
+  const now = Date.now();
+  if (now - lastActiveWrite < 30000) return;
+  lastActiveWrite = now;
+  try {
+    const id = await getGuestId();
+    await setDoc(doc(db, 'guestSessions', id), { lastActiveAt: serverTimestamp() }, { merge: true });
+  } catch (e) {
+    console.warn('Guest activity report failed', e?.code || e?.message || e);
+  }
+}
+
+export function subscribeGuestSessions(onSnapshotUpdate, onError) {
   return onSnapshot(
     collection(db, 'guestSessions'),
-    (snapshot) => onCount(snapshot.size),
+    onSnapshotUpdate,
     onError,
   );
 }

@@ -8,7 +8,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './src/firebase';
 import { resolveUserProfile, classifyResolveError } from './src/session';
 import { logActivity } from './src/activity';
-import { recordGuestSession } from './src/guestSessions';
+import { recordGuestSession, heartbeatGuestSession, markGuestActive } from './src/guestSessions';
 import { LanguageProvider, useLanguage } from './src/LanguageContext';
 import { usePresence, markActiveNow } from './src/presence';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -278,7 +278,6 @@ function Main() {
         if (g === '1') {
           guestRef.current = true;
           setUser(GUEST_USER);
-          recordGuestSession();
         }
       } catch (e) {}
     })();
@@ -286,6 +285,23 @@ function Main() {
 
   // Presence heartbeat (Active/idle/offline) — login ဝင်ထားမှ အလုပ်လုပ်မယ် (guest: uid null → skip)
   usePresence(user);
+
+  // Guest presence is tracked separately from registered-user presence.
+  useEffect(() => {
+    if (!user?.isGuest) return undefined;
+    recordGuestSession();
+    const beat = setInterval(heartbeatGuestSession, 60000);
+    let cleanupWeb = null;
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const onActivity = () => markGuestActive();
+      ['pointerdown', 'keydown'].forEach((event) => document.addEventListener(event, onActivity, { passive: true }));
+      cleanupWeb = () => ['pointerdown', 'keydown'].forEach((event) => document.removeEventListener(event, onActivity));
+    }
+    return () => {
+      clearInterval(beat);
+      if (cleanupWeb) cleanupWeb();
+    };
+  }, [user?.isGuest]);
 
   // Refresh နှိပ်လည်း Firebase session ကျန်နေရင် အလိုအလျောက် ပြန်ဝင်မယ် —
   // အရင် user ကို state မှာပဲ သိမ်းထားလို့ refresh လုပ်တိုင်း logout ထွက်သွားတာ ဒါကြောင့်
@@ -355,7 +371,6 @@ function Main() {
   // 🎮 AuthScreen "Guest" ခလုတ် — Firebase မချိတ်ဘဲ local features ပဲ
   const handleGuest = async () => {
     try { await AsyncStorage.setItem(GUEST_KEY, '1'); } catch (e) {}
-    recordGuestSession();
     guestRef.current = true;
     setNotice('');
     setUser(GUEST_USER);
@@ -413,7 +428,7 @@ function Main() {
   return (
     <SafeAreaProvider>
       {/* root touch → presence lastActiveAt (native); web က document listeners က ဖမ်းမယ် */}
-      <View style={{ flex: 1 }} onTouchStart={markActiveNow}>
+      <View style={{ flex: 1 }} onTouchStart={() => { markActiveNow(); if (user?.isGuest) markGuestActive(); }}>
       <NotificationProvider user={user}>
       <NavigationContainer ref={navRef} linking={linking}>
         <Tab.Navigator
