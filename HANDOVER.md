@@ -1,7 +1,7 @@
 # Japanese Learning App — Maintenance Handover (ထိန်းသိမ်းရေး လွှဲပြောင်းမှတ်တမ်း)
 
 > ဖတ်သူ: နောက်ဆက်တွဲ ပြင်မယ့် developer / AI assistant
-> နောက်ဆုံး update: 2026-10-23 (HANDOVER သန့်ရှင်းရေး: changelog order, roadmap fix, scripts → repo, Help Kana section)
+> နောက်ဆုံး update: 2026-10-26 (TTS, QA moderation/sync, Jest coverage, EAS readiness)
 > Repo: https://github.com/soemyintswe/japanese-learning-app (branch: `main`)
 > Live site: https://japanese-mksedu.web.app
 > Firebase project: `japanese-mksedu`
@@ -123,6 +123,18 @@ firebase deploy --only hosting
 - Deploy ပြီးတိုင်း browser မှာ **Ctrl+F5** (cache အဟောင်း!) — user တွေကို မှာရမယ်.
 - `dist/` နဲ့ `.expo/` က gitignore (deploy artifact commit မလုပ်).
 - Auth users စစ်ရန် (read-only): `firebase auth:export $env:TEMP\auth.json` → ပြီးရင် **ဖျက်ပစ်** (hash ပါတယ်).
+
+### Android APK build + public download
+
+- `app.json` EAS project ID / owner နှင့် `android.package` ကို မပြောင်းဘဲ ထားရန်.
+- First installable APK build (EAS account login လုပ်ပြီး project access ရှိရမည်):
+
+```powershell
+npx eas-cli build --platform android --profile preview
+```
+
+- EAS ပြီးဆုံးသည့်အခါ build page မှ `.apk` ကို download လုပ်ပါ။ Version tag အသစ် (ဥပမာ `v1.0.0`) ဖြင့် GitHub Release အသစ်ဖန်တီးပြီး APK ကို asset အဖြစ်တင်ပါ။ More ထဲက link က `/releases/latest` သို့ သွားမည်.
+- Release cleanup ကို အရင် dry-run လုပ်ပါ: `.\scripts\keep_latest_release.ps1`. စာရင်းစစ်ပြီးနောက်မှသာ `.\scripts\keep_latest_release.ps1 -Apply` သုံးပါ။ ဒီ command က latest အပြင် published release နှင့် tag များကို အပြီးဖျက်သည်; draft များကို ချန်ထားသည်။ လိုအပ်သည်မှာ `gh auth login` နှင့် repo write permission.
 
 ## 6. ဒီ Maintenance Session မှာ ပြင်ခဲ့သမျှ (Changelog)
 
@@ -353,6 +365,38 @@ firebase deploy --only hosting
 ### 6.37 Kana speech-unavailable help (2026-10-25)
 - Kana speech checks browser speech synthesis and Japanese voice availability. Missing API/voice or speech error shows a one-time localized alert with Bing → Chrome and Android Japanese Text-to-speech setup steps. Native `expo-speech` error callback uses the same guidance.
 
+### 6.38 Maintenance: TTS, quiz moderation, tests, and EAS prep (2026-10-26)
+- **Work plan recorded before implementation** in §8. No audio files were added; Kana continues to use Web Speech API / `expo-speech`.
+- **Kana TTS:** web now waits briefly for asynchronously loaded browser voices, then requires a Japanese voice; native checks `Speech.getAvailableVoicesAsync()`. Missing API/voice and playback errors show the existing one-time localized alert. MY/EN/JP guidance covers Android Text-to-speech voice installation and switching from Bing/Viber/Facebook in-app browsers to Chrome.
+- **Question bank:** static bundled banks remain the fallback. `src/quizBankSync.js` optionally loads approved Firestore questions and the current user's submissions. New questions/imports are submitted with `status: pending`; teachers/admins can approve or reject in QA. Only approved questions are visible to other users. `firestore.rules` now limits submissions and moderation accordingly. **Publish the updated rules in Firebase Console before enabling this on the live app.** No MP3/Cloud Storage usage.
+- **Tests:** added Jest/Expo setup and 7 unit tests for weighted quiz scoring/unlock, profile defaults/adoption/`resolveUserProfile`, and `isAdmin`/`isTeacher`/`isSuperAdmin`.
+- **Expo/EAS:** Android package remains `com.mksedu.japanesestudyplanner`. Added development/preview/production profiles in `eas.json`, installed required `expo-font` and `expo-splash-screen` plugins, moved splash settings to the supported plugin, converted mislabeled JPEG assets to actual PNG, removed unused `expo-status-bar`, and aligned SDK-compatible package versions. `expo-doctor` passes 20/21 checks; remaining advisory is that `expo-av` is marked unmaintained, but it is still used for recording/playback. EAS project ID and owner are now present in `app.json` (see §6.39).
+- **Verification:** `npm test -- --runInBand` ✅ (3 suites / 7 tests); `node scripts/i18n_check.js` ✅; `npx expo export --platform web --output-dir dist` ✅ (2.9 MB); `npx expo config --type public` ✅; `git diff --check` ✅. `npx expo-doctor` reports only the `expo-av` maintenance advisory above.
+
+### 6.39 Android APK download and release retention (2026-10-26)
+- **More screen:** added a Burmese/English/Japanese accessible link card to `https://github.com/soemyintswe/japanese-learning-app/releases/latest`. Users can download the APK attached to the latest published release after an owner uploads one.
+- **EAS APK profile:** `eas.json` preview now explicitly sets `android.buildType: apk` while retaining internal distribution. Build command: `npx eas-cli build --platform android --profile preview`. First build may prompt to create/manage the Android signing keystore; complete that prompt using the EAS account that owns the linked project. See Expo's [APK build guide](https://docs.expo.dev/build-reference/apk/).
+- **Release retention:** added `scripts/keep_latest_release.ps1`, which defaults to dry-run, preserves GitHub's `isLatest` release (or falls back to the newest stable published release), and lists other published releases/tags for cleanup. Use `-Apply` only after reviewing: it permanently deletes those releases/assets and tags; drafts are preserved. Requires authenticated GitHub CLI (`gh auth login`) and repository write access.
+- **First release flow:** build the APK; download it from the EAS build page; create a versioned GitHub Release and attach the APK. The in-app latest-release URL then resolves to it.
+- **Verification:** `npx eas-cli config --platform android --profile preview` resolves the linked project and confirms `distribution: internal` + `buildType: apk`; `npx expo config --type public`, `node scripts/i18n_check.js`, `npm test -- --runInBand` (7 tests), web export (2.9 MB), PowerShell parser check, and `git diff --check` all pass. No EAS build or release cleanup was run; user confirms no APK has been built yet. The EAS CLI reports no variables configured in its `preview` environment; configure any required build-time `EXPO_PUBLIC_*` values there (notably Android Google Drive OAuth ID if that integration is needed in the APK).
+
+### 6.40 Publish the supplied EAS APK build link (2026-10-26)
+- **Home:** prominent red `Download Android APK` card immediately below the app header, translated MY/EN/JP, opens the supplied EAS build page. The More-screen APK link now opens the same build page instead of GitHub Releases.
+- **Hosting target:** Firebase project/site `japanese-mksedu`; `japanese.mksedu.asia` responded HTTP 200 before and after deploy.
+- **Verification:** `node scripts/i18n_check.js`, `npm test -- --runInBand` (7 passed), `npx expo export --platform web --output-dir dist` (2.9 MB), `npx expo config --type public`, and `git diff --check` passed. The live custom domain served the new app JS bundle containing build ID `58adfdf7-0ef4-4a4e-bb63-1cbbfd50a018` (homepage and JS HTTP 200).
+- **Deploy:** `npx firebase-tools deploy --only hosting --project japanese-mksedu --non-interactive` completed; Firebase Hosting released the new version to `https://japanese-mksedu.web.app`, also served through `https://japanese.mksedu.asia`.
+
+### 6.41 Login screen redesign (2026-10-26)
+- **Layout:** centered responsive card with account and guest tabs; app logo/title stays in the header and MY/EN/JP switcher sits at the upper right. Guest view explains offline features and preserves the guest entry callback.
+- **Account view:** username/email and password with eye toggle, Google sign-in, consent checkbox and policy link, login/reset actions, and email/Google registration choices. Existing authentication handlers are preserved.
+- **APK:** prominent trilingual download button below the card opens the supplied EAS build page.
+- **Verification:** i18n parity, existing Jest suite (7 tests), web export, and `git diff --check` pass.
+
+### 6.42 Publish and push login redesign (2026-10-26)
+- **Hosting:** exported web app deployed to Firebase project `japanese-mksedu`. The requested custom domain and app bundle returned HTTP 200; the live bundle contains the Account/Guest tabs and supplied EAS APK build ID.
+- **Source control:** changes for the previously requested app maintenance, APK download, and login redesign are pushed to GitHub `main`; unrelated pre-existing untracked `components/AdminDashboard.js` and `src/analytics.js` are excluded.
+- **Checks:** i18n parity, 7 Jest tests, Expo web export, and diff checks passed before deploy/push.
+
 ## 7. Lesson Learned (နောင် AI/dev သတိထားရန်)
 
 1. `initializeAuth` on **web** MUST include `popupRedirectResolver: browserPopupRedirectResolver` — မပါရင် popup/redirect = `auth/argument-error` (အစကတည်းက မရခဲ့တာ).
@@ -364,12 +408,33 @@ firebase deploy --only hosting
 
 ## 8. Roadmap (ရှေ့ဆက်)
 
+### 2026-10-26 Login screen redesign plan
+- [x] Preserve existing login/register/Google/privacy flows while moving them into a centered card with account and guest tabs.
+- [x] Move title/logo and MY/EN/JP switcher to a compact header; add the supplied APK download link below the card.
+- [x] Check i18n parity, tests, web export, and diff whitespace; record results.
+
+### 2026-10-26 APK link + Hosting publish plan
+- [x] Put a prominent, trilingual Android APK link on the homepage and point the More-screen link to the supplied EAS build page.
+- [x] Verify Expo web export and existing tests/i18n; confirm the Firebase Hosting project/site and the requested custom domain.
+- [x] Deploy the updated `dist/` to the `japanese-mksedu` Firebase project and record the deployment result.
+
+### 2026-10-26 Maintenance plan (လုပ်ဆောင်ရန်အစီအစဉ်)
+- [x] **APK link:** add a trilingual, accessible link in More to the latest GitHub Release.
+- [x] **EAS APK:** set `preview.android.buildType` to `apk` and record the exact first-build command.
+- [x] **Release cleanup:** add a dry-run-first script that retains the newest published release and can explicitly remove older releases/tags.
+- [x] **Verification:** i18n parity, Expo config, tests, web export, script syntax, and diff whitespace checks pass.
+- [x] **P0 TTS:** improve device/browser detection and localized guidance; no audio files/storage.
+- [x] **P2 QA bank:** optional Firestore sync with local fallback and teacher/admin moderation. Live use requires publishing updated `firestore.rules`.
+- [x] **P2 tests:** add and run focused Jest tests for scoring, profile resolve/adoption, and role checks.
+- [x] **P2 EAS config:** validate package/config, add profiles, fix Expo config/dependency issues. EAS account/project linking remains a setup step before a cloud build.
+- [x] **Verification:** i18n parity and web export pass; Expo doctor's only remaining advisory is active `expo-av` maintenance status.
+
 - [x] **P0 — Secret cleanup (local, 2026-10-05):** local Copy files ဖျက်ပြီးပြီ. history purge ပြီးပြီ (2026-10-05, `git filter-branch` tree-filter + `push --force`; verify `git log --all -S` empty ✅; safety bundle: local Temp `pre-purge-backup.bundle`) — တကယ့် credential မဟုတ် (client-side အတုသက်သက်) ပေမယ့် တခြားနေရာ (Gmail etc.) မှာ **ထပ်သုံးနေရင် အခု ချက်ချင်း ပြောင်း** + history purge စဉ်းစား (`git filter-repo` + force-push). Firestore `users` ထဲ password field ကျန်ရင် ရှင်း.
 - [ ] **P0 — Rules publish verify:** Console Rules = `firestore.rules` ဟုတ်/မဟုတ် တိုက်စစ်.
 - [x] P1 — Home progress REAL (2026-10-06, §Home progress line + Quick Access round): planner completion % from AsyncStorage, mount/tab-focus/pull-refresh; 0% when empty (was fake 80→85% hardcode).
 - [x] P1 — Bottom tab titles i18n (tabT my/en/jp in App.js, incl Kana labels + hidden-tab navigate).
-- [ ] P2 — Tests (quiz scoring, resolveUserProfile, role guard) + EAS build (Android package `com.mksedu.japanesestudyplanner` ready) + `expo-status-bar` plugin cleanup note (app.json).
-- [ ] P2 — QA question bank Firestore sync (ယခု local only), teacher question moderation flow.
+- [x] P2 — Jest tests (quiz scoring, `resolveUserProfile`/adoption, RBAC) pass (2026-10-26). EAS preview profile resolves the linked project and produces APK configuration; no APK has been built yet. EAS project ID and owner are set in `app.json`. `expo-status-bar` removed (unused).
+- [x] P2 — Optional QA question bank Firestore sync and teacher/admin moderation implemented (2026-10-26); **publish `firestore.rules` in Firebase Console** before live use.
 - [ ] P3 — Deps update (Expo 57→latest), `requirements.txt` (Python, irrelevant) ဖြုတ်/ပြင်.
 
 ## 9. Common Recipes

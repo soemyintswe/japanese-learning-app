@@ -16,7 +16,7 @@ const tX = {
     hint: 'စာလုံး နှိပ် → 🔊 အသံထွက် နားထောင်ပါ · a=အ i=ိ u=ု e=ေ o=ော',
     tap: 'စာလုံး ရွေးပြီး နှိပ်ပါ', speakAll: '🔊 တစ်ကြောင်းလုံး နားထောင်',
     audioTitle: '🔊 အသံထွက်မရပါ',
-    audioHelp: 'ဒီ Browser မှာ ဂျပန်အသံဖတ်စနစ် မရနိုင်ပါ။ Bing app ထဲက browser ကိုသုံးနေပါက ⋮ menu → Open in Chrome ကိုရွေးပါ။ မရသေးရင် ဖုန်း Settings → Text-to-speech output ထဲမှာ Japanese voice ကို ထည့်သွင်း/ရွေးချယ်ပြီး Media volume ကို စစ်ပါ။',
+    audioHelp: 'ဂျပန်အသံဖတ်စနစ် သို့မဟုတ် Japanese voice မရနိုင်ပါ။ Android: Settings → System → Languages & input → Text-to-speech output → Install voice data ထဲမှ Japanese ကို ထည့်သွင်းပါ။ App အတွင်း browser (Bing, Viber, Facebook စသည်) ဖြင့် ဖွင့်ထားပါက ⋮ menu → Open in Chrome ကိုရွေးပါ။',
     audioOk: 'နားလည်ပါပြီ',
     stroke: '✍ ရေးပုံ (書き順)', replay: '▶ ပြန်ကြည့်', strokes: 'အဆင့်',
     strokeHint: 'လက်နဲ့ လိုက်ရေးကြည့်ပါ — အနီရ운드် = ရေးပြီး, မီးခိုးရ운드် = ရေးရန်',
@@ -32,7 +32,7 @@ const tX = {
     hint: 'Tap a kana → 🔊 hear it · a/i/u/e/o vowels',
     tap: 'Select a kana', speakAll: '🔊 Hear whole row',
     audioTitle: '🔊 Audio unavailable',
-    audioHelp: 'This browser cannot access a Japanese speech voice. If you opened the page inside the Bing app, use its ⋮ menu → Open in Chrome. If it still does not speak, install/select a Japanese voice in your phone’s Text-to-speech output settings and check media volume.',
+    audioHelp: 'Japanese speech is unavailable or no Japanese voice is installed. Android: Settings → System → Languages & input → Text-to-speech output → Install voice data, then choose Japanese. If this page is open in an in-app browser (Bing, Viber, Facebook, etc.), use its menu → Open in Chrome.',
     audioOk: 'OK',
     stroke: '✍ Stroke order', replay: '▶ Replay', strokes: 'step',
     strokeHint: 'Trace along — red = drawn, grey = next',
@@ -48,7 +48,7 @@ const tX = {
     hint: '文字をタップ → 🔊 発音を聞く',
     tap: '文字を選んでタップ', speakAll: '🔊 行をまとめて聞く',
     audioTitle: '🔊 音声を再生できません',
-    audioHelp: 'このブラウザーで日本語音声を利用できません。Bingアプリ内で開いている場合は、⋮メニューから「Chromeで開く」を選んでください。直らない場合は、端末の「テキスト読み上げ」で日本語音声を追加・選択し、メディア音量を確認してください。',
+    audioHelp: '日本語音声を利用できないか、日本語音声データがありません。Android: 設定 → システム → 言語と入力 → テキスト読み上げ → 音声データをインストール から日本語を追加してください。Bing、Viber、Facebook などのアプリ内ブラウザーで開いた場合は、メニューから「Chromeで開く」を選んでください。',
     audioOk: 'OK',
     stroke: '✍ 書き順', replay: '▶ やり直し', strokes: 'ステップ',
     strokeHint: '赤=書いた stroke, 灰=次の stroke',
@@ -153,33 +153,43 @@ export default function KanaScreen({ user, onLogout }) {
     speechHelpShown.current = true;
     Alert.alert(t.audioTitle, t.audioHelp, [{ text: t.audioOk }]);
   };
-  const speak = (word) => {
+  const speak = async (word) => {
     if (!word) return;
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const synth = window.speechSynthesis;
       const Utterance = window.SpeechSynthesisUtterance;
       if (!synth || !Utterance) { showSpeechHelp(); return; }
-      const voices = synth.getVoices();
+      let voices = synth.getVoices();
+      if (!voices.length) {
+        await new Promise((resolve) => {
+          let done = false;
+          const finish = () => { if (!done) { done = true; resolve(); } };
+          synth.addEventListener?.('voiceschanged', finish, { once: true });
+          window.setTimeout(finish, 1200);
+        });
+        voices = synth.getVoices();
+      }
       const jaVoice = voices.find((voice) => /^ja(?:-|$)/i.test(voice.lang || ''));
-      if (voices.length > 0 && !jaVoice) { showSpeechHelp(); return; }
+      if (!jaVoice) { showSpeechHelp(); return; }
       try {
         const utterance = new Utterance(word);
         utterance.lang = 'ja-JP';
         utterance.rate = 0.8;
-        if (jaVoice) utterance.voice = jaVoice;
+        utterance.voice = jaVoice;
         utterance.onerror = showSpeechHelp;
         synth.cancel();
         synth.speak(utterance);
-        if (voices.length === 0) {
-          window.setTimeout(() => {
-            const currentVoices = synth.getVoices();
-            if (!currentVoices.some((voice) => /^ja(?:-|$)/i.test(voice.lang || ''))) showSpeechHelp();
-          }, 2500);
-        }
       } catch (e) { showSpeechHelp(); }
       return;
     }
-    try { Speech.speak(word, { language: 'ja', rate: 0.8, onError: showSpeechHelp }); }
+    try {
+      const voices = await Speech.getAvailableVoicesAsync();
+      if (!Array.isArray(voices) || !voices.some((voice) => /^ja(?:-|$)/i.test(voice.language || ''))) {
+        showSpeechHelp();
+        return;
+      }
+      Speech.speak(word, { language: 'ja-JP', rate: 0.8, onError: showSpeechHelp });
+    }
     catch (e) { showSpeechHelp(); }
   };
 

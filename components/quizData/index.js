@@ -29,6 +29,15 @@ export const SCORING = {
   passPlacement: 75, // == PLACE_PASS — Level Check အောင်မှတ်
 };
 
+export function scoreQuizQuestions(questions, answers) {
+  return (questions || []).reduce((result, question) => {
+    const points = question.points || 1;
+    result.total += points;
+    if (answers && answers[question.id] === question.correctIndex) result.earned += points;
+    return result;
+  }, { earned: 0, total: 0 });
+}
+
 export const SKILLS = ['vocab', 'grammar', 'reading', 'listening'];
 
 export function shuffle(arr) {

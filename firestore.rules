@@ -104,6 +104,25 @@ service cloud.firestore {
       allow create, update, delete: if isStaff();
     }
 
+    // Community quiz submissions stay private until a teacher/admin approves them.
+    match /quizQuestions/{questionId} {
+      allow get, list: if isStaff()
+        || resource.data.status == 'approved'
+        || (isSignedIn() && resource.data.submittedBy == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.submittedBy == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.question is string
+        && request.resource.data.options is list
+        && request.resource.data.correctIndex is int;
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['approved', 'rejected'];
+      allow delete: if isStaff()
+        || (isSignedIn() && resource.data.submittedBy == request.auth.uid
+          && resource.data.status == 'pending');
+    }
+
     match /chats/{chatId} {
       // member ဝင်ထားသူသာ ဖတ်/စာရင်း (query: where members array-contains own uid)
       // NOTE: DM အသစ် getDoc စစ်တုန်း doc မရှိသေးရင် resource.data = null → deny ဖြစ်မယ်၊

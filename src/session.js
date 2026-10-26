@@ -21,6 +21,35 @@ export const PROFILE_DEFAULTS = {
   bio: '', photoURL: null, isPublic: true, testedLevel: '',
 };
 
+export function resolveProfileDefaults(fbUser, defaultName) {
+  const email = fbUser.email || '';
+  const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  return {
+    isAdmin,
+    profile: {
+      name: defaultName || fbUser.displayName || (email.includes('@') ? email.split('@')[0] : 'User'),
+      role: isAdmin ? 'teacher' : 'student',
+      status: isAdmin ? 'active' : 'pending',
+      mustChangePassword: false,
+    },
+  };
+}
+
+export function adoptProfile(placeholder, defaults) {
+  const profile = {
+    name: placeholder.name || defaults.name,
+    role: String(placeholder.role || defaults.role).toLowerCase(),
+    status: String(placeholder.status || defaults.status).toLowerCase(),
+  };
+  const extras = { ...PROFILE_DEFAULTS };
+  PROFILE_FIELDS.forEach((field) => {
+    if (placeholder[field] !== undefined && placeholder[field] !== null && placeholder[field] !== '') {
+      extras[field] = placeholder[field];
+    }
+  });
+  return { profile, extras };
+}
+
 async function findProfilesByEmail(email) {
   const out = [];
   if (!email) return out;
@@ -77,7 +106,8 @@ export function classifyResolveError(p) {
 
 export async function resolveUserProfile(fbUser, defaultName) {
   const email = fbUser.email || '';
-  const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const resolvedDefaults = resolveProfileDefaults(fbUser, defaultName);
+  const isAdmin = resolvedDefaults.isAdmin;
 
   // Banned/deleted account? (uid OR email match) — refuse before anything else.
   // 2-tier: allowRejoin==true docs do NOT block (re-register → PENDING → approve);
@@ -109,12 +139,7 @@ export async function resolveUserProfile(fbUser, defaultName) {
     console.log('Ban check skipped:', e.message);
     rejoinRefs = [];
   }
-  let profile = {
-    name: defaultName || fbUser.displayName || (email.includes('@') ? email.split('@')[0] : 'User'),
-    role: isAdmin ? 'teacher' : 'student',
-    status: isAdmin ? 'active' : 'pending',
-    mustChangePassword: false,
-  };
+  let profile = resolvedDefaults.profile;
   // Email/Password provider ရှိမှ password-change gate အကျိုးသက် (Google-only → skip)
   const hasPassword = ((fbUser.providerData || []).some((p) => p && p.providerId === 'password'));
   let firestoreOk = true;
@@ -140,18 +165,11 @@ export async function resolveUserProfile(fbUser, defaultName) {
         console.log('Placeholder lookup failed:', qErr.message);
         throw qErr;
       }
-      const extras = { ...PROFILE_DEFAULTS };
+      let extras = { ...PROFILE_DEFAULTS };
       if (placeholder) {
-        profile = {
-          name: placeholder.name || profile.name,
-          role: String(placeholder.role || profile.role).toLowerCase(),
-          status: String(placeholder.status || profile.status).toLowerCase(),
-        };
-        PROFILE_FIELDS.forEach((f) => {
-          if (placeholder[f] !== undefined && placeholder[f] !== null && placeholder[f] !== '') {
-            extras[f] = placeholder[f];
-          }
-        });
+        const adopted = adoptProfile(placeholder, profile);
+        profile = adopted.profile;
+        extras = adopted.extras;
       }
       if (fbUser.photoURL && !extras.photoURL) extras.photoURL = fbUser.photoURL;
       await withRetry(() => setDoc(ref, {

@@ -1,6 +1,6 @@
 import './src/webAlertPolyfill';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, RefreshControl, ImageBackground, Platform, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, RefreshControl, ImageBackground, Platform, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer, useFocusEffect } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -91,6 +91,7 @@ const homeT = {
     people: 'အဖွဲ့', library: 'စာကြည့်', klass: 'သင်ခန်း', help: 'အကူအညီ', more: 'မီနူး',
     guestNote: 'Login မလိုဘဲ လေ့လာနေပါတယ်',
     guestNote2: 'Chat · Class · People သုံးချင်ရင် အပေါ်က 🚪 ကနေထွက်ပြီး account ဖြင့် Login ပါ (Admin approve လိုအပ်ပါတယ်)။',
+    downloadApk: 'Android APK ဒေါင်းလုဒ်လုပ်ရန်', downloadApkDesc: 'နောက်ဆုံး Android App ကို ရယူပါ',
   },
   en: {
     progress: "Today's Study Progress", done: 'Completed', quick: 'Quick Access',
@@ -99,6 +100,7 @@ const homeT = {
     people: 'People', library: 'Library', klass: 'Class', help: 'Help', more: 'More',
     guestNote: 'Studying as Guest — no login',
     guestNote2: 'To use Chat · Class · People, tap 🚪 above to log out and sign in (Admin approval required).',
+    downloadApk: 'Download Android APK', downloadApkDesc: 'Get the latest Android app build',
   },
   jp: {
     progress: '今日の学習進捗', done: '完了', quick: 'クイックアクセス',
@@ -107,8 +109,10 @@ const homeT = {
     people: '仲間', library: '資料', klass: '授業', help: 'ヘルプ', more: 'メニュー',
     guestNote: 'ゲストとして学習中 — ログイン不要',
     guestNote2: 'チャット・授業・仲間を使うには 🚪 からログアウトしてログインしてください（管理者承認必要）。',
+    downloadApk: 'Android APK をダウンロード', downloadApkDesc: '最新の Android アプリを入手',
   },
 };
+const APK_BUILD_URL = 'https://expo.dev/accounts/soemyintswe/projects/japanese-mksedu/builds/58adfdf7-0ef4-4a4e-bb63-1cbbfd50a018';
 
 // Bottom tab labels — ရွေးထားတဲ့ ဘာသာစကားအလိုက် ပြောင်းမယ်
 const tabT = {
@@ -154,6 +158,21 @@ function HomeScreen({ navigation, user, onLogout }) {
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           >
+            <TouchableOpacity
+              style={styles.apkDownloadButton}
+              onPress={() => Linking.openURL(APK_BUILD_URL).catch(() => {})}
+              activeOpacity={0.85}
+              accessibilityRole="link"
+              accessibilityLabel={`${t.downloadApk}. ${t.downloadApkDesc}`}
+            >
+              <Text style={styles.apkDownloadIcon}>⬇️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.apkDownloadTitle}>{t.downloadApk}</Text>
+                <Text style={styles.apkDownloadDesc}>{t.downloadApkDesc}</Text>
+              </View>
+              <Text style={styles.apkDownloadArrow}>›</Text>
+            </TouchableOpacity>
+
             {/* Progress Card — တကယ့် planner data (အတုမဟုတ်) */}
             <View style={styles.glassCard}>
               <Text style={styles.cardTitle}>{t.progress}</Text>
@@ -564,6 +583,11 @@ const styles = StyleSheet.create({
   appMainTitle: { fontSize: 15, fontWeight: 'bold', color: '#D32F2F', marginBottom: 2, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   appSubTitle: { fontSize: 11, color: '#666', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   scrollContainer: { padding: 12 },
+  apkDownloadButton: { backgroundColor: '#C62828', borderRadius: 12, padding: 15, marginBottom: 12, flexDirection: 'row', alignItems: 'center', elevation: 4 },
+  apkDownloadIcon: { fontSize: 27, marginRight: 12 },
+  apkDownloadTitle: { color: '#FFF', fontSize: 16, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  apkDownloadDesc: { color: '#FFEBEE', fontSize: 11, marginTop: 3, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  apkDownloadArrow: { color: '#FFF', fontSize: 28, marginLeft: 8 },
   glassCard: { backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 10, padding: 15, marginBottom: 12, elevation: 2, borderWidth: 1, borderColor: '#EEE' },
   cardTitle: { fontSize: 13, fontWeight: '600', color: '#333', marginBottom: 6, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

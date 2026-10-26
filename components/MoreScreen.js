@@ -2,7 +2,7 @@
 // Hidden-from-bar screens (Planner/Notes/Library/Help + Teacher for staff) live here.
 // Navigation + deep-linking (/planner etc.) keep working — tabs are hidden via tabBarButton, not removed.
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
@@ -16,6 +16,7 @@ const moreT = {
     help: 'အကူအညီ', helpD: 'အသုံးပြုနည်း လမ်းညွှန်',
     kana: 'あ ဂျပန်အက္ခရာ', kanaD: '五十音表 + အသံထွက် (offline)',
     teacher: 'ဆရာ့အပိုင်း', teacherD: 'User စီမံခန့်ခွဲမှု (staff)',
+    apk: '📲 Android APK ရယူရန်', apkD: 'နောက်ဆုံး APK ကို EAS မှ ဒေါင်းလုဒ်လုပ်ပါ',
   },
   en: {
     title: '☰ More',
@@ -25,6 +26,7 @@ const moreT = {
     help: 'Help', helpD: 'How-to guide',
     kana: 'あ Kana', kanaD: 'Gojuon chart + pronunciation (offline)',
     teacher: 'Teacher', teacherD: 'User management (staff)',
+    apk: '📲 Download Android APK', apkD: 'Download the latest APK from EAS',
   },
   jp: {
     title: '☰ メニュー',
@@ -34,10 +36,12 @@ const moreT = {
     help: 'ヘルプ', helpD: '使い方',
     kana: 'あ 五十音', kanaD: '五十音表＋発音 (offline)',
     teacher: '先生', teacherD: '管理 (staff)',
+    apk: '📲 Android APK をダウンロード', apkD: 'EAS から最新の APK をダウンロード',
   },
 };
 
 const ICONS = { Planner: '📅', Notes: '📝', Library: '📚', Help: '🆘', Kana: 'あ', Teacher: '🎓' };
+const APK_BUILD_URL = 'https://expo.dev/accounts/soemyintswe/projects/japanese-mksedu/builds/58adfdf7-0ef4-4a4e-bb63-1cbbfd50a018';
 
 export default function MoreScreen({ user, onLogout, navigation }) {
   const { lang } = useLanguage();
@@ -74,6 +78,20 @@ export default function MoreScreen({ user, onLogout, navigation }) {
             <Text style={{ fontSize: 18, color: '#D32F2F' }}>›</Text>
           </TouchableOpacity>
         ))}
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => Linking.openURL(APK_BUILD_URL).catch(() => {})}
+          activeOpacity={0.8}
+          accessibilityRole="link"
+          accessibilityLabel={`${t.apk}. ${t.apkD}`}
+        >
+          <Text style={{ fontSize: 28, marginRight: 12 }}>📲</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>{t.apk}</Text>
+            <Text style={styles.desc}>{t.apkD}</Text>
+          </View>
+          <Text style={{ fontSize: 18, color: '#D32F2F' }}>↗</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

@@ -9,8 +9,10 @@ import * as Clipboard from 'expo-clipboard';
 import { useLanguage } from '../src/LanguageContext';
 import AppHeader from './AppHeader';
 import BotPanel from './BotPanel';
-import { QUIZ_BANK, QUIZ_LEVELS, UNLOCK_SCORE, PLACE_PASS, PLACE_Q_PER_LEVEL, sampleQuestions, shuffle, isLevelUnlocked } from './quizData/index';
+import { QUIZ_BANK, QUIZ_LEVELS, UNLOCK_SCORE, PLACE_PASS, PLACE_Q_PER_LEVEL, sampleQuestions, shuffle, isLevelUnlocked, scoreQuizQuestions } from './quizData/index';
 import { fullDictionary as dictWords } from './dictionaryData/index';
+import { loadQuizQuestions, moderateQuizQuestion, submitQuizQuestion } from '../src/quizBankSync';
+import { isAdmin, isTeacher } from '../src/roles';
 
 const QA_KEY = '@japanese_qa_custom_v1';
 const PROG_KEY = '@japanese_quiz_progress_v1';
@@ -57,6 +59,7 @@ const qaT = {
     expDone: 'Export ပြီးပါပြီ ✅',
     micNeed: '🎤 Microphone ခွင့်ပြုချက် လိုပါတယ် — Settings မှာ ဖွင့်ပေးပါ။',
     ttsFail: 'အသံထွက်မရပါ (device TTS မရှိ) — စာဖတ်ပြီး လေ့ကျင့်ပါ။',
+    pending: 'စိစစ်ရန်တင်ထားသည်', approved: 'အတည်ပြုပြီး', rejected: 'ပယ်ချထားသည်', moderation: 'ဆရာ/စီမံခန့်ခွဲသူ စိစစ်ရန်', approve: 'အတည်ပြု', reject: 'ပယ်ချ',
   },
   en: {
     title: '📝 Quiz & Skills', tabQuiz: '📝 Quiz', tabSkills: '🎧 Skills', tabBot: '🤖 Bot',
@@ -99,6 +102,7 @@ const qaT = {
     expDone: 'Export done ✅',
     micNeed: '🎤 Microphone permission needed — enable in Settings.',
     ttsFail: 'No TTS voice on device — read instead.',
+    pending: 'Pending review', approved: 'Approved', rejected: 'Rejected', moderation: 'Teacher/Admin review', approve: 'Approve', reject: 'Reject',
   },
   jp: {
     title: '📝 クイズ＆技能', tabQuiz: '📝 クイズ', tabSkills: '🎧 技能', tabBot: '🤖 Bot',
@@ -141,6 +145,7 @@ const qaT = {
     expDone: '書出完了 ✅',
     micNeed: '🎤 マイク許可が必要です。',
     ttsFail: 'TTS音声がありません。',
+    pending: '審査待ち', approved: '承認済み', rejected: '却下', moderation: '教師・管理者の審査', approve: '承認', reject: '却下',
   }
 };
 
@@ -163,6 +168,9 @@ export default function QAScreen({ user, onLogout, navigation }) {
 
   // customs (my questions)
   const [customs, setCustoms] = useState([]);
+  const [sharedQuestions, setSharedQuestions] = useState([]);
+  const [pendingQuestions, setPendingQuestions] = useState([]);
+  const canModerate = isAdmin(user) || isTeacher(user);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [qText, setQText] = useState('');
@@ -207,6 +215,21 @@ export default function QAScreen({ user, onLogout, navigation }) {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    loadQuizQuestions(user, canModerate).then((result) => {
+      if (!active) return;
+      setSharedQuestions(result.approved);
+      setPendingQuestions(result.pending);
+      const own = result.own.filter((q) => q.status !== 'approved');
+      if (own.length) setCustoms((current) => {
+        const ids = new Set(current.map((q) => q.id));
+        return [...current, ...own.filter((q) => !ids.has(q.id)).map((q) => ({ ...q, custom: true, skill: 'custom' }))];
+      });
+    }).catch(() => {}); // Firestore is optional; local bank remains available.
+    return () => { active = false; };
+  }, [user?.uid, canModerate]);
+
+  useEffect(() => {
     AsyncStorage.setItem(PROG_KEY, JSON.stringify(progress)).catch(() => {});
   }, [progress]);
 
@@ -237,7 +260,8 @@ export default function QAScreen({ user, onLogout, navigation }) {
   const levelPool = (level) => {
     const bank = QUIZ_BANK[level] || [];
     const mine = customs.filter((q) => (q.level || 'N5') === level);
-    return [...bank, ...mine];
+    const shared = sharedQuestions.filter((q) => (q.level || 'N5') === level);
+    return [...bank, ...mine, ...shared.filter((q) => !mine.some((own) => own.id === q.id))];
   };
 
   const startLevelQuiz = (level) => {
@@ -272,12 +296,7 @@ export default function QAScreen({ user, onLogout, navigation }) {
 
   const handleSubmit = () => {
     const qs = round.questions;
-    let s = 0, tot = 0;
-    qs.forEach((q) => {
-      const p = q.points || 1;
-      tot += p;
-      if (selectedAnswers[q.id] === q.correctIndex) s += p;
-    });
+    const { earned: s, total: tot } = scoreQuizQuestions(qs, selectedAnswers);
     setScore(s);
     setSubmitted(true);
     const pct = tot ? Math.round((s / tot) * 100) : 0;
@@ -395,19 +414,22 @@ export default function QAScreen({ user, onLogout, navigation }) {
       return;
     }
     let next;
+    let created = null;
     if (editingId) {
       next = customs.map(q => q.id === editingId
         ? { ...q, question: qText, options: newOptions, correctIndex: correctIdx, level: qLevel, mediaUrl: qMedia.trim() }
         : q);
       setEditingId(null);
     } else {
-      next = [...customs, {
+      created = {
         id: 'cq_' + Date.now().toString(36),
         question: qText, options: newOptions, correctIndex: correctIdx,
         level: qLevel, skill: 'custom', custom: true, mediaUrl: qMedia.trim(),
-      }];
+      };
+      next = [...customs, created];
     }
     setCustoms(next);
+    if (created && user?.uid) submitQuizQuestion(user, created).then((ref) => setCustoms((current) => current.map((q) => q.id === created.id ? { ...q, status: 'pending', firestoreId: ref.id } : q))).catch(() => {});
     setQText(''); setOpt1(''); setOpt2(''); setOpt3(''); setOpt4(''); setCorrectIdx(0); setQMedia('');
     setModalVisible(false);
   };
@@ -439,7 +461,19 @@ export default function QAScreen({ user, onLogout, navigation }) {
     const arr = [];
     ORDER.forEach((lv) => { (QUIZ_BANK[lv] || []).forEach((q) => arr.push(q)); });
     customs.forEach((q) => arr.push(q));
+    sharedQuestions.forEach((q) => { if (!arr.some((item) => item.id === q.id)) arr.push(q); });
     return arr;
+  };
+
+  const reviewQuestion = async (question, status) => {
+    if (!question.firestoreId) return;
+    try {
+      await moderateQuizQuestion(question.firestoreId, status);
+      setPendingQuestions((current) => current.filter((item) => item.firestoreId !== question.firestoreId));
+      if (status === 'approved') setSharedQuestions((current) => [...current.filter((item) => item.firestoreId !== question.firestoreId), { ...question, status }]);
+    } catch (e) {
+      Alert.alert('⚠️', String(e.message || e));
+    }
   };
 
   const startRandomMixed = () => {
@@ -507,6 +541,7 @@ export default function QAScreen({ user, onLogout, navigation }) {
       return;
     }
     setCustoms([...customs, ...fresh]);
+    if (user?.uid) fresh.forEach((question) => submitQuizQuestion(user, question).then((ref) => setCustoms((current) => current.map((q) => q.id === question.id ? { ...q, status: 'pending', firestoreId: ref.id } : q))).catch(() => {}));
     setImpText('');
     setImpVisible(false);
     Alert.alert('✅', `${t.impOk} (+${fresh.length})`);
@@ -763,7 +798,7 @@ export default function QAScreen({ user, onLogout, navigation }) {
       {/* customs */}
       <View style={[styles.levelCard, { marginTop: 12 }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={styles.levelCardTitle}>✏️ {t.customTitle} ({customs.length})</Text>
+          <Text style={styles.levelCardTitle}>✏️ {t.customTitle} ({customs.length + sharedQuestions.length})</Text>
           <View style={{ flexDirection: 'row' }}>
             <TouchableOpacity style={[styles.addButton, { backgroundColor: '#455A64', marginRight: 6 }]} onPress={() => setImpVisible(true)}>
               <Text style={{ fontSize: 14, color: '#FFF' }}>📥</Text>
@@ -779,7 +814,7 @@ export default function QAScreen({ user, onLogout, navigation }) {
         {customs.map((q) => (
           <View key={q.id} style={styles.customRow}>
             <Text style={[styles.customQ, { flex: 1 }]} numberOfLines={2}>
-              [{q.level || 'N5'}] {q.question}
+              [{q.level || 'N5'}] {q.question}{q.status === 'pending' ? ` · ${t.pending}` : ''}{q.status === 'rejected' ? ` · ${t.rejected}` : ''}
             </Text>
             <TouchableOpacity onPress={() => handleEditQuestion(q)} style={{ marginHorizontal: 8 }}>
               <Text style={{ fontSize: 16 }}>✏️</Text>
@@ -787,6 +822,14 @@ export default function QAScreen({ user, onLogout, navigation }) {
             <TouchableOpacity onPress={() => handleDeleteQuestion(q.id)}>
               <Text style={{ fontSize: 16 }}>🗑️</Text>
             </TouchableOpacity>
+          </View>
+        ))}
+        {canModerate && pendingQuestions.length > 0 && <Text style={styles.sectionTitle}>{t.moderation} ({pendingQuestions.length})</Text>}
+        {canModerate && pendingQuestions.map((q) => (
+          <View key={q.firestoreId} style={styles.customRow}>
+            <Text style={[styles.customQ, { flex: 1 }]} numberOfLines={2}>[{q.level || 'N5'}] {q.question}</Text>
+            <TouchableOpacity onPress={() => reviewQuestion(q, 'approved')} style={{ marginHorizontal: 5 }}><Text style={{ color: '#2E7D32' }}>{t.approve}</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => reviewQuestion(q, 'rejected')}><Text style={{ color: '#C62828' }}>{t.reject}</Text></TouchableOpacity>
           </View>
         ))}
       </View>

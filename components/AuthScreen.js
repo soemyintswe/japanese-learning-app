@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   GoogleAuthProvider,
@@ -19,6 +19,7 @@ import { POLICY } from '../src/privacyPolicy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CONSENT_KEY = '@japanese_privacy_consent_v1';
+const APK_BUILD_URL = 'https://expo.dev/accounts/soemyintswe/projects/japanese-mksedu/builds/58adfdf7-0ef4-4a4e-bb63-1cbbfd50a018';
 
 const translations = {
   my: {
@@ -47,6 +48,9 @@ const translations = {
     regBtn: '📧 Email နဲ့ Register လုပ်မည်',
     orText: '— သို့မဟုတ် —',
     regNote: 'Email နဲ့ Register လုပ်ပါ — အကောင့် တကယ် ဖွင့်ပေးမယ် (Admin အတည်ပြုပြီးမှ ဝင်နိုင်မည်)',
+    accountTab: '👤 အကောင့်ဝင်ရန်', guestTab: '🎮 ဧည့်သည်အဖြစ်', viewPolicy: 'Privacy Policy ကိုကြည့်ရန်',
+    registerEmailAction: 'Email ဖြင့် စာရင်းသွင်းရန်', guestTitle: 'အကောင့်မလိုဘဲ လေ့လာပါ',
+    apkBtn: 'Android APK ဒေါင်းလုဒ်လုပ်ရန်', apkDesc: 'နောက်ဆုံး App ကို EAS မှ ရယူပါ',
   },
   en: {
     title: 'Japanese Study Planner',
@@ -74,6 +78,9 @@ const translations = {
     regBtn: '📧 Register with Email',
     orText: '— or —',
     regNote: 'Register with your Email (Requires Admin Approval)',
+    accountTab: '👤 Account User Login', guestTab: '🎮 Guest User Login', viewPolicy: 'View Privacy Policy',
+    registerEmailAction: 'Register with Email', guestTitle: 'Learn without an account',
+    apkBtn: 'Download Android APK', apkDesc: 'Get the latest app from EAS',
   },
   jp: {
     title: '日本語スタディプランナー',
@@ -101,6 +108,9 @@ const translations = {
     regBtn: '📧 メールで登録',
     orText: '— または —',
     regNote: 'メールで登録（管理者の承認が必要）',
+    accountTab: '👤 アカウントでログイン', guestTab: '🎮 ゲストで利用', viewPolicy: 'プライバシーポリシーを見る',
+    registerEmailAction: 'メールで登録', guestTitle: 'アカウントなしで学習',
+    apkBtn: 'Android APK をダウンロード', apkDesc: 'EAS から最新アプリを入手',
   }
 };
 
@@ -109,6 +119,7 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
   const t = translations[lang] || translations.my;
 
   const [step, setStep] = useState('login');
+  const [authTab, setAuthTab] = useState('account');
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -148,6 +159,27 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
     setPolicyVisible(false);
     clearMsg();
   };
+
+  const toggleConsent = async () => {
+    const next = !consent;
+    setConsent(next);
+    try { await AsyncStorage.setItem(CONSENT_KEY, next ? 'yes' : 'no'); } catch (e) {}
+    if (next) clearMsg();
+  };
+
+  const renderConsent = () => (
+    <View style={styles.consentRow}>
+      <TouchableOpacity onPress={toggleConsent} accessibilityRole="checkbox" accessibilityState={{ checked: consent }} style={styles.checkbox}>
+        <Text style={styles.checkboxMark}>{consent ? '☑' : '□'}</Text>
+      </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.consentText}>{policy.consent}</Text>
+        <TouchableOpacity onPress={() => setPolicyVisible(true)}>
+          <Text style={styles.policyLink}>{t.viewPolicy}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   // App.js က ပို့တဲ့ notice (ဥပမာ pending approve စောင့်နေတာ) ကို ပြမယ်
   useEffect(() => {
@@ -475,8 +507,11 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.card}>
-            {/* Language Switcher */}
+          <View style={styles.brandHeader}>
+            <View style={styles.brandLockup}>
+              <Text style={styles.brandLogo}>🎓</Text>
+              <Text style={styles.brandTitle}>{t.title}</Text>
+            </View>
             <View style={styles.langRow}>
               {['my', 'en', 'jp'].map((l) => (
                 <TouchableOpacity 
@@ -490,9 +525,27 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
 
-            <Text style={{ fontSize: 40, textAlign: 'center', marginBottom: 8 }}>🎓</Text>
-            <Text style={styles.title}>{t.title}</Text>
+          <View style={styles.card}>
+            <View style={styles.authTabs}>
+              <TouchableOpacity
+                accessibilityRole="tab"
+                accessibilityState={{ selected: authTab === 'account' }}
+                style={[styles.authTab, authTab === 'account' && styles.authTabActive]}
+                onPress={() => setAuthTab('account')}
+              >
+                <Text style={[styles.authTabText, authTab === 'account' && styles.authTabTextActive]}>{t.accountTab}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityRole="tab"
+                accessibilityState={{ selected: authTab === 'guest' }}
+                style={[styles.authTab, authTab === 'guest' && styles.authTabActive]}
+                onPress={() => setAuthTab('guest')}
+              >
+                <Text style={[styles.authTabText, authTab === 'guest' && styles.authTabTextActive]}>{t.guestTab}</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Error / Info message banner — မှားရင် မှားကြောင်း ဒီမှာ အမြဲ ပြမယ် */}
             {!!errorMsg && (
@@ -506,12 +559,8 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
               </View>
             )}
 
-            {step === 'login' && (
+            {authTab === 'account' && step === 'login' && (
               <>
-                <Text style={styles.subtitle}>{t.login}</Text>
-                {/* Role မရွေးခိုင်းတော့ — login ဝင်တဲ့ user ရဲ့ Firestore profile (role/status) ကနေ
-                    Admin/Teacher/Student အလိုအလျောက် ခွဲမယ် (resolveUserProfile) */}
-
                 <Text style={styles.label}>{t.username}</Text>
                 <TextInput
                   style={styles.input}
@@ -543,57 +592,40 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
                 </View>
 
                 <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}
-                  onPress={() => setPolicyVisible(true)}
-                >
-                  <TouchableOpacity onPress={async () => {
-                    const v = !consent;
-                    setConsent(v);
-                    try {
-                      await AsyncStorage.setItem(CONSENT_KEY, v ? 'yes' : 'no');
-                    } catch (e) {}
-                    if (v) clearMsg();
-                  }}>
-                    <Text style={{ fontSize: 18 }}>{consent ? '☑️' : '⬜'}</Text>
-                  </TouchableOpacity>
-                  <Text style={[styles.switchText, { marginLeft: 6, flex: 1 }]} onPress={() => setPolicyVisible(true)}>
-                    {policy.consent}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.submitBtn} onPress={handleAuthAction}>
-                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{t.loginBtn}</Text>}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={handlePasswordReset}
-                  disabled={resetSending}
-                  style={{ marginTop: 10, alignItems: 'center' }}
-                >
-                  <Text style={styles.switchText}>
-                    {resetSending ? t.sending : t.resetLink}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
                   style={styles.googleButton}
                   onPress={handleGoogleRegister}
                   disabled={loading}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.googleButtonText}>{t.googleBtn}</Text>
-                  )}
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.googleButtonText}>{t.googleBtn}</Text>}
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => setStep('register')} style={{ marginTop: 15, alignItems: 'center' }}>
-                  <Text style={styles.switchText}>{t.noAccount}</Text>
+                {renderConsent()}
+
+                <TouchableOpacity style={styles.submitBtn} onPress={handleAuthAction} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{t.loginBtn}</Text>}
                 </TouchableOpacity>
+
+                <TouchableOpacity onPress={handlePasswordReset} disabled={resetSending} style={styles.resetLinkButton}>
+                  <Text style={styles.switchText}>{resetSending ? t.sending : t.resetLink}</Text>
+                </TouchableOpacity>
+
+                <View style={styles.registerDivider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.registerPrompt}>{t.noAccount}</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+                <View style={styles.registerActions}>
+                  <TouchableOpacity style={styles.emailRegisterButton} onPress={() => setStep('register')}>
+                    <Text style={styles.emailRegisterText}>{t.registerEmailAction}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.googleRegisterButton} onPress={handleGoogleRegister} disabled={loading}>
+                    <Text style={styles.googleRegisterText}>{t.googleRegisterBtn}</Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
 
-            {step === 'register' && (
+            {authTab === 'account' && step === 'register' && (
               <>
                 <Text style={styles.subtitle}>{t.register}</Text>
 
@@ -635,24 +667,7 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
                   onSubmitEditing={handleEmailRegister}
                 />
 
-                <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
-                  onPress={() => setPolicyVisible(true)}
-                >
-                  <TouchableOpacity onPress={async () => {
-                    const v = !consent;
-                    setConsent(v);
-                    try {
-                      await AsyncStorage.setItem(CONSENT_KEY, v ? 'yes' : 'no');
-                    } catch (e) {}
-                    if (v) clearMsg();
-                  }}>
-                    <Text style={{ fontSize: 18 }}>{consent ? '☑️' : '⬜'}</Text>
-                  </TouchableOpacity>
-                  <Text style={[styles.switchText, { marginLeft: 6, flex: 1 }]} onPress={() => setPolicyVisible(true)}>
-                    {policy.consent}
-                  </Text>
-                </TouchableOpacity>
+                {renderConsent()}
 
                 <TouchableOpacity
                   style={[styles.submitBtn, { backgroundColor: '#2E7D32' }]}
@@ -674,7 +689,7 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.googleButtonText}>{t.googleBtn}</Text>
+                    <Text style={styles.googleButtonText}>{t.googleRegisterBtn}</Text>
                   )}
                 </TouchableOpacity>
 
@@ -684,14 +699,34 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
               </>
             )}
 
-            {/* 🎮 Guest — login မလို, local features ပဲ (server 0 read) */}
-            {onGuest && (
-              <TouchableOpacity style={styles.guestBtn} onPress={onGuest} disabled={loading}>
-                <Text style={styles.guestBtnText}>{t.guestBtn}</Text>
+            {authTab === 'guest' && (
+              <View style={styles.guestPanel}>
+                <Text style={styles.guestIcon}>🎮</Text>
+                <Text style={styles.guestTitle}>{t.guestTitle}</Text>
                 <Text style={styles.guestHint}>{t.guestHint}</Text>
-              </TouchableOpacity>
+                {onGuest && (
+                  <TouchableOpacity style={styles.guestBtn} onPress={onGuest} disabled={loading}>
+                    <Text style={styles.guestBtnText}>{t.guestBtn}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
           </View>
+
+          <TouchableOpacity
+            style={styles.apkDownloadButton}
+            onPress={() => Linking.openURL(APK_BUILD_URL).catch(() => {})}
+            activeOpacity={0.86}
+            accessibilityRole="link"
+            accessibilityLabel={`${t.apkBtn}. ${t.apkDesc}`}
+          >
+            <Text style={styles.apkDownloadIcon}>⬇️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.apkDownloadTitle}>{t.apkBtn}</Text>
+              <Text style={styles.apkDownloadDesc}>{t.apkDesc}</Text>
+            </View>
+            <Text style={styles.apkDownloadArrow}>›</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -725,43 +760,68 @@ export default function AuthScreen({ onLoginSuccess, notice, onGuest }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
-  scrollContainer: { flexGrow: 1, justifyContent: 'center', padding: 20 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 15, padding: 20, elevation: 4 },
-  langRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 },
-  langBtn: { paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: '#DDD', borderRadius: 4, marginLeft: 4 },
-  langBtnActive: { backgroundColor: '#D32F2F', borderColor: '#D32F2F' },
-  langText: { fontSize: 10, color: '#666', fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  container: { flex: 1, backgroundColor: '#F3F5F9' },
+  scrollContainer: { flexGrow: 1, justifyContent: 'center', alignSelf: 'center', width: '100%', maxWidth: 540, paddingHorizontal: 18, paddingVertical: 22 },
+  brandHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 16 },
+  brandLockup: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 145, marginRight: 10 },
+  brandLogo: { fontSize: 32, marginRight: 9 },
+  brandTitle: { flexShrink: 1, fontSize: 16, fontWeight: '800', color: '#252B36', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  langRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' },
+  langBtn: { paddingHorizontal: 8, paddingVertical: 6, borderWidth: 1, borderColor: '#D8DDE6', borderRadius: 8, marginLeft: 5, backgroundColor: '#FFF' },
+  langBtnActive: { backgroundColor: '#C62828', borderColor: '#C62828' },
+  langText: { fontSize: 10, color: '#596273', fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
   langTextActive: { color: '#FFF' },
-  title: { fontSize: 16, fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: 4, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  subtitle: { fontSize: 13, fontWeight: '600', color: '#555', textAlign: 'center', marginBottom: 10, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  roleRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  roleBtn: { flex: 1, paddingVertical: 6, borderWidth: 1, borderColor: '#DDD', borderRadius: 6, alignItems: 'center', marginRight: 4 },
-  roleBtnActive: { backgroundColor: '#D32F2F', borderColor: '#D32F2F' },
-  roleText: { fontSize: 11, fontWeight: 'bold', color: '#666', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  roleTextActive: { color: '#FFF' },
-  label: { fontSize: 11, fontWeight: '600', color: '#555', marginBottom: 2, marginTop: 6, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  input: { borderWidth: 1, borderColor: '#DDD', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, color: '#333', backgroundColor: '#FAFAFA', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  passwordContainer: { flexDirection: 'row', borderWidth: 1, borderColor: '#DDD', borderRadius: 6, alignItems: 'center', backgroundColor: '#FAFAFA' },
-  passwordInput: { flex: 1, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, color: '#333', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  eyeIcon: { padding: 8 },
-  submitBtn: { backgroundColor: '#D32F2F', paddingVertical: 10, borderRadius: 6, alignItems: 'center', marginTop: 12 },
-  submitBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  googleButton: { flexDirection: 'row', backgroundColor: '#4285F4', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginTop: 15, elevation: 2 },
-  googleButtonText: { color: '#fff', fontSize: 12, fontWeight: '600', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  guestBtn: { marginTop: 18, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#90CAF9', backgroundColor: '#E3F2FD', alignItems: 'center' },
-  guestBtnText: { fontSize: 13, fontWeight: 'bold', color: '#1565C0', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  guestHint: { fontSize: 10, color: '#546E7A', marginTop: 4, textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  instructionText: { fontSize: 11, color: '#666', textAlign: 'center', marginBottom: 10, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  switchText: { color: '#1976D2', fontSize: 11, fontWeight: '600', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
-  errorBox: { backgroundColor: '#FFEBEE', borderWidth: 1, borderColor: '#EF9A9A', borderRadius: 8, padding: 10, marginTop: 8, marginBottom: 4 },
-  errorText: { color: '#C62828', fontSize: 12, lineHeight: 17 },
-  infoBox: { backgroundColor: '#E3F2FD', borderWidth: 1, borderColor: '#90CAF9', borderRadius: 8, padding: 10, marginTop: 8, marginBottom: 4 },
-  infoText: { color: '#1565C0', fontSize: 12, lineHeight: 17 },
+  card: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E7EAF0', elevation: 5, shadowColor: '#172033', shadowOpacity: 0.08, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } },
+  authTabs: { flexDirection: 'row', padding: 4, backgroundColor: '#F0F2F6', borderRadius: 13, marginBottom: 17 },
+  authTab: { flex: 1, minHeight: 44, paddingHorizontal: 6, paddingVertical: 8, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  authTabActive: { backgroundColor: '#FFF', elevation: 2, shadowColor: '#172033', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  authTabText: { color: '#667085', fontSize: 12, fontWeight: '700', textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  authTabTextActive: { color: '#B71C1C' },
+  subtitle: { fontSize: 16, fontWeight: '800', color: '#252B36', textAlign: 'center', marginBottom: 4, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  label: { fontSize: 12, fontWeight: '700', color: '#414A59', marginBottom: 5, marginTop: 10, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  input: { minHeight: 44, borderWidth: 1, borderColor: '#DCE1E9', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: '#263141', backgroundColor: '#FBFCFE', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  passwordContainer: { flexDirection: 'row', borderWidth: 1, borderColor: '#DCE1E9', borderRadius: 10, alignItems: 'center', backgroundColor: '#FBFCFE', minHeight: 44 },
+  passwordInput: { flex: 1, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: '#263141', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  eyeIcon: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  googleButton: { minHeight: 44, flexDirection: 'row', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DCE1E9', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 13 },
+  googleButtonText: { color: '#374151', fontSize: 13, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  consentRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 14 },
+  checkbox: { width: 30, minHeight: 30, alignItems: 'flex-start', justifyContent: 'center' },
+  checkboxMark: { fontSize: 21, color: '#B71C1C' },
+  consentText: { color: '#4B5563', fontSize: 12, lineHeight: 18, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  policyLink: { color: '#1769AA', fontSize: 11, fontWeight: '700', marginTop: 3, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  submitBtn: { backgroundColor: '#C62828', minHeight: 46, paddingVertical: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 13 },
+  submitBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  resetLinkButton: { marginTop: 12, minHeight: 34, alignItems: 'center', justifyContent: 'center' },
+  switchText: { color: '#1769AA', fontSize: 12, fontWeight: '700', textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  registerDivider: { flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 9 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E7EAF0' },
+  registerPrompt: { color: '#707989', fontSize: 11, paddingHorizontal: 8, textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  registerActions: { flexDirection: 'row', justifyContent: 'space-between' },
+  emailRegisterButton: { width: '48.5%', minHeight: 42, paddingHorizontal: 6, borderRadius: 9, backgroundColor: '#F7F8FA', borderWidth: 1, borderColor: '#DCE1E9', alignItems: 'center', justifyContent: 'center' },
+  emailRegisterText: { color: '#3E4857', fontSize: 11, fontWeight: '700', textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  googleRegisterButton: { width: '48.5%', minHeight: 42, paddingHorizontal: 6, borderRadius: 9, backgroundColor: '#F7F8FA', borderWidth: 1, borderColor: '#DCE1E9', alignItems: 'center', justifyContent: 'center' },
+  googleRegisterText: { color: '#3E4857', fontSize: 11, fontWeight: '700', textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  guestPanel: { alignItems: 'center', paddingTop: 7, paddingBottom: 4 },
+  guestIcon: { fontSize: 42, marginBottom: 7 },
+  guestTitle: { color: '#252B36', fontSize: 17, fontWeight: '800', textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  guestHint: { fontSize: 13, lineHeight: 20, color: '#596273', marginTop: 9, textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  guestBtn: { width: '100%', minHeight: 48, marginTop: 20, padding: 12, borderRadius: 10, backgroundColor: '#1769AA', alignItems: 'center', justifyContent: 'center' },
+  guestBtnText: { fontSize: 14, fontWeight: '800', color: '#FFF', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  apkDownloadButton: { minHeight: 60, marginTop: 14, paddingHorizontal: 15, paddingVertical: 11, borderRadius: 13, backgroundColor: '#B71C1C', flexDirection: 'row', alignItems: 'center', elevation: 3, shadowColor: '#7F1D1D', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+  apkDownloadIcon: { fontSize: 24, marginRight: 12 },
+  apkDownloadTitle: { color: '#FFF', fontSize: 14, fontWeight: '800', fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  apkDownloadDesc: { color: '#FFCDD2', fontSize: 11, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  apkDownloadArrow: { color: '#FFF', fontSize: 25, marginLeft: 8 },
+  instructionText: { fontSize: 11, color: '#667085', textAlign: 'center', marginBottom: 10, lineHeight: 17, fontFamily: Platform.OS === 'ios' ? 'Myanmar Sangam MN' : 'sans-serif' },
+  errorBox: { backgroundColor: '#FFF1F1', borderWidth: 1, borderColor: '#F1B5B5', borderRadius: 10, padding: 11, marginBottom: 8 },
+  errorText: { color: '#A52222', fontSize: 12, lineHeight: 18 },
+  infoBox: { backgroundColor: '#EFF7FF', borderWidth: 1, borderColor: '#B8D7F4', borderRadius: 10, padding: 11, marginBottom: 8 },
+  infoText: { color: '#145A8D', fontSize: 12, lineHeight: 18 },
   policyOverlay: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.55)', padding: 20 },
-  policyBox: { backgroundColor: '#FFF', borderRadius: 12, padding: 18 },
+  policyBox: { backgroundColor: '#FFF', borderRadius: 16, padding: 18 },
   policyTitle: { fontSize: 15, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
   policyBody: { fontSize: 12, color: '#333', lineHeight: 19 },
-  policyBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  policyBtn: { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: 'center' },
   policyBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
 });
