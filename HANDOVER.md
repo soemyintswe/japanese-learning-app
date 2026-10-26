@@ -408,6 +408,11 @@ npx eas-cli build --platform android --profile preview
 
 ## 8. Roadmap (ရှေ့ဆက်)
 
+### 2026-10-26 Durable APK release plan
+- [ ] Bump the user-facing version and auto-increment the Android version code for the next preview build.
+- [ ] Point the in-app APK buttons to GitHub Releases latest, which avoids EAS artifact expiry.
+- [ ] Test/export/push the release source, build the APK on EAS, upload it to a versioned GitHub Release, then deploy the durable download link.
+
 ### 2026-10-26 Login screen redesign plan
 - [x] Preserve existing login/register/Google/privacy flows while moving them into a centered card with account and guest tabs.
 - [x] Move title/logo and MY/EN/JP switcher to a compact header; add the supplied APK download link below the card.

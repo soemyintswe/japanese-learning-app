@@ -19,7 +19,7 @@ import { POLICY } from '../src/privacyPolicy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CONSENT_KEY = '@japanese_privacy_consent_v1';
-const APK_BUILD_URL = 'https://expo.dev/accounts/soemyintswe/projects/japanese-mksedu/builds/58adfdf7-0ef4-4a4e-bb63-1cbbfd50a018';
+const APK_BUILD_URL = 'https://github.com/soemyintswe/japanese-learning-app/releases/latest';
 
 const translations = {
   my: {
@@ -50,7 +50,7 @@ const translations = {
     regNote: 'Email နဲ့ Register လုပ်ပါ — အကောင့် တကယ် ဖွင့်ပေးမယ် (Admin အတည်ပြုပြီးမှ ဝင်နိုင်မည်)',
     accountTab: '👤 အကောင့်ဝင်ရန်', guestTab: '🎮 ဧည့်သည်အဖြစ်', viewPolicy: 'Privacy Policy ကိုကြည့်ရန်',
     registerEmailAction: 'Email ဖြင့် စာရင်းသွင်းရန်', guestTitle: 'အကောင့်မလိုဘဲ လေ့လာပါ',
-    apkBtn: 'Android APK ဒေါင်းလုဒ်လုပ်ရန်', apkDesc: 'နောက်ဆုံး App ကို EAS မှ ရယူပါ',
+    apkBtn: 'Android APK ဒေါင်းလုဒ်လုပ်ရန်', apkDesc: 'နောက်ဆုံး APK ကို GitHub Releases မှ ရယူပါ',
   },
   en: {
     title: 'Japanese Study Planner',
@@ -80,7 +80,7 @@ const translations = {
     regNote: 'Register with your Email (Requires Admin Approval)',
     accountTab: '👤 Account User Login', guestTab: '🎮 Guest User Login', viewPolicy: 'View Privacy Policy',
     registerEmailAction: 'Register with Email', guestTitle: 'Learn without an account',
-    apkBtn: 'Download Android APK', apkDesc: 'Get the latest app from EAS',
+    apkBtn: 'Download Android APK', apkDesc: 'Get the latest APK from GitHub Releases',
   },
   jp: {
     title: '日本語スタディプランナー',
@@ -110,7 +110,7 @@ const translations = {
     regNote: 'メールで登録（管理者の承認が必要）',
     accountTab: '👤 アカウントでログイン', guestTab: '🎮 ゲストで利用', viewPolicy: 'プライバシーポリシーを見る',
     registerEmailAction: 'メールで登録', guestTitle: 'アカウントなしで学習',
-    apkBtn: 'Android APK をダウンロード', apkDesc: 'EAS から最新アプリを入手',
+    apkBtn: 'Android APK をダウンロード', apkDesc: 'GitHub Releases から最新 APK を入手',
   }
 };
 

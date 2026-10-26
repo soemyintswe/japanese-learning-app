@@ -16,7 +16,7 @@ const moreT = {
     help: 'အကူအညီ', helpD: 'အသုံးပြုနည်း လမ်းညွှန်',
     kana: 'あ ဂျပန်အက္ခရာ', kanaD: '五十音表 + အသံထွက် (offline)',
     teacher: 'ဆရာ့အပိုင်း', teacherD: 'User စီမံခန့်ခွဲမှု (staff)',
-    apk: '📲 Android APK ရယူရန်', apkD: 'နောက်ဆုံး APK ကို EAS မှ ဒေါင်းလုဒ်လုပ်ပါ',
+    apk: '📲 Android APK ရယူရန်', apkD: 'နောက်ဆုံး APK ကို GitHub Releases မှ ဒေါင်းလုဒ်လုပ်ပါ',
   },
   en: {
     title: '☰ More',
@@ -26,7 +26,7 @@ const moreT = {
     help: 'Help', helpD: 'How-to guide',
     kana: 'あ Kana', kanaD: 'Gojuon chart + pronunciation (offline)',
     teacher: 'Teacher', teacherD: 'User management (staff)',
-    apk: '📲 Download Android APK', apkD: 'Download the latest APK from EAS',
+    apk: '📲 Download Android APK', apkD: 'Download the latest APK from GitHub Releases',
   },
   jp: {
     title: '☰ メニュー',
@@ -36,12 +36,12 @@ const moreT = {
     help: 'ヘルプ', helpD: '使い方',
     kana: 'あ 五十音', kanaD: '五十音表＋発音 (offline)',
     teacher: '先生', teacherD: '管理 (staff)',
-    apk: '📲 Android APK をダウンロード', apkD: 'EAS から最新の APK をダウンロード',
+    apk: '📲 Android APK をダウンロード', apkD: 'GitHub Releases から最新の APK をダウンロード',
   },
 };
 
 const ICONS = { Planner: '📅', Notes: '📝', Library: '📚', Help: '🆘', Kana: 'あ', Teacher: '🎓' };
-const APK_BUILD_URL = 'https://expo.dev/accounts/soemyintswe/projects/japanese-mksedu/builds/58adfdf7-0ef4-4a4e-bb63-1cbbfd50a018';
+const APK_BUILD_URL = 'https://github.com/soemyintswe/japanese-learning-app/releases/latest';
 
 export default function MoreScreen({ user, onLogout, navigation }) {
   const { lang } = useLanguage();
