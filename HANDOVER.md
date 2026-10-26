@@ -409,9 +409,15 @@ npx eas-cli build --platform android --profile preview
 ## 8. Roadmap (ရှေ့ဆက်)
 
 ### 2026-10-26 Durable APK release plan
-- [ ] Bump the user-facing version and auto-increment the Android version code for the next preview build.
-- [ ] Point the in-app APK buttons to GitHub Releases latest, which avoids EAS artifact expiry.
-- [ ] Test/export/push the release source, build the APK on EAS, upload it to a versioned GitHub Release, then deploy the durable download link.
+- [x] Bump the user-facing version and auto-increment the Android version code for the next preview build (v1.0.1, versionCode 2).
+- [x] Point the in-app APK buttons to GitHub Releases latest, which avoids EAS artifact expiry.
+- [x] Test/export/push the release source, build the APK on EAS, upload it to a versioned GitHub Release, then deploy the durable download link.
+
+### 2026-10-26 Durable APK release completed
+- EAS Android preview build `b28786bd-f8e0-41b6-ba0e-ac3255295258` finished from commit `5a59315d1920556df6e30fa8578683490516bb1b` (app version `1.0.1`, Android versionCode `2`). EAS artifacts expire; the published GitHub Release is the durable distribution path.
+- Uploaded `JapaneseStudyPlanner-v1.0.1.apk` to [GitHub Release v1.0.1](https://github.com/soemyintswe/japanese-learning-app/releases/tag/v1.0.1). App download buttons use `/releases/latest`.
+- Web export succeeded and Firebase Hosting project `japanese-mksedu` was deployed. Live site: https://japanese.mksedu.asia
+- Validation: APK ZIP integrity check passed; `npx expo export --platform web --output-dir dist` passed. Earlier on this source commit, i18n parity, 7 unit tests, and Expo web export passed.
 
 ### 2026-10-26 Login screen redesign plan
 - [x] Preserve existing login/register/Google/privacy flows while moving them into a centered card with account and guest tabs.
